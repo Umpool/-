@@ -576,7 +576,6 @@ public class GameManager : MonoBehaviour
         {
             panelStageSelect.SetActive(true);
         }
-        if (partyListContainer) partyListContainer.SetActive(true); // 파티 리스트 컨테이너 ON 고수!
     }
 
     public void OnClickNormalStageBackButton()
@@ -596,7 +595,6 @@ public class GameManager : MonoBehaviour
         {
             panelInfinite.SetActive(true);
         }
-        if (partyListContainer) partyListContainer.SetActive(true); // 파티 리스트 컨테이너 ON 고수!
     }
 
     public void OnClickInfiniteStageBackButton()
@@ -713,7 +711,7 @@ public class GameManager : MonoBehaviour
         {
             obj_NPCListPanel.transform.parent.gameObject.SetActive(true); // Btn_FastMoveToggle(부모) ON
         }
-        if (partyListContainer) partyListContainer.SetActive(true);
+        if (partyListContainer) partyListContainer.SetActive(false);
 
         GameObject panelStageSelect = GameObject.Find("Canvas")?.transform.Find("Panel_StageSelect")?.gameObject;
         if (panelStageSelect != null) panelStageSelect.SetActive(false);
@@ -770,8 +768,6 @@ public class GameManager : MonoBehaviour
         {
             panel_PartyEditView.SetActive(false);
         }
-
-        // 💡 팁: 이때 하단 파티 목록창(partyListContainer)은 스테이지 화면에 계속 노출되어야 하므로 따로 끄지 않고 유지합니다.
     }
 
 
@@ -894,7 +890,7 @@ public class GameManager : MonoBehaviour
 
 
     // --- [파티 실시간 UI 렌더링 시스템] --- 
-    public void UpdatePartyUI() //여기서부터 ㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇㅇ
+    public void UpdatePartyUI() 
     {
         // 🌟 [개발자님 명품 UI 자동화 버그 제로 기획 주입]: 
         // 유니티 캔버스에 있는 상단 단축바를 찾아와서, 오직 마을 패널이 켜져 있을 때만(true/false) 완벽하게 연동되도록 동기화시킵니다!
