@@ -1,11 +1,21 @@
 using System.Collections;
 using System.Collections.Generic;
+using TMPro;
 using UnityEngine;
 using UnityEngine.UI; // 🌟 슬라이더 및 UI 컴포넌트 제어용 필수 도구상자
 
 // 🌟 [개발자님 기획 최종 구현]: 3매치 퍼즐 전장의 모든 아군/적군 실시간 데이터를 총괄 지휘하는 전용 사령관
 public class PuzzleBattleManager : MonoBehaviour
 {
+    // ====== 1. [여기 추가] 다른 곳에서 호출할 수 있게 통로를 만듭니다 ======
+    public static PuzzleBattleManager Instance { get; private set; }
+
+    private void Awake()
+    {
+        // 내 자신을 Instance에 등록합니다.
+        if (Instance == null) Instance = this;
+        else Destroy(gameObject);
+    }
     [Header("--- 배틀 핵심 UI 패널 록온 ---")]
     public GameObject panel_PuzzleBattle; // 진짜 최종 3매치 퍼즐 배틀판 패널
     public GameObject enemyContainer;     // 몬스터들이 배치될 바구니
@@ -13,13 +23,36 @@ public class PuzzleBattleManager : MonoBehaviour
     [Header("--- 3매치 퍼즐 보드 직속 회선 연결 ---")]
     public Board puzzleBoardComponent;     // 보드.cs 스크립트 연결 방
 
+    [Header("--- 턴 시스템 시스템 ---")]
+    public int currentTurn = 0;        // 현재 누적된 턴 수
+    public bool isUserAction = false; // 유저가 직접 드래그한 상태인지 체크하는 스위치
+
+    private void Start()
+    {
+        currentTurn = 0;
+        UpdateTurnTextUI();
+    }
+
+    public void OnUserDragBlock()
+    {
+        // 인풋매니저가 블록 드래그를 끝냈을 때 실행됩니다.
+        Debug.Log("인풋매니저로부터 드래그 종료 신호 수신 완료!");
+    }
+    [Header("--- 현재 배틀 필드 상황 ---")]
+    // 중요! 어떤 모드의 몬스터든 이 주머니에 다 담을 수 있습니다.
+    public BaseMonster currentTargetMonster;
+
     [Header("--- 아군 및 적군 HP 실시간 감시 주머니 ---")]
     public Slider enemyHPBar;              // 몬스터 체력바 슬라이더
     public List<Slider> heroHPBars = new List<Slider>(); // 아군 영웅 5인 체력바 슬라이더 리스트
+    public TextMeshProUGUI turnTextUI;
 
     // 🌟 [전투 정식 개시 스위치]: 무한 모드 버튼을 누르는 순간 GameManager에 의해 원격 가동됩니다!
     public void StartPuzzleBattle(string gameMode)
     {
+        currentTurn = 0;
+        UpdateTurnTextUI();
+
         Debug.Log($"[전투 차원 이동 완료] {gameMode} 모드로 3매치 퍼즐 배틀판 화면을 전개합니다!");
 
         // 1. 배틀판 도화지 화면 전체를 화사하게 켜줍니다!
@@ -36,8 +69,15 @@ public class PuzzleBattleManager : MonoBehaviour
             Debug.Log("[보드 엔진 가동 완료] 6x6 정석 3매치 블록판이 화면에 완벽 생성되었습니다!");
         }
     }
-
-    // 🌟 [개발자님 최신 계층구조 200% 정밀 반영]: 하단 아군 영웅 5명의 카드와 HP 바 주소를 1대1 유기적 연동시킵니다!
+            public void UpdateTurnTextUI()
+    {
+        if (turnTextUI != null)
+        {
+            // 화면 텍스트 창에 현재 누적된 턴 숫자를 실시간으로 출력합니다.
+            turnTextUI.text = $"{currentTurn}턴";
+        }
+    }
+// 🌟 [개발자님 최신 계층구조 200% 정밀 반영]: 하단 아군 영웅 5명의 카드와 HP 바 주소를 1대1 유기적 연동시킵니다!
     private void SetupBattleEntities()
     {
         Debug.Log("[배틀 연산 1단계] 내 정예 파티원 데이터 수거 및 HP 회선 연결 시작!");
@@ -106,4 +146,36 @@ public class PuzzleBattleManager : MonoBehaviour
             Debug.Log($"[아군 진형 연동 완공] 총 {heroHPBars.Count}명의 파티원이 실시간 생명력 게이지를 장착 완료했습니다!");
         }
     }
+    // 🔔 [여기 추가] 인게임 중 스폰된 캐릭터들이 스스로의 HP바를 등록하러 오는 입구입니다.
+    public void RegisterHeroHPBar(Slider heroSlider)
+    {
+        if (heroSlider == null) return;
+
+        /* 
+           🔒 [전투 화면 전용 안전장치]
+           현재 퍼즐 배틀 패널 오브젝트가 화면에 활성화(True)되어 있을 때만 
+           영웅의 HP 바를 배틀 시스템 주머니에 등록합니다!
+           
+           ※ 주의: 만약 씬에 배치된 퍼즐 배틀 패널 오브젝트 이름이 다르면 
+           아래 'gameObject' 대신 해당 패널 변수명을 적어주셔도 됩니다.
+        */
+        if (gameObject.activeInHierarchy == false)
+        {
+            // 전투 패널이 꺼져 있다면 (예: 마을, 로비 등) 등록하지 않고 즉시 차단합니다.
+            return;
+        }
+
+        if (heroHPBars == null)
+        {
+            heroHPBars = new List<Slider>();
+        }
+
+        if (!heroHPBars.Contains(heroSlider))
+        {
+            heroHPBars.Add(heroSlider);
+            Debug.Log($"[전투 전용 자동 연동] 영웅 HP 바 등록 완료! (현재 {heroHPBars.Count}개)");
+        }
+    }
+
+
 }
