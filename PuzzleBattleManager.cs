@@ -17,8 +17,9 @@ public class PuzzleBattleManager : MonoBehaviour
         else Destroy(gameObject);
     }
     [Header("--- 배틀 핵심 UI 패널 록온 ---")]
-    public GameObject panel_PuzzleBattle; // 진짜 최종 3매치 퍼즐 배틀판 패널
-    public GameObject enemyContainer;     // 몬스터들이 배치될 바구니
+    public GameObject panel_PuzzleBattle;    // 일반 스테이지 패널 (Panel_NMPuzzleBattle)
+    public GameObject panel_InfiniteBattle;  // 💡 [추가] 무한모드 패널 (Panel_INPuzzleBattle)
+    public GameObject enemyContainer;
 
     [Header("--- 3매치 퍼즐 보드 직속 회선 연결 ---")]
     public Board puzzleBoardComponent;     // 보드.cs 스크립트 연결 방
@@ -66,42 +67,45 @@ public class PuzzleBattleManager : MonoBehaviour
 
     // 🌟 [전투 정식 개시 스위치]: 무한 모드 버튼을 누르는 순간 GameManager에 의해 원격 가동됩니다!
         
+    // 💡 [StartPuzzleBattle 함수 전체를 아래 내용으로 덮어씌워 주세요]
     public void StartPuzzleBattle(string gameMode)
     {
-            remainingTime = 180f;       // 시간을 3분(180초)으로 초기화
-    isTimerRunning = true;      // 타이머 시작!
-    
         currentTurn = 0;
         UpdateTurnTextUI();
 
-        // 💡 [추가] 무한 모드(Infinite)로 진입했을 때 타이머 세팅
-        if (gameMode == "Infinite")
-        {
-            remainingTime = 180f;       // 시간을 3분(180초)으로 초기화
-            isTimerRunning = true;      // 타이머 시작!
-        }
+        // 먼저 두 패널을 모두 깔끔하게 꺼줍니다.
+        if (panel_PuzzleBattle != null) panel_PuzzleBattle.SetActive(false);
+        if (panel_InfiniteBattle != null) panel_InfiniteBattle.SetActive(false);
+
+        // 1. 모드 선택 판정
+    if (gameMode == "infinite" || gameMode == "Infinite")
+    {
+        remainingTime = 180f;
+        isTimerRunning = true;
+        if (timerTextUI != null) timerTextUI.text = "03:00"; 
+
+        StartCoroutine(TimerRoutine()); // ⏰ 묻지도 따지지도 말고 시계 가동!
+
+        if (panel_InfiniteBattle != null) panel_InfiniteBattle.SetActive(true);
+        Debug.Log("[무한 배틀 화면 전개 ON]");
+    }
         else
         {
-            isTimerRunning = false;     // 일반 스테이지라면 타이머를 끕니다.
-            if (timerTextUI != null) timerTextUI.text = ""; // 타이머 글자 가리기
+            isTimerRunning = false;
+            if (timerTextUI != null) timerTextUI.text = "";
 
-            Debug.Log($"[전투 차원 이동 완료] {gameMode} 모드로 3매치 퍼즐 배틀판 화면을 전개합니다!");
-
-            // 1. 배틀판 도화지 화면 전체를 화사하게 켜줍니다!
+            // 💡 일반 스테이지 패널을 켭니다!
             if (panel_PuzzleBattle != null) panel_PuzzleBattle.SetActive(true);
-
-            // 2. 🌟 [데이터 연동 규칙]: 내 정예 파티원 5명 전투 모드 장착 및 적 몬스터 소환 연산 개시
-            SetupBattleEntities();
-
-            // 3. 🌟 [보드 엔진 발사]: 보드.cs 에게 6x6 정석 3매치 블록판 소환 명령을 내립니다!
-            if (puzzleBoardComponent != null)
-            {
-                puzzleBoardComponent.SetupStage(6, 6); // 기획안 규격에 맞춰 가로 6 x 세로 6 강제 픽스!
-                puzzleBoardComponent.CreateBoard();    // 블록 촤라락 소환 루틴 발사!
-                Debug.Log("[보드 엔진 가동 완료] 6x6 정석 3매치 블록판이 화면에 완벽 생성되었습니다!");
-            }
+            Debug.Log("[일반 배틀 화면 전개 ON]");
         }
 
+        // 2. 아군 소환 및 6x6 보드 엔진 가동 (공통 실행)
+        SetupBattleEntities();
+        if (puzzleBoardComponent != null)
+        {
+            puzzleBoardComponent.SetupStage(6, 6);
+            puzzleBoardComponent.CreateBoard();
+        }
     }
             public void UpdateTurnTextUI()
     {
@@ -211,56 +215,37 @@ public class PuzzleBattleManager : MonoBehaviour
         }
     }
     // 💡 [추가] 매 프레임마다 실행되면서 시간을 깎는 유니티 기본 함수입니다.
-    private void Update()
+    private IEnumerator TimerRoutine()
     {
-        // 타이머가 켜져 있을 때만 작동합니다.
-        if (isTimerRunning)
+        while (remainingTime > 0)
         {
-            if (remainingTime > 0)
-            {
-                // 유니티가 제공하는 실제 흘러간 시간(Time.deltaTime)을 빼줍니다.
-                remainingTime -= Time.deltaTime;
-                
-                // 화면에 "03:00" 형태로 예쁘게 출력해주는 함수 호출
-                UpdateTimerUI(); 
-            }
-            else
-            {
-                // 3분이 전부 지나서 시간이 0이 되었을 때
-                remainingTime = 0;
-                isTimerRunning = false;
-                UpdateTimerUI();
-                
-                // ⏰ 제한시간 종료 처리!
-                OnTimerEnd(); 
-            }
+            yield return new WaitForSeconds(1f); // ⏰ 정확히 1초 대기
+            remainingTime -= 1f;                 // 1초 차감
+            UpdateTimerUI();                     // 💡 아래에 있는 화면 새로고침 함수를 호출!
         }
+
+        isTimerRunning = false;
+        OnTimerEnd(); // 3분이 다 끝나면 실행될 종료 함수
     }
 
     // 💡 [추가] 남은 초(Float) 데이터를 분:초(00:00) 형태로 변경해 UI에 꽂아주는 함수
     private void UpdateTimerUI()
     {
-        // 💡 [변경] 만약 이 매니저에 타이머 UI가 연결되어 있지 않다면? 
-        // 굳이 에러를 내거나 멈추지 않고, "아, 나는 일반 모드 매니저구나!" 하고 조용히 함수를 나갑니다.
-        if (timerTextUI == null)
-        {
-            return;
-        }
+        // 리모컨 연결이 안 되어 있다면 에러 방지를 위해 나감
+        if (timerTextUI == null) return;
 
-        // 전체 초를 분:초로 계산하는 기존 코드들...
+        // 전체 초 데이터를 '분'과 '초'로 쪼개줍니다.
         int minutes = Mathf.FloorToInt(remainingTime / 60f);
         int seconds = Mathf.FloorToInt(remainingTime % 60f);
+
+        // 꽂혀있는 텍스트 오브젝트의 글자를 실시간으로 변경합니다! (ㅁㄴㅇㄹ이 여기서 지워집니다)
         timerTextUI.text = string.Format("{0:00}:{1:00}", minutes, seconds);
     }
 
-    // 💡 [추가] 3분이 끝나는 순간 실행될 결과 창 띄우기 함수
+    // 3. 시간이 다 되었을 때 결과창을 띄우는 함수 (일단 로그만)
     private void OnTimerEnd()
     {
-        Debug.Log("3분 시간 종료! 무한 모드가 끝났습니다.");
-        
-        // [여기에 구현할 내용]: 
-        // 1. 퍼즐 보드 조작 막기 (InputManager 끄기 등)
-        // 2. 결과창(RewardPanel 또는 별도 점수판)을 띄우고 누적 대미지 기록 보여주기
+        Debug.Log("⏰ 3분 시간이 모두 종료되었습니다! 무한 모드 끝!");
     }
     // 💡여기가 PuzzleBattleManager.cs의 맨 밑바닥 괄호 바로 윗줄입니다.
 
