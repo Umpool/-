@@ -5,8 +5,9 @@ using TMPro;
 public class CharacterCard : MonoBehaviour
 {
     [Header("연동할 실제 캐릭터 데이터")]
+    public Slider hpSlider; // 👈 이 카드가 제어할 체력바 UI 주머니를 만듭니다!
     public CharacterData myData; // 이 카드가 바라볼 캐릭터 데이터 에셋
-
+    
     [Header("내부 UI 컴포넌트 연결")]
     public TextMeshProUGUI txt_Name; // 카드의 이름 텍스트 (TMP)
 
@@ -52,5 +53,12 @@ public class CharacterCard : MonoBehaviour
                 bodyButton.targetGraphic = bodyImage;
             }
         }
+        // 🔔 [여기 추가] 영웅 카드가 준비 완료되었으니, 퍼즐 배틀 매니저 주머니에 내 체력바를 등록합니다.
+        if (PuzzleBattleManager.Instance != null && hpSlider != null)
+        {
+            PuzzleBattleManager.Instance.RegisterHeroHPBar(hpSlider);
+        }
+
     }
+
 }
