@@ -48,6 +48,16 @@ public class GameManager : MonoBehaviour
     public List<CharacterData> partyMembers; // 현재 파티 멤버 (최대 5명)
     public GameObject partyMemberPrefab; // 파티 아이콘 프리팹
 
+    [Header("--- 마을 화면 UI 제어  ---")]
+    public GameObject Panel_Village;          // 🏡 마을 화면 패널
+    public GameObject PartyListContainer;     // 👥 파티 목록 컨테이너
+
+    [Header("--- 배틀 중 비활성화할 단축바 UI  ---")]
+    public GameObject QuickMoveButton;       // 🎯 빠른 이동 버튼 오브젝트 ([V] 체크박스 제어용)
+
+    [Header("--- 상단 단축바 리모컨 ---")]
+    public GameObject panel_TopBar; // 💡 만약 단축바 전체 패널 장부가 있다면 확인용
+
     [Header("상태 설정")]
     public GameState currentGameState;
     public int stageMode;
@@ -209,7 +219,21 @@ public class GameManager : MonoBehaviour
         }
     } // 🌟 Update 함수가 완전히 끝나는 마감 중괄호
 
+    public void GoToVillage() 
+    {
+        // 마을 화면을 활성화(ON) 합니다.
+        if (Panel_Village != null)
+        {
+            Panel_Village.SetActive(true); 
+        }
 
+        // 🎯 마을에 도착한 바로 이 타이밍에 딱 한 번만 파티 리스트를 강제로 OFF 합니다!
+        if (PartyListContainer != null)
+        {
+            PartyListContainer.SetActive(false); 
+            Debug.Log("🏡 [성공] 마을 도착! PartyListContainer를 깔끔하게 1회 OFF 했습니다.");
+        }
+    }
 
 
     private void HandleVillageInertiaDrag()
@@ -744,6 +768,10 @@ public class GameManager : MonoBehaviour
         {
             panel_PartyEditView.SetActive(true);
         }
+                if (panel_TopBar != null)
+        {
+            panel_TopBar.SetActive(true); // 👈 단축바가 항상 선명하게 출력되도록 보장!
+        }
 
         // 2. 기획 규칙: 하단 파티 목록창(PartyListContainer)도 화면에 항상 선명하게 유지 노출합니다.
         if (partyListContainer)
@@ -763,14 +791,38 @@ public class GameManager : MonoBehaviour
         Debug.Log("[파티편집] 뒤로가기 클릭 -> Panel_Party Edit View 및 자식들 일괄 OFF");
 
         // 1. 인스펙터에 연결된 대형 파티 편집 패널 본체를 안전하게 끕니다!
-        // (부모 패널이 꺼지면서 내부에 속한 시너지 리스트 등 자식들도 세트로 자동 OFF 상태가 됩니다.)
         if (panel_PartyEditView != null)
         {
             panel_PartyEditView.SetActive(false);
         }
+
+        // 🎯 [형님 요청 통합 완공] 뒤로가기를 누르는 이 타이밍에 파티 목록 상자([V] 체크박스)도 함께 OFF 합니다!
+        if (PartyListContainer != null)
+        {
+            PartyListContainer.SetActive(false); // 👈 여기에 이 한 줄만 얹어주면 끝납니다!
+            Debug.Log("🧹 [퇴장] PartyListContainer 체크박스 OFF 완료.");
+        }
+                if (panel_TopBar != null)
+        {
+            panel_TopBar.SetActive(true); // 👈 단축바가 항상 선명하게 출력되도록 보장!
+        }
     }
 
+    public void ClosePartyEditView()
+    {
+        // 1. 먼저 파티 편집 화면(Panel_Party Edit View)을 끕니다.
+        if (panel_PartyEditView != null)
+        {
+            panel_PartyEditView.SetActive(false);
+        }
 
+        // 🎯 [형님 요청] 파티 편집 화면을 벗어나는 순간, 파티 목록 상자([V] 체크박스)를 완전히 OFF 합니다!
+        if (PartyListContainer != null)
+        {
+            PartyListContainer.SetActive(false); // 👈 유니티 에디터에서 체크박스를 해제하는 명령입니다.
+            Debug.Log("🧹 파티 편집 화면을 벗어났으므로 PartyListContainer의 불을 껐습니다(OFF).");
+        }
+    }
     // 🌟 [4번 기획]: 캐릭터 보관 창고창 리스트 카드를 마우스 클릭 시 호출될 실시간 가입 스위치!
     public void OnClickWarehouseCharacterCard(CharacterData targetData)
     {
@@ -897,8 +949,15 @@ public class GameManager : MonoBehaviour
         GameObject topMenuBar = GameObject.Find("Canvas")?.transform.Find("상단 단축바")?.gameObject;
         if (topMenuBar != null && panel_Village != null)
         {
-            // 마을 화면이 활성화(activeSelf) 상태면 true가 되어 상단바도 켜지고, 꺼지면 자동으로 함께 꺼집니다!
-            topMenuBar.SetActive(panel_Village.activeSelf);
+        // 🎯 [형님 요청 반영] 캐릭터 선택 화면들을 찾아서 장부에 등록합니다.
+        GameObject mainCharSelect = GameObject.Find("Canvas")?.transform.Find("Panel_CharacterSelect")?.gameObject;
+        GameObject subCharSelect = GameObject.Find("Canvas")?.transform.Find("Panel_SubCharacterSelect")?.gameObject;
+
+        // 메인 선택창이나 서브 선택창 중 하나라도 화면에 켜져(ON) 있다면?
+        bool isSelectingCharacter = (mainCharSelect != null && mainCharSelect.activeSelf) || (subCharSelect != null && subCharSelect.activeSelf);
+
+        // 🚀 선택 창이 켜져 있을 때는 단축바를 OFF(false)하고, 그 외의 모든 상황(마을, 편집 등)에서는 항상 ON(true) 상태를 유지합니다!
+        topMenuBar.SetActive(!isSelectingCharacter);
         }
 
 
@@ -1115,5 +1174,26 @@ public class GameManager : MonoBehaviour
         }
         Debug.Log("[배틀 UI 완공] 실제 캐릭터 데이터와 100% 일치하는 실시간 HP바 장착 영웅들이 화면에 배치되었습니다.");
     }
+    public void EnterBattleStage()
+    {
+        // 🎯 배틀장에 진입하는 순간 빠른 이동 버튼을 완벽하게 OFF 합니다!
+        if (QuickMoveButton != null)
+        {
+            QuickMoveButton.SetActive(false); // 👈 전투 몰입 및 꼬임 방지를 위해 단축바 차단!
+            Debug.Log("🚫 [배틀 시작] 전장에 진입하여 상단 빠른 이동 버튼을 OFF 했습니다.");
+        }
+    }
 
+    /// <summary>
+    /// 배틀 화면에서 도망치거나 정상적으로 퇴장하여 마을/메인으로 갈 때 호출할 함수
+    /// </summary>
+    public void ExitBattleStage()
+    {
+        // 🎯 [복구] 배틀 화면을 완전히 벗어나면 빠른 이동 버튼을 다시 ON 시켜줍니다!
+        if (QuickMoveButton != null)
+        {
+            QuickMoveButton.SetActive(true); // 👈 다시 사용 가능하도록 ON 복구!
+            Debug.Log("⭕ [배틀 종료] 전장에서 벗어났으므로 빠른 이동 버튼을 다시 ON 복구했습니다.");
+        }
+    }
 } // 🌟 GameManager 클래스 전체 문서가 마감되는 진짜 최종 마지막 닫는 대중괄호선 (절대 지우시면 안 됩니다!)
