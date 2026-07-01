@@ -16,6 +16,14 @@ public class PuzzleBattleManager : MonoBehaviour
         if (Instance == null) Instance = this;
         else Destroy(gameObject);
     }
+
+    [Header("--- 무한모드 최종 정산 시스템 ---")]
+    public GameObject panel_InfiniteReward;  // 💡 형님이 만드신 결과창 패널(InfiniteRewardPanel 등)을 통째로 연결할 방
+    public TextMeshProUGUI textFinalScore;   // Text_FinalScore 연결
+    public TextMeshProUGUI textFinalTurns;   // Text_FinalTurns 연결
+    public TextMeshProUGUI textRecordNotice; // Text_RecordNotice 연결
+
+
     [Header("--- 배틀 핵심 UI 패널 록온 ---")]
     public GameObject panel_PuzzleBattle;    // 일반 스테이지 패널 (Panel_NMPuzzleBattle)
     public GameObject panel_InfiniteBattle;  // 💡 [추가] 무한모드 패널 (Panel_INPuzzleBattle)
@@ -27,6 +35,10 @@ public class PuzzleBattleManager : MonoBehaviour
     [Header("--- 턴 시스템 시스템 ---")]
     public int currentTurn = 0;        // 현재 누적된 턴 수
     public bool isUserAction = false; // 유저가 직접 드래그한 상태인지 체크하는 스위치
+
+    [Header("--- NPC 전용 1~10위 순위판 UI ---")]
+    public TextMeshProUGUI textNPCLeaderboard; // 💡 요 방이 상단에 있어야 맨 밑바닥 함수가 에러가 안 납니다!
+public GameObject panel_NPCLeaderboard_Popup; // 🎯 마을 순위판 팝업창 자체를 기억할 전원 제어 방!
 
     private void Start()
     {
@@ -46,10 +58,10 @@ public class PuzzleBattleManager : MonoBehaviour
         // -------------------------------------------------------------
         // 여기서부터는 배틀 화면이 정상적으로 켜져 있을 때만 실행됩니다.
         // -------------------------------------------------------------
-        
+
         // 인풋매니저가 블록 드래그를 끝냈을 때 실행됩니다.
         Debug.Log("인풋매니저로부터 드래그 종료 신호 수신 완료!");
-        
+
         // (나중에 여기에 매칭 검사하고 턴 누적하는 코드가 추가될 예정입니다)
     }
     [Header("--- 현재 배틀 필드 상황 ---")]
@@ -60,13 +72,16 @@ public class PuzzleBattleManager : MonoBehaviour
     public Slider enemyHPBar;              // 몬스터 체력바 슬라이더
     public List<Slider> heroHPBars = new List<Slider>(); // 아군 영웅 5인 체력바 슬라이더 리스트
     public TextMeshProUGUI turnTextUI;
-        [Header("--- 무한 모드 타이머 시스템 ---")]
-    public TextMeshProUGUI timerTextUI; // 방금 만든 Text_Timer를 연결할 방
-    private float remainingTime = 180f;  // 3분 = 180초
-    private bool isTimerRunning = false; // 타이머가 작동 중인지 체크하는 스위치
 
+    public int currentScore = 0;       // 🎯 무한모드 최종 대미지 스코어를 기억할 진짜 장부방 개설!
+
+    [Header("--- 0.001초 초정밀 타이머 시스템 ---")] //타이머관련 코드
+    public TextMeshProUGUI timeText;     // 유니티에서 Text_Timer를 연결할 리모컨 방
+    public GameObject startTouchTriggerPanel;
+    private float timeRemaining = 180f;  // 180초 (3분) 출발점
+    private bool timerIsRunning = false; // 시계 ON/OFF 스위치
     // 🌟 [전투 정식 개시 스위치]: 무한 모드 버튼을 누르는 순간 GameManager에 의해 원격 가동됩니다!
-        
+
     // 💡 [StartPuzzleBattle 함수 전체를 아래 내용으로 덮어씌워 주세요]
     public void StartPuzzleBattle(string gameMode)
     {
@@ -76,23 +91,56 @@ public class PuzzleBattleManager : MonoBehaviour
         // 먼저 두 패널을 모두 깔끔하게 꺼줍니다.
         if (panel_PuzzleBattle != null) panel_PuzzleBattle.SetActive(false);
         if (panel_InfiniteBattle != null) panel_InfiniteBattle.SetActive(false);
-
+        GameObject realPartyList = GameObject.Find("Canvas")?.transform.Find("PartyListContainer")?.gameObject;
+        if (realPartyList != null)
+        {
+            realPartyList.SetActive(false);
+            Debug.Log("메인 Canvas에 있던 PartyListContainer를 완벽하게 전원 OFF 시켰습니다!");
+        }
+        if (panel_InfiniteBattle != null)
+        {
+            Transform triggerBtn = panel_InfiniteBattle.transform.Find("Btn_StartTouchTrigger");
+            if (triggerBtn != null)
+            {
+                // 🎯 자식 글자 상자들까지 몽땅 대동해서 인스펙터 맨 위 체크박스를 강제로 [V] 상태로 ON 시켜버립니다!
+                triggerBtn.gameObject.SetActive(true);
+                Debug.Log("🚀 [형님 명령] Btn_StartTouchTrigger와 자식 오브젝트들을 화면 정중앙에 강제 ON 완공!");
+            }
+        }
         // 1. 모드 선택 판정
-    if (gameMode == "infinite" || gameMode == "Infinite")
-    {
-        remainingTime = 180f;
-        isTimerRunning = true;
-        if (timerTextUI != null) timerTextUI.text = "03:00"; 
+        // 💡 111번째 줄 무한 모드 판정 구역입니다!
+        if (gameMode == "infinite" || gameMode == "Infinite")
+        {
+            // 1. ⏱️ 180초 타이머 장부 꽉 채우기
+            timeRemaining = 180f;
+            timerIsRunning = false;
 
-        StartCoroutine(TimerRoutine()); // ⏰ 묻지도 따지지도 말고 시계 가동!
+            // 2. 📂 [순서 제어] 큰 방 패널인 panel_InfiniteBattle을 무조건 가장 먼저 켭니다!
+            if (panel_InfiniteBattle != null)
+            {
+                panel_InfiniteBattle.SetActive(true);
+            }
 
-        if (panel_InfiniteBattle != null) panel_InfiniteBattle.SetActive(true);
-        Debug.Log("[무한 배틀 화면 전개 ON]");
-    }
+            // 3. 🧼 메인 Canvas에 이사 가 있던 파티창 대장을 찾아 다이렉트로 꺼버립니다.
+            GameObject realPartyList2 = GameObject.Find("Canvas")?.transform.Find("PartyListContainer")?.gameObject;
+            if (realPartyList != null) realPartyList.SetActive(false);
+
+            // 4. 🚀 큰 방이 완벽하게 켜졌으니, 그 안에 있는 터치 트리거 시작 버튼도 코드로 강제 ON 때려버립니다!
+            if (panel_InfiniteBattle != null)
+            {
+                Transform trigger = panel_InfiniteBattle.transform.Find("Btn_StartTouchTrigger");
+                if (trigger != null) trigger.gameObject.SetActive(true);
+
+                // 🛑 게임오버 결과창은 시작할 때 무조건 꺼져있어야 하므로 가려줍니다.
+                Transform gameover = panel_InfiniteBattle.transform.Find("GAMEOVER TXT");
+                if (gameover != null) gameover.gameObject.SetActive(false);
+            }
+
+            Debug.Log("🏁 무한모드 전장 전개! 시작 트리거 팝업 자동 가동 완료!");
+        }
+    
         else
         {
-            isTimerRunning = false;
-            if (timerTextUI != null) timerTextUI.text = "";
 
             // 💡 일반 스테이지 패널을 켭니다!
             if (panel_PuzzleBattle != null) panel_PuzzleBattle.SetActive(true);
@@ -107,7 +155,7 @@ public class PuzzleBattleManager : MonoBehaviour
             puzzleBoardComponent.CreateBoard();
         }
     }
-            public void UpdateTurnTextUI()
+    public void UpdateTurnTextUI()
     {
         if (turnTextUI != null)
         {
@@ -115,7 +163,7 @@ public class PuzzleBattleManager : MonoBehaviour
             turnTextUI.text = $"{currentTurn}턴";
         }
     }
-// 🌟 [개발자님 최신 계층구조 200% 정밀 반영]: 하단 아군 영웅 5명의 카드와 HP 바 주소를 1대1 유기적 연동시킵니다!
+    // 🌟 [개발자님 최신 계층구조 200% 정밀 반영]: 하단 아군 영웅 5명의 카드와 HP 바 주소를 1대1 유기적 연동시킵니다!
     private void SetupBattleEntities()
     {
         Debug.Log("[배틀 연산 1단계] 내 정예 파티원 데이터 수거 및 HP 회선 연결 시작!");
@@ -213,40 +261,188 @@ public class PuzzleBattleManager : MonoBehaviour
             heroHPBars.Add(heroSlider);
             Debug.Log($"[전투 전용 자동 연동] 영웅 HP 바 등록 완료! (현재 {heroHPBars.Count}개)");
         }
+
     }
-    // 💡 [추가] 매 프레임마다 실행되면서 시간을 깎는 유니티 기본 함수입니다.
-    private IEnumerator TimerRoutine()
+
+    // 💡 [PuzzleBattleManager.cs 맨 밑바닥 괄호 직전에 그대로 붙여넣으세요]
+
+    // 유니티가 매 프레임(초당 60~144번)마다 호출하여 0.001초 단위로 시간을 깎는 엔진입니다.
+    private void Update()
     {
-        while (remainingTime > 0)
+        if (timerIsRunning)
         {
-            yield return new WaitForSeconds(1f); // ⏰ 정확히 1초 대기
-            remainingTime -= 1f;                 // 1초 차감
-            UpdateTimerUI();                     // 💡 아래에 있는 화면 새로고침 함수를 호출!
+            if (timeRemaining > 0)
+            {
+                // Time.deltaTime을 빼주어 소수점 아래 무한 정밀도로 시간을 줄여나갑니다.
+                timeRemaining -= Time.deltaTime;
+                DisplayTime(timeRemaining);
+            }
+            else
+            {
+                // 3분이 모두 끝나서 0초에 도달했을 때
+                timeRemaining = 0;
+                timerIsRunning = false;
+                DisplayTime(timeRemaining);
+                Debug.Log("⏰ [초정밀 타이머 경보] 3분 제한 시간 종료!");
+            }
+        }
+    }
+
+    // 형님이 줏어오신 알고리즘을 0.001초(소수점 3자리) 폭풍 카운트다운으로 개조한 핵심 뷰어입니다.
+    private void DisplayTime(float timeToDisplay)
+    {
+        if (timeToDisplay < 0) timeToDisplay = 0;
+
+        // 분과 초를 정수로 쪼갭니다.
+        int minutes = Mathf.FloorToInt(timeToDisplay / 60);
+        int seconds = Mathf.FloorToInt(timeToDisplay % 60);
+
+        // 🔥 [소수점 3자리 추출 공식]: 전체 초에서 정수 초를 빼면 순수 소수점 잔량만 남습니다. (예: 0.543초)
+        // 여기에 1000을 곱해주면 0부터 999까지 초고속으로 달리는 밀리초(ms)가 완성됩니다!
+        int milliseconds = Mathf.FloorToInt((timeToDisplay - Mathf.FloorToInt(timeToDisplay)) * 1000);
+
+        if (timeText != null)
+        {
+            // {0:00}:{1:00}.{2:000} -> 분(2자리):초(2자리).밀리초(3자리) 형식으로 화면에 강제 출력!
+            timeText.text = string.Format("{0:00}:{1:00}.{2:000}", minutes, seconds, milliseconds);
+        }
+    }
+    // 유저가 "화면을 누르면 무한모드를 시작합니다"를 터치했을 때 실행될 최종 시동 함수입니다!
+    public void OnClickRealStartInfiniteTimer()
+    {
+        // 1. 안내 팝업창을 화면에서 깔끔하게 꺼서 치워버립니다.
+        if (startTouchTriggerPanel != null)
+        {
+            startTouchTriggerPanel.SetActive(false);
         }
 
-        isTimerRunning = false;
-        OnTimerEnd(); // 3분이 다 끝나면 실행될 종료 함수
+        // 2. 🔥 이제 드디어 초정밀 타이머 시계 스위치를 ON 하고 가동합니다!
+        timerIsRunning = true;
+        Debug.Log("🏁 [무한 모드 스타트] 0.001초 카운트다운 폭풍 가동!");
     }
-
-    // 💡 [추가] 남은 초(Float) 데이터를 분:초(00:00) 형태로 변경해 UI에 꽂아주는 함수
-    private void UpdateTimerUI()
+    public void OnClickBackToVillageFromInfinite()
     {
-        // 리모컨 연결이 안 되어 있다면 에러 방지를 위해 나감
-        if (timerTextUI == null) return;
+        // [기존 필수 1] 켜져 있던 무한모드 결과창 패널(GAMEOVER TXT)을 시원하게 꺼버립니다.
+        if (panel_InfiniteReward != null)
+        {
+            panel_InfiniteReward.SetActive(false);
+        }
 
-        // 전체 초 데이터를 '분'과 '초'로 쪼개줍니다.
-        int minutes = Mathf.FloorToInt(remainingTime / 60f);
-        int seconds = Mathf.FloorToInt(remainingTime % 60f);
+        // [기존 필수 2] 플레이가 끝난 무한모드 퍼즐판 패널(Panel_INPuzzleBattle)도 꺼줍니다.
+        if (panel_InfiniteBattle != null)
+        {
+            panel_InfiniteBattle.SetActive(false);
+        }
 
-        // 꽂혀있는 텍스트 오브젝트의 글자를 실시간으로 변경합니다! (ㅁㄴㅇㄹ이 여기서 지워집니다)
-        timerTextUI.text = string.Format("{0:00}:{1:00}", minutes, seconds);
+        // 🔥 [형님이 말씀하신 추가 필수 3] 마을 들어올 때 순위판 팝업창과 자식들도 강제로 OFF 시킵니다!
+        if (panel_NPCLeaderboard_Popup != null)
+        {
+            panel_NPCLeaderboard_Popup.SetActive(false);
+        }
+
+        // [기존 필수 4] GameManager 싱글톤을 깨워서 마을 화면 패널을 다시 켜라고 명령합니다!
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.OnClickInfiniteStageBackButton();
+            Debug.Log("무한모드 정산 완료! 결과창과 순위판을 모두 안전하게 초기화하고 마을로 복귀했습니다.");
+        }
     }
 
-    // 3. 시간이 다 되었을 때 결과창을 띄우는 함수 (일단 로그만)
+        // 💡 [여기서부터 복사해서 맨 밑 괄호 직전에 그대로 붙여넣으세요]
+
+    // 1. 3분 무한 모드가 끝났을 때 1위~10위까지 보이지 않는 장부를 계산해 저장하는 정산기
     private void OnTimerEnd()
     {
-        Debug.Log("⏰ 3분 시간이 모두 종료되었습니다! 무한 모드 끝!");
+        Debug.Log("⏰ 3분 무한 모드 종료! 초정밀 탑 10 랭킹 정산 가동!");
+
+        timerIsRunning = false;
+        int finalScore = currentScore; 
+        int finalTurns = currentTurn;
+
+        if (textFinalScore != null) textFinalScore.text = $"최종 대미지 : {finalScore:N0}";
+        if (textFinalTurns != null) textFinalTurns.text = $"소모한 총 턴 수 : {finalTurns}턴";
+
+        // 📂 내부 저장소에서 1등부터 10등까지의 점수를 배열로 싹 긁어옵니다.
+        int[] highScores = new int[10];
+        for (int i = 0; i < 10; i++)
+        {
+            highScores[i] = PlayerPrefs.GetInt($"INF_RANK_{i + 1}", 0);
+        }
+
+        // 현재 점수가 몇 등인지 순위 검사 (0등은 순위권 밖)
+        int currentRank = 0;
+        for (int i = 0; i < 10; i++)
+        {
+            if (finalScore > highScores[i])
+            {
+                currentRank = i + 1;
+                break; 
+            }
+        }
+
+        // 🎯 형님이 기획하신 [1~3등 특별 랭킹 연출] 판정 구역!
+        if (currentRank >= 1 && currentRank <= 3)
+        {
+            if (textRecordNotice != null)
+            {
+                textRecordNotice.gameObject.SetActive(true);
+                textRecordNotice.text = $"명예의 전당 등극! 새로운 개인 기록 [{currentRank}위] 달성!";
+            }
+        }
+        else
+        {
+            if (textRecordNotice != null) textRecordNotice.gameObject.SetActive(false);
+        }
+
+        // 💾 [탑 10 데이터 밀어내기 정산] 내 아래 등수들의 기록을 한 칸씩 밑으로 밀어냅니다.
+        if (currentRank >= 1 && currentRank <= 10)
+        {
+            for (int i = 9; i >= currentRank; i--)
+            {
+                highScores[i] = highScores[i - 1];
+            }
+            highScores[currentRank - 1] = finalScore;
+
+            for (int i = 0; i < 10; i++)
+            {
+                PlayerPrefs.SetInt($"INF_RANK_{i + 1}", highScores[i]);
+            }
+            PlayerPrefs.Save();
+        }
+        if (panel_InfiniteBattle != null)
+        {
+            Transform gameover = panel_InfiniteBattle.transform.Find("GAMEOVER TXT");
+            if (gameover != null)
+            {
+                gameover.gameObject.SetActive(true);
+                Debug.Log("🎉 [코드로 완벽 제어] 3분 종료! GAMEOVER TXT 결과창 강제 ON 대완공!");
+            }
+        }
     }
-    // 💡여기가 PuzzleBattleManager.cs의 맨 밑바닥 괄호 바로 윗줄입니다.
+
+    // 2. 마을에서 NPC 순위보기 버튼을 누르면 1위부터 10위까지의 보이지 않는 장부를 긁어와 화면에 쾅 꽂아주는 함수
+    public void RefreshNPCLeaderboardUI()
+    {
+        System.Text.StringBuilder sb = new System.Text.StringBuilder();
+        sb.AppendLine("무한모드 랭킹보드 (Top 10)\n");
+
+        for (int i = 1; i <= 10; i++)
+        {
+            int score = PlayerPrefs.GetInt($"INF_RANK_{i}", 0);
+            sb.AppendLine($"{i}위 : {score:N0} 대미지"); 
+        }
+
+        if (textNPCLeaderboard != null)
+        {
+            textNPCLeaderboard.text = sb.ToString();
+        }
+
+                if (panel_NPCLeaderboard_Popup != null)
+        {
+            panel_NPCLeaderboard_Popup.SetActive(true);
+        }
+        
+        Debug.Log("[NPC 순위판] 보이지 않는 장부에서 탑텐 데이터를 긁어와 새로고침 완료!");
+    }
 
 }
