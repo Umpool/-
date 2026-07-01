@@ -1,0 +1,1 @@
+public enum GameState { Intro, Title, CharacterSelect, Village, StageSelect, Battle, PuzzleBattle, RewardSelect, InfiniteReward }
