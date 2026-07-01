@@ -366,6 +366,22 @@ public class Board : MonoBehaviour
             if (isUserTurn)
             {
                 Debug.Log("[기획 3-1번 성공] 유저 조작으로 3매치 완성! 정직하게 1턴을 누적합니다.");
+
+                if (PuzzleBattleManager.Instance != null)
+                {
+                    PuzzleBattleManager.Instance.currentTurn++;
+                    PuzzleBattleManager.Instance.UpdateTurnTextUI();
+                }
+
+                // 🔔 [이미 올려두신 InfiniteMonster를 타격하는 최종 연동 코드!]
+                // 현재 씬(Scene)에 켜져 있는 무한모드 몬스터의 주머니(Instance)를 직접 불러와 때립니다.
+                if (InfiniteMonster.Instance != null)
+                {
+                    // matchesList.Count는 터진 블록의 총 개수입니다. (한 칸당 100 데미지 계산)
+                    float damageDealt = matchesList.Count * 100f;
+                    InfiniteMonster.Instance.TakeDamage(damageDealt);
+                }
+
                 isUserTurn = false; // 플래그 초기화
             }
             else
