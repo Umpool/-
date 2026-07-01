@@ -61,9 +61,16 @@ public class InputManager : MonoBehaviour
         {
             if (isDragging)
             {
+                // [여기 추가] 드래그가 끝났으므로 퍼즐 배틀 매니저에게 1턴 소모 신호를 보냅니다.
+                if (PuzzleBattleManager.Instance != null)
+                {
+                    PuzzleBattleManager.Instance.OnUserDragBlock();
+                }
+
                 isDragging = false;
                 OnInputEnd?.Invoke(currentPointerPos);
             }
+
         }
     }
 
