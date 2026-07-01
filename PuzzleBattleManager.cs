@@ -23,6 +23,10 @@ public class PuzzleBattleManager : MonoBehaviour
     public TextMeshProUGUI textFinalTurns;   // Text_FinalTurns 연결
     public TextMeshProUGUI textRecordNotice; // Text_RecordNotice 연결
 
+    // 🎯 [왕초보 구원] 재생 전에 꺼져 있어도 직속으로 조종할 수 있게 해주는 리모컨 방입니다!
+    [Header("--- 재생전 OFF여도 강제 제어할 직속 회선 ---")]
+    public GameObject btn_StartTouchTrigger_Direct; 
+
 
     [Header("--- 배틀 핵심 UI 패널 록온 ---")]
     public GameObject panel_PuzzleBattle;    // 일반 스테이지 패널 (Panel_NMPuzzleBattle)
@@ -44,6 +48,24 @@ public GameObject panel_NPCLeaderboard_Popup; // 🎯 마을 순위판 팝업창
     {
         currentTurn = 0;
         UpdateTurnTextUI();
+
+        // 🎯 1. [요청 사항] 재생 전에 꺼져(OFF) 있더라도 게임이 시작되면 무조건 가장 먼저 ON!
+        if (btn_StartTouchTrigger_Direct != null)
+        {
+            btn_StartTouchTrigger_Direct.SetActive(true); // 👈 직속 회선으로 강제 ON!
+            Debug.Log("🚀 [성공] 재생 전 OFF 상태였던 Btn_StartTouchTrigger를 Start에서 강제 ON 시켰습니다!");
+        }
+
+        // 🔒 2. [기존 안전장치] 게임 재생 버튼을 누르는 순간 GAMEOVER TXT는 무조건 강제로 OFF!
+        if (panel_InfiniteBattle != null)
+        {
+            Transform gameover = panel_InfiniteBattle.transform.Find("GAMEOVER TXT");
+            if (gameover != null)
+            {
+                gameover.gameObject.SetActive(false); // 👈 시작하자마자 OFF!
+                Debug.Log("🔒 [보안 성공] 게임 시작 시 GAMEOVER TXT를 선제적으로 OFF 제어했습니다.");
+            }
+        }
     }
 
     public void OnUserDragBlock()
@@ -109,13 +131,14 @@ public GameObject panel_NPCLeaderboard_Popup; // 🎯 마을 순위판 팝업창
         }
         // 1. 모드 선택 판정
         // 💡 111번째 줄 무한 모드 판정 구역입니다!
+        
         if (gameMode == "infinite" || gameMode == "Infinite")
         {
-            // 1. ⏱️ 180초 타이머 장부 꽉 채우기
+            // 1. ⏱ 180초 타이머 장부 꽉 채우기
             timeRemaining = 180f;
             timerIsRunning = false;
 
-            // 2. 📂 [순서 제어] 큰 방 패널인 panel_InfiniteBattle을 무조건 가장 먼저 켭니다!
+            // 2. 📂 큰 방 패널인 panel_InfiniteBattle을 무조건 가장 먼저 켭니다!
             if (panel_InfiniteBattle != null)
             {
                 panel_InfiniteBattle.SetActive(true);
@@ -123,22 +146,31 @@ public GameObject panel_NPCLeaderboard_Popup; // 🎯 마을 순위판 팝업창
 
             // 3. 🧼 메인 Canvas에 이사 가 있던 파티창 대장을 찾아 다이렉트로 꺼버립니다.
             GameObject realPartyList2 = GameObject.Find("Canvas")?.transform.Find("PartyListContainer")?.gameObject;
-            if (realPartyList != null) realPartyList.SetActive(false);
+            if (realPartyList2 != null) realPartyList2.SetActive(false);
 
-            // 4. 🚀 큰 방이 완벽하게 켜졌으니, 그 안에 있는 터치 트리거 시작 버튼도 코드로 강제 ON 때려버립니다!
+            // 4. 🚀 [형님 요청 완벽 반영] 재생 전에 에디터에서 체크박스가 꺼져(OFF) 있어도 코드로 무조건 가장 먼저 강제 ON!
+            if (btn_StartTouchTrigger_Direct != null)
+            {
+                btn_StartTouchTrigger_Direct.SetActive(true); // 👈 이름으로 찾지 않고 직속 회선으로 즉시 켜버립니다!
+                Debug.Log("🚀 [코드로 완벽 제어] 재생 전 OFF 상태였던 Btn_StartTouchTrigger 강제 ON 완공!");
+            }
+            else
+            {
+                Debug.LogWarning("⚠️ 유니티 인스펙터 창에서 btn_StartTouchTrigger_Direct 방에 오브젝트를 연결하지 않았습니다!");
+            }
+
+            // 5. 🛑 게임오버 결과창은 시작할 때 무조건 꺼져있어야 하므로 가려줍니다.
             if (panel_InfiniteBattle != null)
             {
-                Transform trigger = panel_InfiniteBattle.transform.Find("Btn_StartTouchTrigger");
-                if (trigger != null) trigger.gameObject.SetActive(true);
-
-                // 🛑 게임오버 결과창은 시작할 때 무조건 꺼져있어야 하므로 가려줍니다.
                 Transform gameover = panel_InfiniteBattle.transform.Find("GAMEOVER TXT");
                 if (gameover != null) gameover.gameObject.SetActive(false);
             }
 
             Debug.Log("🏁 무한모드 전장 전개! 시작 트리거 팝업 자동 가동 완료!");
         }
-    
+
+
+
         else
         {
 
@@ -277,14 +309,26 @@ public GameObject panel_NPCLeaderboard_Popup; // 🎯 마을 순위판 팝업창
                 timeRemaining -= Time.deltaTime;
                 DisplayTime(timeRemaining);
             }
-            else
+        else
+        {
+            // // 3분이 모두 끝나서 0초에 도달했을 때
+            timeRemaining = 0;
+            timerIsRunning = false;
+            DisplayTime(timeRemaining);
+
+            // 🎯 [여기에 추가] 시간이 0초가 되면 GAMEOVER TXT와 자식들을 몽땅 ON 시킵니다!
+            if (panel_InfiniteBattle != null)
             {
-                // 3분이 모두 끝나서 0초에 도달했을 때
-                timeRemaining = 0;
-                timerIsRunning = false;
-                DisplayTime(timeRemaining);
-                Debug.Log("⏰ [초정밀 타이머 경보] 3분 제한 시간 종료!");
+                Transform gameover = panel_InfiniteBattle.transform.Find("GAMEOVER TXT");
+                if (gameover != null)
+                {
+                    gameover.gameObject.SetActive(true); // 👈 부모가 켜지면 자식도 자동으로 ON!
+                    Debug.Log("🎉 [성공] 3분 종료! GAMEOVER TXT 결과창 강제 ON 완료!");
+                }
             }
+
+            Debug.Log("⏰ [초정밀 타이머 경보] 3분 제한 시간 종료!");
+        }
         }
     }
 
@@ -319,6 +363,19 @@ public GameObject panel_NPCLeaderboard_Popup; // 🎯 마을 순위판 팝업창
         // 2. 🔥 이제 드디어 초정밀 타이머 시계 스위치를 ON 하고 가동합니다!
         timerIsRunning = true;
         Debug.Log("🏁 [무한 모드 스타트] 0.001초 카운트다운 폭풍 가동!");
+    }
+        public void ForceStopAndResetTimer() //화면이동시 타이머 초기화 
+    {
+        // 1. 🛑 타이머의 실시간 작동 스위치를 끕니다.
+        timerIsRunning = false;
+
+        // 2. ⏱️ 시간을 무한모드 기본 시간(180초)으로 완전히 초기화(리셋) 합니다.
+        timeRemaining = 180f;
+
+        // 3. 🖥️ 화면에 표시되는 타이머 텍스트 UI도 3분(03:00)으로 깔끔하게 새로고침 합니다.
+        DisplayTime(timeRemaining);
+
+        Debug.Log("⏱️ [타이머 강제 제어] 배틀 화면 탈출 감지! 타이머를 안전하게 멈추고 180초로 초기화했습니다.");
     }
     public void OnClickBackToVillageFromInfinite()
     {
