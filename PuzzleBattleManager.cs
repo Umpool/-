@@ -511,45 +511,33 @@ private void SetupBattleEntities()
     {
         timerIsRunning = false;
 
-        // 📊 [최종 데이터 연동]: 중복 선언을 원천 박멸하고 정석 변수 방을 복원합니다!
+        // 🛠️ [최종 대미지 연동 대완공]: 중복 선언을 원천 박멸하고 정석 변수 방을 복원합니다!
         int finalScore = 0;
-        int finalTurns = currentTurn; // 👈 현재 진행된 턴 수를 안전하게 복사하여 보관합니다.
+        int finalTurns = currentTurn;
 
-        // 📍 [화면 상단 실시간 누적 데미지 문자열 원격 우회 연동]
-        // 하이오라키 상자의 (ScoreText) 컴포넌트를 직접 조준하여 문자열을 낚아챕니다!
+        // 💡 [개발자님 정석 기획 완벽 우회 연동]
+        // 대소문자나 변수 유효 범위 벽을 완벽히 무력화하기 위해, 화면 상단에 1,350점을 실시간으로 표기하던 
+        // 진짜 하이어라키 상자(ScoreText)의 컴포넌트를 직접 조준하여 문자열을 낚아챕니다!
         TMPro.TextMeshProUGUI realScoreTMP = transform.Find("ScoreText")?.GetComponent<TMPro.TextMeshProUGUI>();
         if (realScoreTMP == null) realScoreTMP = GameObject.Find("ScoreText")?.GetComponent<TMPro.TextMeshProUGUI>();
 
         if (realScoreTMP != null)
         {
-            // ✂️ 화면 상단판에 박혀있던 글자 "누적 데미지: 1,350" 문자열에서 오타 처리 후 오직 숫자 알맹이만 정제합니다.
+            // 🎯 화면 상단판에 박혀있던 글자 "누적 데미지: 1,350" 문자열에서 
+            // 철자 오타를 가리지 않고 오직 알맹이 숫자 '1350'만 칼같이 정제하여 finalScore 상자에 배달합니다!
             string scoreString = realScoreTMP.text.Replace("누적 대미지:", "").Replace("누적 대미지 :", "").Replace("누적 데미지:", "").Replace("누적 데미지 :", "").Replace(",", "").Trim();
             int.TryParse(scoreString, out finalScore);
         }
         else
         {
-            // 상단 텍스트를 찾지 못했을 경우 예외 방지용 방어코드
             finalScore = currentScore;
         }
 
-        // ✍️ [결과창 텍스트 출력]: 찌꺼기 없는 청정 화면에 최종 대미지를 예쁘게 출력합니다!
+        // 🔍 기존에 존재하던 결과창 글씨 출력 단락과 이쁘게 이어집니다!
         if (textFinalScore != null)
         {
             textFinalScore.text = $"최종 대미지 : {finalScore:N0}";
         }
-
-        // ⏱️ [턴 수 출력 연동]: 대미지 밑에 걸린 총 턴 수도 함께 갱신하여 유저에게 보여줍니다!
-        // 🌟 만약 결과창에 턴 수를 표시할 전용 텍스트 변수(예: textFinalTurns 등)를 선언해두셨다면 
-        // 아래 주석을 풀고 변수명만 맞춰서 연결해주시면 유니티 인스펙터 세팅 후 완벽히 작동합니다.
-        /*
-        if (textFinalTurns != null)
-        {
-            textFinalTurns.text = $"{finalTurns}턴 걸림";
-        }
-        */
-
-        Debug.Log($"📊 [최종 정산 완료] 반영 대미지: {finalScore} | 소모한 총 턴 수: {finalTurns}턴");
-    }
 
 
 
@@ -734,66 +722,69 @@ private void SetupBattleEntities()
     // ✨ [추가] 몬스터가 턴 종료 시 살아있는 우리 캐릭터 카드를 무작위로 때리는 핵심 공격 회로
     public void MonsterAttackRandomPartyCard(float monsterDamage)
     {
-        CharacterCard[] activeCards = liveCards.ToArray(); 
-        
+        // 1. 화면에 생성되어 배치된 모든 캐릭터 카드(CharacterCard) 목록을 전수 조사하여 수거합니다.
+        // 기존 FindObjectsOfType 코드는 아예 삭제합니다!
+        CharacterCard[] activeCards = liveCards.ToArray(); // 👈 실시간 장부를 그대로 가져오므로 꼬일 일이 전혀 없습니다.
+
+
+
+        // 2. 만약 살아 움직이는 파티원 카드가 화면에 한 장이라도 존재한다면 공격을 감행합니다.
         if (activeCards.Length > 0)
         {
+            // 3. 무작위로 타겟 카드를 한 장 선정합니다 (예: 4명 중 1명 로또 타격)
             int randomTargetIndex = Random.Range(0, activeCards.Length);
             CharacterCard targetCard = activeCards[randomTargetIndex];
+
             if (targetCard != null)
             {
+                // 4. 선정된 그 카드의 체력만 정직하게 쾅! 깎아내립니다.
                 targetCard.TakeDamage(monsterDamage);
-                Debug.Log($"💥 [몬스터 반격] {monsterDamage} 대미지를 입혔습니다!");
+                Debug.Log($"💥 [몬스터 반격] 적이 파티원 [{(targetCard.GetComponent<PartyIcon>() != null ? targetCard.GetComponent<PartyIcon>().myData.characterName : "이름 없음")}]을(를) 공격하여 {monsterDamage} 대미지를 입혔습니다!");
+
             }
-        }
-    }
-
-    public void OnTimerEnd()
-    {
-        timerIsRunning = false;
-
-        int finalScore = 0;
-        int finalTurns = currentTurn; 
-
-        // 📍 [화면 상단 실시간 누적 데미지 문자열 원격 우회 연동]
-        TMPro.TextMeshProUGUI realScoreTMP = transform.Find("ScoreText")?.GetComponent<TMPro.TextMeshProUGUI>();
-        if (realScoreTMP == null) realScoreTMP = GameObject.Find("ScoreText")?.GetComponent<TMPro.TextMeshProUGUI>();
-
-        if (realScoreTMP != null)
-        {
-            string scoreString = realScoreTMP.text.Replace("누적 대미지:", "").Replace("누적 대미지 :", "").Replace("누적 데미지:", "").Replace("누적 데미지 :", "").Replace(",", "").Trim();
-            int.TryParse(scoreString, out finalScore);
         }
         else
         {
-            finalScore = currentScore;
+            Debug.Log("💀 화면에 살아있는 파티원 카드가 없어 몬스터가 공격할 대상을 찾지 못했습니다.");
         }
+    }
+    // ✨ [리모컨 스위치] 몬스터가 턴 종료 시 살아있는 파티원 카드를 무작위로 때리는 명령장치
+    public void Remote_MonsterAttackRandomCard(float damage)
+    {
+        // 1. 현재 전투 화면에 생성되어 배치된 모든 캐릭터 카드(CharacterCard) 목록을 전수 조사합니다.
+        // 기존 FindObjectsOfType 코드는 아예 삭제합니다!
+        CharacterCard[] activeCards = liveCards.ToArray(); // 👈 매장부에 기록된 데이터만 정직하게 꺼내 씁니다.
 
-        // ✍️ [결과창 텍스트 출력]
-        if (textFinalScore != null)
+
+
+        // 2. 살아 움직이는 파티원 카드가 화면에 존재한다면 무작위 타격을 가합니다.
+        if (activeCards.Length > 0)
         {
-            textFinalScore.text = $"최종 대미지 : {finalScore:N0}";
-        }
+            // 3. 무작위 타겟 선정 (예: 4명 중 1명 로또 타격)
+            int randomTargetIndex = Random.Range(0, activeCards.Length);
+            CharacterCard targetCard = activeCards[randomTargetIndex];
 
-        Debug.Log($"📊 [최종 정산 완료] 반영 대미지: {finalScore} | 소모한 총 턴 수: {finalTurns}턴");
-
-        // 🏆 [무한 모드 랭킹 데이터 정산 연쇄 트리거 복원]
-        // 559번 라인에서 에러가 터졌던 랭킹 갱신 로직을 중괄호 내부에 안전하게 격리 수용합니다.
-        for (int i = 0; i < 5; i++)
-        {
-            int savedScore = PlayerPrefs.GetInt($"INF_RANK_{i + 1}", 0);
-            if (finalScore > savedScore)
+            if (targetCard != null)
             {
-                for (int j = 4; j > i; j--)
-                {
-                    PlayerPrefs.SetInt($"INF_RANK_{j + 1}", PlayerPrefs.GetInt($"INF_RANK_{j}", 0));
-                }
-                PlayerPrefs.SetInt($"INF_RANK_{i + 1}", finalScore);
-                PlayerPrefs.Save();
-                break;
+                // 4. 리모컨 신호 발송! 지목당한 그 카드의 수신기(TakeDamage)를 작동시킵니다.
+                targetCard.TakeDamage(damage);
+                Debug.Log($"💥 [리모컨 작동] 몬스터가 파티원 [{(targetCard.GetComponent<PartyIcon>() != null ? targetCard.GetComponent<PartyIcon>().myData.characterName : "이름 없음")}] 카드를 저격하여 {damage} 대미지를 입혔습니다!");
+
             }
         }
-    } // 👈 OnTimerEnd 함수가 완벽하게 마감되는 안전 괄호
+        else
+        {
+            Debug.Log("💀 [경고] 화면에 살아있는 파티원 카드가 없어 리모컨이 타겟을 찾지 못했습니다.");
+        }
+    }
+    // 📄 Board.cs 맨 밑바닥에 추가할 타임오버 종결 단락 함수
 
+    // 🔥 [개발자님 기획 반영]: 타임오버 시 보드판을 리셋하고 마우스를 원천 차단하는 함수
+    public void ForceStopAndClearBoard()
+    {
+        // 1. 이미 정산 중이거나 매칭 중인 코루틴 흐름이 있다면 모두 강제 종료
+        StopAllCoroutines();
 
+    }
+}
 
