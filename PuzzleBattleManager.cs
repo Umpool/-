@@ -310,38 +310,41 @@ public class PuzzleBattleManager : MonoBehaviour
     // 💡 [PuzzleBattleManager.cs 맨 밑바닥 괄호 직전에 그대로 붙여넣으세요]
 
     // 유니티가 매 프레임(초당 60~144번)마다 호출하여 0.001초 단위로 시간을 깎는 엔진입니다.
+    // 📄 PuzzleBattleManager.cs 내부의 374번 줄 부근 Update 단락 교체
+
     private void Update()
     {
         if (timerIsRunning)
         {
             if (timeRemaining > 0)
             {
-                // Time.deltaTime을 빼주어 소수점 아래 무한 정밀도로 시간을 줄여나갑니다.
+                // 실시간으로 3초(3분) 카운트다운 진행
                 timeRemaining -= Time.deltaTime;
                 DisplayTime(timeRemaining);
             }
             else
             {
-                // // 3분이 모두 끝나서 0초에 도달했을 때
+                // 🛑 [0초 도달 최종 타임오버 정산 시점]
                 timeRemaining = 0;
                 timerIsRunning = false;
                 DisplayTime(timeRemaining);
 
-                // 🎯 [여기에 추가] 시간이 0초가 되면 GAMEOVER TXT와 자식들을 몽땅 ON 시킵니다!
-                if (panel_InfiniteBattle != null)
+                // 🛠️ [기능 보존형 최종 흐름 연동]
+                // 1. 개발자님이 만드신 '진짜 1~10위 탑텐 데이터 정산 함수'를 즉시 원격 호출합니다!
+                // 💡 이 함수 내부에서 팝업창을 켜고, 스코어/턴수를 쾅 박아주는 기능이 이미 완벽히 들어있습니다!
+                OnTimerEnd();
+
+                // 2. [개발자님 기획] 0초가 되었으므로 화면의 보드판을 싹 지워 게임을 멈춥니다.
+                if (puzzleBoardComponent != null)
                 {
-                    Transform gameover = panel_InfiniteBattle.transform.Find("GAMEOVER TXT");
-                    if (gameover != null)
-                    {
-                        gameover.gameObject.SetActive(true); // 👈 부모가 켜지면 자식도 자동으로 ON!
-                        Debug.Log("🎉 [성공] 3분 종료! GAMEOVER TXT 결과창 강제 ON 완료!");
-                    }
+                    puzzleBoardComponent.ForceStopAndClearBoard();
                 }
 
-                Debug.Log("⏰ [초정밀 타이머 경보] 3분 제한 시간 종료!");
+                Debug.Log("🎉 [무한모드 정산 성공] 보드판 청소 및 탑텐 결과창 강제 연동 완공!");
             }
         }
     }
+
 
     // 형님이 줏어오신 알고리즘을 0.001초(소수점 3자리) 폭풍 카운트다운으로 개조한 핵심 뷰어입니다.
     private void DisplayTime(float timeToDisplay)
@@ -668,26 +671,6 @@ public class PuzzleBattleManager : MonoBehaviour
         // 1. 이미 정산 중이거나 매칭 중인 코루틴 흐름이 있다면 모두 강제 종료
         StopAllCoroutines();
 
-        // 2. 화면에 놓여진 6x6 모든 블록 UI 오브젝트들을 싹 파괴하여 제거합니다!
-        if (allBlocks != null)
-        {
-            for (int x = 0; x < width; x++)
-            {
-                for (int y = 0; y < height; y++)
-                {
-                    if (allBlocks[x, y] != null)
-                    {
-                        Destroy(allBlocks[x, y]);
-                        allBlocks[x, y] = null;
-                    }
-                }
-            }
-        }
-
-        // 3. 더 이상 마우스 입력을 받지 않도록 보드판 자체 방어벽을 영원히 true로 잠급니다.
-        isMatching = true;
-        isSwapping = true;
     }
-
 }
 
