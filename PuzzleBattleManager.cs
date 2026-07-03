@@ -734,29 +734,20 @@ private void SetupBattleEntities()
     // ✨ [추가] 몬스터가 턴 종료 시 살아있는 우리 캐릭터 카드를 무작위로 때리는 핵심 공격 회로
     public void MonsterAttackRandomPartyCard(float monsterDamage)
     {
-        // 1. 화면에 생성되어 배치된 모든 캐릭터 카드(CharacterCard) 목록을 전수 조사하여 수거합니다.
-        // 기존 FindObjectsOfType 코드는 아예 삭제합니다!
-        CharacterCard[] activeCards = liveCards.ToArray(); // 👈 실시간 장부를 그대로 가져오므로 꼬일 일이 전혀 없습니다.
-
-
-
-        // 2. 만약 살아 움직이는 파티원 카드가 화면에 한 장이라도 존재한다면 공격을 감행합니다.
+        CharacterCard[] activeCards = liveCards.ToArray(); 
+        
         if (activeCards.Length > 0)
         {
-            // 3. 무작위로 타겟 카드를 한 장 선정합니다 (예: 4명 중 1명 로또 타격)
             int randomTargetIndex = Random.Range(0, activeCards.Length);
             CharacterCard targetCard = activeCards[randomTargetIndex];
-
             if (targetCard != null)
             {
-                // 4. 선정된 그 카드의 체력만 정직하게 쾅! 깎아내립니다.
                 targetCard.TakeDamage(monsterDamage);
-                Debug.Log($"💥 [몬스터 반격] 적이 파티원 [{(targetCard.GetComponent<PartyIcon>() != null ? targetCard.GetComponent<PartyIcon>().myData.characterName : "이름 없음")}]을(를) 공격하여 {monsterDamage} 대미지를 입혔습니다!");
-
+                Debug.Log($"💥 [몬스터 반격] {monsterDamage} 대미지를 입혔습니다!");
             }
         }
-        else
-        {
+    }
+
     public void OnTimerEnd()
     {
         timerIsRunning = false;
@@ -803,7 +794,6 @@ private void SetupBattleEntities()
             }
         }
     } // 👈 OnTimerEnd 함수가 완벽하게 마감되는 안전 괄호
-} // 👈 PuzzleBattleManager 클래스 전체 파일이 끝나는 진짜 최종 마감 괄호
 
 
 
