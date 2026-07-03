@@ -249,32 +249,22 @@ public class Board : MonoBehaviour
         }
         else
         {
-            // 기획안 5-1번: 연속 위치하지 않으면 원위치 원상복귀
-            Debug.Log("[매치 불가] 성립 조건을 만족하지 못하여 보석이 리턴됩니다.");
-            elapsed = 0f;
-            while (elapsed < 0.2f)
+
+            // [유저 기획 반영] 드래그로 블록 파괴에 실패했으므로 즉시 콤보를 0으로 리셋합니다.
+            if (PuzzleBattleManager.Instance != null)
             {
-                elapsed += Time.deltaTime;
-                float t = elapsed / 0.2f;
-                rectA.anchoredPosition = Vector2.Lerp(posB, posA, t);
-                rectB.anchoredPosition = Vector2.Lerp(posA, posB, t);
-                yield return null;
+                PuzzleBattleManager.Instance.currentCombo = 0;
+                PuzzleBattleManager.Instance.UpdateComboTextUI(); // 화면 글씨도 지우기
             }
-
-            rectA.anchoredPosition = posA;
-            rectB.anchoredPosition = posB;
-
-            allBlocks[ax, ay] = blockA;
-            allBlocks[bx, by] = blockB;
-            blockA.name = namePrefixA + "_" + ax + "_" + ay;
-            blockB.name = namePrefixB + "_" + bx + "_" + by;
+            // [수정] 올바른 매개변수(ax, ay, bx, by)로 원래 자리 되돌리기 애니메이션 구동
+            yield return StartCoroutine(SwapBlocksRoutine(ax, ay, bx, by));
 
             isSwapping = false;
             isUserTurn = false; // 매치 실패 시 턴 증가 플래그 리셋
-        }
+        } // 👈 꼬여있던 else 문을 닫아주는 중괄호입니다!
     }
 
-    bool CheckHasMatches()
+        bool CheckHasMatches()
     {
         // 가로 방향 3매치 검사
         for (int y = 0; y < height; y++)
@@ -360,29 +350,43 @@ public class Board : MonoBehaviour
                 }
             }
         }//파트33333333333333333
-        if (matchesList.Count > 0)
-        {
-            // 기획안 3-1번 & 3-2번 충족: 턴 누적 조건 판정 구동
-            if (isUserTurn)
+            if (matchesList.Count > 0)
             {
-                Debug.Log("[기획 3-1번 성공] 유저 조작으로 3매치 완성! 정직하게 1턴을 누적합니다.");
+                // 유저가 직접 움직여서 발생한 첫 매치일 때만 정직하게 1턴을 소모합니다.
+                if (isUserTurn)
+                {
+                    if (PuzzleBattleManager.Instance != null)
+                    {
+                        PuzzleBattleManager.Instance.currentTurn++;
+                        PuzzleBattleManager.Instance.UpdateTurnTextUI();
+                    }
+                    isUserTurn = false; // 첫 정산 완료 후 플래그를 꺼서 자동 연쇄는 턴을 안 씁니다.
+                }
 
+                // [유저 기획 반영] 블록이 파괴될 때마다 정직하게 1콤보씩 차곡차곡 누적합니다.
                 if (PuzzleBattleManager.Instance != null)
                 {
-                    PuzzleBattleManager.Instance.currentTurn++;
-                    PuzzleBattleManager.Instance.UpdateTurnTextUI();
+                    PuzzleBattleManager.Instance.currentCombo++;
+                    PuzzleBattleManager.Instance.UpdateComboTextUI(); // 실시간 콤보 글씨 갱신
                 }
 
-                // 🔔 [이미 올려두신 InfiniteMonster를 타격하는 최종 연동 코드!]
-                // 현재 씬(Scene)에 켜져 있는 무한모드 몬스터의 주머니(Instance)를 직접 불러와 때립니다.
+                int comboCount = PuzzleBattleManager.Instance != null ? PuzzleBattleManager.Instance.currentCombo : 1;
+
+                // 1콤보부터 대미지 배율이 조금씩 상승하는 시스템 (1콤보=100%, 2콤보=110%, 3콤보=120%...)
+                float comboDamageMultiplier = PuzzleBattleManager.Instance != null ? PuzzleBattleManager.Instance.comboDamageMultiplier : 0.1f;
+                float finalMultiplier = 1f + ((comboCount - 1) * comboDamageMultiplier);
+
+                // 터진 블록 1개당 100 대미지 계산 후 최종 콤보 배율 곱하기!
+                float baseDamage = matchesList.Count * 100f;
+                float damageDealt = baseDamage * finalMultiplier;
+
+                Debug.Log($"🔥 {comboCount} 콤보 달성! (배율: {finalMultiplier * 100}%) -> 몬스터에게 {damageDealt} 대미지!");
+
+                // 계산된 최종 연쇄 대미지로 무한 몬스터를 때립니다.
                 if (InfiniteMonster.Instance != null)
                 {
-                    // matchesList.Count는 터진 블록의 총 개수입니다. (한 칸당 100 데미지 계산)
-                    float damageDealt = matchesList.Count * 100f;
                     InfiniteMonster.Instance.TakeDamage(damageDealt);
                 }
-
-                isUserTurn = false; // 플래그 초기화
             }
             else
             {
@@ -420,8 +424,8 @@ public class Board : MonoBehaviour
                 yield return StartCoroutine(HandleDeadlockRoutine());
             }
         }
-        isMatching = false;
-    }
+
+    
 
     // 🌟 [2번 버그 수정 포인트]: 위에서 떨어질 때 보석 이름에서 색상 접두사 단어가 유실되는 현상 원천 차단
     IEnumerator DropBlocksRoutine()
