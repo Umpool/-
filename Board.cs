@@ -411,21 +411,35 @@ public class Board : MonoBehaviour
             }
 
             yield return new WaitForSeconds(0.15f);
-            yield return StartCoroutine(DropBlocksRoutine());  // 기획안 4-1번: 상 방향 블록으로 빈칸 채우기
-            yield return StartCoroutine(RefillBoardRoutine()); // 기획안 4-1번: 천장에서 새 블록 비처럼 생성
+        // 📄 Board.cs의 CheckAndDestroyMatchesRoutine() 함수 맨 끝자락 수정 구역
 
-            // 또 매칭되는 블록이 있다면 콤보 재귀 반복 (이때는 유저 조작이 아니므로 턴 안 올라감)
-            if (CheckHasMatches())
-            {
-                yield return StartCoroutine(CheckAndDestroyMatchesRoutine());
-            }
-            else if (CheckIsDeadlock()) // 터질 게 없으면 데드락 최종 점검
-            {
-                yield return StartCoroutine(HandleDeadlockRoutine());
-            }
+        // 📄 Board.cs의 CheckAndDestroyMatchesRoutine() 함수 맨 끝자락 수정 구역
+
+        yield return StartCoroutine(DropBlocksRoutine());
+        yield return StartCoroutine(RefillBoardRoutine());
+
+        if (CheckHasMatches())
+        {
+            yield return StartCoroutine(CheckAndDestroyMatchesRoutine());
         }
+        else if (CheckIsDeadlock())
+        {
+            yield return StartCoroutine(HandleDeadlockRoutine());
+        }
+        else
+        {
+            // 🔥 [진짜 우회로 복원]: 콤보 연쇄가 모두 종료된 완벽한 최종 종착지입니다!
+            isMatching = false;
+            isSwapping = false;
 
-    
+            // 🛠️ [최종 정답 단어 매칭]: 드래그가 가능한 인게임 턴 상태로 시스템 전원을 다시 켭니다!
+            GameManager.Instance.currentGameState = GameState.PuzzleBattle;
+        }
+    } // 🔍 함수의 끝을 알리는 닫는 중괄호
+
+
+
+
 
     // 🌟 [2번 버그 수정 포인트]: 위에서 떨어질 때 보석 이름에서 색상 접두사 단어가 유실되는 현상 원천 차단
     IEnumerator DropBlocksRoutine()
@@ -603,4 +617,32 @@ public class Board : MonoBehaviour
             Debug.Log("[보드 판정] 무한 모드 단판 종료 확인! 판 OFF 선포.");
         }
     }
+    // 🔥 [개발자님 기획 반영]: 3초 제한시간 종료 시 보드의 모든 블록을 투명하게 제거하고 마우스를 잠그는 함수
+    public void ForceStopAndClearBoard()
+    {
+        // 1. 현재 작동 중인 보드판의 모든 매칭/리필 코루틴을 강제 종료
+        StopAllCoroutines();
+
+        // 2. 6x6 보드판 위의 모든 블록 UI 오브젝트들을 싹 파괴하여 삭제합니다!
+        if (allBlocks != null)
+        {
+            for (int x = 0; x < width; x++)
+            {
+                for (int y = 0; y < height; y++)
+                {
+                    if (allBlocks[x, y] != null)
+                    {
+                        Destroy(allBlocks[x, y]);
+                        allBlocks[x, y] = null;
+                    }
+                }
+            }
+        }
+
+        // 3. 더 이상 마우스 클릭 입력을 받지 못하도록 보드 자체 방어벽 가동
+        isMatching = true;
+        isSwapping = true;
+    }
+
+
 }
