@@ -422,20 +422,35 @@ public class Board : MonoBehaviour
         {
             yield return StartCoroutine(CheckAndDestroyMatchesRoutine());
         }
-        else if (CheckIsDeadlock())
-        {
-            yield return StartCoroutine(HandleDeadlockRoutine());
-        }
         else
         {
-            // 🔥 [진짜 우회로 복원]: 콤보 연쇄가 모두 종료된 완벽한 최종 종착지입니다!
+            // 🔥 [흐름 보존형 완공]: 연속 콤보 연쇄와 블록 낙하 리필이 완전히 멈춘 진짜 최종 종착지입니다!
             isMatching = false;
             isSwapping = false;
 
-            // 🛠️ [최종 정답 단어 매칭]: 드래그가 가능한 인게임 턴 상태로 시스템 전원을 다시 켭니다!
-            GameManager.Instance.currentGameState = GameState.PuzzleBattle;
+            // 🛠️ [개발자님 정석 기획 연동]: 모든 퍼즐이 조용해졌을 때 타임오버가 됐었는지 검사합니다.
+            if (PuzzleBattleManager.Instance != null && PuzzleBattleManager.Instance.isTimeOver)
+            {
+                Debug.Log("🏆 [모든 연쇄 종료 확인 완료] 이제 진짜 누적 대미지를 가지고 결과창 팝업을 활성화합니다!");
+
+                // 1. 모든 블록 착지가 끝난 뒤의 '진짜 최종 점수'를 바탕으로 랭킹 정산창을 켭니다!
+                PuzzleBattleManager.Instance.OnTimerEnd();
+
+                // 2. 결과창이 떴으므로 보드판 위에 놓여진 블록들을 깨끗하게 싹 청소하여 화면을 고정합니다.
+                ForceStopAndClearBoard();
+            }
+            else
+            {
+                // 아직 시간이 남아있다면 정상적으로 다음 드래그가 가능한 플레이어 턴으로 전원을 켭니다.
+                GameManager.Instance.currentGameState = GameState.PuzzleBattle;
+            }
         }
-    } // 🔍 함수의 끝을 알리는 닫는 중괄호
+
+    } // 🔍 CheckAndDestroyMatchesRoutine 함수가 완전히 끝나는 마감 중괄호
+
+
+
+
 
 
 
