@@ -1,7 +1,13 @@
 using UnityEngine;
 
-[CreateAssetMenu(fileName = "NewCharacterData", menuName = "Character Data")]
+[CreateAssetMenu(fileName = "NewCharacterData", menuName = "Character/Data")]
 public class CharacterData : ScriptableObject
+{
+    public string characterName;
+    public Sprite characterSprite; // UI에 송출될 캐릭터 이미지
+    public int atk;
+    public int maxHp;
+    public class CharacterData : ScriptableObject
 {
     public int id;
     public string characterName;
