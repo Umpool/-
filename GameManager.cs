@@ -53,9 +53,8 @@ public class GameManager : MonoBehaviour
     public List<CharacterCard> subCharacterCards;
     public List<CharacterCard> warehouseCharacterCards; // [0-2번 기획]: 캐릭터 창고 내부에 나열될 프리팹 카드 목록
 
-    [Header("🌟 중복 안내 시스템 (새로 추가)")]
-    public GameObject popup_AlertWindow;          // 알림창 팝업 오브젝트 자체
-
+    [Header("🌟 중복/만석 안내 시스템 (최상위 Canvas 배치용)")]
+    public GameObject popup_AlertWindow;      // 하이어라키의 '이미 파티에 있습니다.' 오브젝트만 연결!
 
     [Header("데이터 및 파티 관리")]
     public List<CharacterData> allCharacters; // 전체 캐릭터 풀 (창고 풀 데이터)
@@ -424,14 +423,39 @@ public class GameManager : MonoBehaviour
         CharacterData data = allCharacters.Find(x => x.id == charId);
         if (data == null) return;
 
-        if (!CheckPartyAvailability(data)) return; 
+        // 🚨 다른 모든 방해 팝업들 즉시 물리적으로 전원 차단
+        if (popup_CharacterInfo != null) popup_CharacterInfo.SetActive(false);
+        if (popup_PartyEditCharacterInfo != null) popup_PartyEditCharacterInfo.SetActive(false);
 
+        // [1] 만석 판정
+        if (partyMembers.Count >= 5)
+        {
+            if (popup_AlertWindow != null)
+            {
+                popup_AlertWindow.SetActive(true);
+                StopAllCoroutines(); 
+                StartCoroutine(FadeOutAlertWindow_SubCharSelect("정원이 가득찼습니다")); // ⚔️ 캐릭터 선택창용 코루틴 호출
+            }
+            return;
+        }
+        // [2] 중복 판정
+        if (data.id >= 101 && partyMembers.Contains(data))
+        {
+            if (popup_AlertWindow != null)
+            {
+                popup_AlertWindow.SetActive(true);
+                StopAllCoroutines(); 
+                StartCoroutine(FadeOutAlertWindow_SubCharSelect("이미 파티에 소속된 캐릭터입니다.")); // ⚔️ 캐릭터 선택창용 코루틴 호출
+            }
+            return;
+        }
+
+        // 모든 검사를 통과했다면 기존 서브캐 정보창 정상 가동
         if (popup_AlertWindow != null) popup_AlertWindow.SetActive(false);
         if (popup_CharacterInfo != null)
         {
             if (characterNameText != null) characterNameText.text = data.characterName;
             if (characterInfoText != null) characterInfoText.text = data.description;
-            
             popup_CharacterInfo.SetActive(true);
             
             Transform confirm3Btn = popup_CharacterInfo.transform.Find("확인3");
@@ -440,6 +464,7 @@ public class GameManager : MonoBehaviour
             if (cancel3Btn != null) cancel3Btn.gameObject.SetActive(true);
         }
     }
+
     // ========================================================
     // 🏡 [여기에 새로 복사해서 붙여넣으세요!] 마을 편집창 창고 캐릭터 클릭 함수
     // ========================================================
@@ -449,13 +474,36 @@ public class GameManager : MonoBehaviour
         CharacterData data = allCharacters.Find(x => x.id == charId);
         if (data == null) return;
 
-        if (!CheckPartyAvailability(data)) return;
+        // 🚨 다른 모든 방해 팝업들 즉시 물리적으로 전원 차단
+        if (popup_CharacterInfo != null) popup_CharacterInfo.SetActive(false);
+        if (popup_PartyEditCharacterInfo != null) popup_PartyEditCharacterInfo.SetActive(false);
 
+        // [1] 만석 판정
+        if (partyMembers.Count >= 5)
+        {
+            if (popup_AlertWindow != null)
+            {
+                popup_AlertWindow.SetActive(true);
+                StopAllCoroutines(); 
+                StartCoroutine(FadeOutAlertWindow_PartyEdit("정원이 가득찼습니다")); // 🏡 마을 전용 코루틴 호출
+            }
+            return;
+        }
+
+        // [2] 중복 판정
+        if (data.id >= 101 && partyMembers.Contains(data))
+        {
+            if (popup_AlertWindow != null)
+            {
+                popup_AlertWindow.SetActive(true);
+                StopAllCoroutines(); 
+                StartCoroutine(FadeOutAlertWindow_PartyEdit("이미 파티에 소속된 캐릭터입니다.")); // 🏡 마을 전용 코루틴 호출
+            }
+            return;
+        }
+
+        // 무사히 통과했다면 오직 지정해 두신 마을용 확인창만 활성화합니다.
         if (popup_AlertWindow != null) popup_AlertWindow.SetActive(false);
-        
-        if (partyEditNameText != null) partyEditNameText.text = data.characterName;
-        if (partyEditInfoText != null) partyEditInfoText.text = data.description;
-
         if (popup_PartyEditCharacterInfo != null)
         {
             popup_PartyEditCharacterInfo.SetActive(true);
@@ -468,9 +516,9 @@ public class GameManager : MonoBehaviour
     // ========================================================
     // 🛡️ [공용 마스터 판정기] 오직 AlertWindow 본체만 컨트롤하는 버전
     // ========================================================
-    private bool CheckPartyAvailability(CharacterData data)
+    private bool CheckPartyAvailability(CharacterData data, bool isPartyEditView)
     {
-        // 🚨 [필수 처리] 중복이나 만석 상황이라면, 화면의 다른 모든 정보/질문창은 즉시 물리적으로 완전 차단!
+        // 🚨 [조건 판정 전 필수 처리] 중복이나 만석 상황이라면, 화면의 다른 모든 정보/질문창은 예외 없이 즉시 완전 꺼버립니다!
         if (popup_CharacterInfo != null) popup_CharacterInfo.SetActive(false);
         if (popup_PartyEditCharacterInfo != null) popup_PartyEditCharacterInfo.SetActive(false);
 
@@ -479,11 +527,14 @@ public class GameManager : MonoBehaviour
         {
             if (popup_AlertWindow != null)
             {
-                // '이미 파티에 있습니다.' 오브젝트 본체에 붙어있는 글자 컴포넌트를 직접 변경!
                 TMPro.TextMeshProUGUI mainText = popup_AlertWindow.GetComponent<TMPro.TextMeshProUGUI>();
-                if (mainText != null) mainText.text = "정원이 가득찼습니다";
+                if (mainText != null)
+                {
+                    mainText.color = isPartyEditView ? Color.black : Color.white;
+                    mainText.text = "정원이 가득찼습니다";
+                }
 
-                popup_AlertWindow.SetActive(true); // 오직 이 최상위 창만 오픈!
+                popup_AlertWindow.SetActive(true); 
                 StopAllCoroutines(); 
                 StartCoroutine(FadeOutAlertWindow());
             }
@@ -495,11 +546,14 @@ public class GameManager : MonoBehaviour
         {
             if (popup_AlertWindow != null)
             {
-                // '이미 파티에 있습니다.' 오브젝트 본체에 붙어있는 글자 컴포넌트를 직접 변경!
                 TMPro.TextMeshProUGUI mainText = popup_AlertWindow.GetComponent<TMPro.TextMeshProUGUI>();
-                if (mainText != null) mainText.text = "이미 파티에 소속된 캐릭터입니다.";
+                if (mainText != null)
+                {
+                    mainText.color = isPartyEditView ? Color.black : Color.white;
+                    mainText.text = "이미 파티에 소속된 캐릭터입니다.";
+                }
 
-                popup_AlertWindow.SetActive(true); // 오직 이 최상위 창만 오픈!
+                popup_AlertWindow.SetActive(true); 
                 StopAllCoroutines(); 
                 StartCoroutine(FadeOutAlertWindow());
             }
@@ -552,6 +606,8 @@ public class GameManager : MonoBehaviour
                 if (mainText != null)
                 {
                     mainText.text = "이미 파티에 소속된 캐릭터입니다.";
+                    mainText.color = Color.white; // 확인3창은 어두운 배경이므로 흰색 고정
+
                 }
 
                 popup_AlertWindow.SetActive(true);
@@ -597,15 +653,16 @@ public class GameManager : MonoBehaviour
     // ========================================================
     // ⏳ [오류 해결] System.Collections를 명시하여 제네릭 충돌을 수정한 코루틴
     // ========================================================
-    private System.Collections.IEnumerator FadeOutAlertWindow()
+    private System.Collections.IEnumerator FadeOutAlertWindow_SubCharSelect(string message)
     {
         if (popup_AlertWindow == null) yield break;
 
         TMPro.TextMeshProUGUI mainText = popup_AlertWindow.GetComponent<TMPro.TextMeshProUGUI>();
         if (mainText == null) yield break;
 
-        Color originalColor = mainText.color;
-        mainText.color = new Color(originalColor.r, originalColor.g, originalColor.b, 1f);
+        // 🎨 텍스트와 색상을 완벽한 흰색(오파시티 1)으로 즉시 강제 픽스!
+        mainText.text = message;
+        mainText.color = new Color(1f, 1f, 1f, 1f);
 
         yield return new WaitForSeconds(1.0f);
 
@@ -615,12 +672,52 @@ public class GameManager : MonoBehaviour
         {
             elapsed += Time.deltaTime;
             float alpha = Mathf.Lerp(1f, 0f, elapsed / duration);
-            mainText.color = new Color(originalColor.r, originalColor.g, originalColor.b, alpha);
+            mainText.color = new Color(1f, 1f, 1f, alpha); // 흰색 유지하며 투명해짐
             yield return null;
         }
 
         popup_AlertWindow.SetActive(false);
     }
+        private System.Collections.IEnumerator FadeOutAlertWindow_PartyEdit(string message)
+    {
+        if (popup_AlertWindow == null) yield break;
+
+        TMPro.TextMeshProUGUI mainText = popup_AlertWindow.GetComponent<TMPro.TextMeshProUGUI>();
+        if (mainText == null) yield break;
+
+        // 🎨 텍스트와 색상을 완벽한 검은색(오파시티 1)으로 즉시 강제 픽스!
+        mainText.text = message;
+        mainText.color = new Color(0f, 0f, 0f, 1f);
+
+        yield return new WaitForSeconds(1.0f);
+
+        float duration = 0.3f;
+        float elapsed = 0f;
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float alpha = Mathf.Lerp(1f, 0f, elapsed / duration);
+            mainText.color = new Color(0f, 0f, 0f, alpha); // 검은색 유지하며 투명해짐
+            yield return null;
+        }
+
+        popup_AlertWindow.SetActive(false);
+    }
+            // ========================================================
+    // 징검다리 코루틴: 옛날 이름으로 호출하는 코드(539, 558, 615 라인)를 
+    // 안전하게 캐릭터 선택창용(흰색 글씨) 코루틴으로 연결해 주는 구원 투수 코드입니다!
+    // ========================================================
+    private System.Collections.IEnumerator FadeOutAlertWindow()
+    {
+        // 옛날 이름이 호출되면 자동으로 흰색 글씨 코루틴을 대신 실행해 줍니다.
+        // 만약 이 함수들이 호출되는 곳이 서브캐 선택창이 맞다면 이대로 두시면 완벽합니다!
+        TMPro.TextMeshProUGUI mainText = popup_AlertWindow != null ? popup_AlertWindow.GetComponent<TMPro.TextMeshProUGUI>() : null;
+        string currentMsg = mainText != null ? mainText.text : "정원이 가득찼습니다";
+        
+        yield return StartCoroutine(FadeOutAlertWindow_SubCharSelect(currentMsg));
+    }
+
+    
 
 
 
@@ -1158,6 +1255,35 @@ public class GameManager : MonoBehaviour
     private void RefreshAllCharacterMenuCards()
     {
         RefreshSubCharacterButtonsUI(); // 파티 해제(제거) 시에도 UI 갱신
+    }
+    // ========================================================
+    // 🏡 [버그 완전 소멸] 마을 편집창 [예] 버튼을 눌러 최종 파티원으로 등록하는 함수
+    // ========================================================
+    public void OnClickPartyEditConfirm()
+    {
+        CharacterData data = allCharacters.Find(x => x.id == selectedCharId);
+        if (data == null) return;
+
+        // [최종 철벽] 예 버튼을 누르는 순간 만석이거나 중복인지 최종 필터링
+        if (partyMembers.Count >= 5 || (data.id >= 101 && partyMembers.Contains(data)))
+        {
+            if (popup_PartyEditCharacterInfo != null) popup_PartyEditCharacterInfo.SetActive(false);
+            if (popup_AlertWindow != null)
+            {
+                popup_AlertWindow.SetActive(true);
+                StopAllCoroutines();
+                StartCoroutine(FadeOutAlertWindow_PartyEdit(partyMembers.Count >= 5 ? "정원이 가득찼습니다" : "이미 파티에 소속된 캐릭터입니다."));
+            }
+            return;
+        }
+
+        // 정상 데이터 추가 처리
+        partyMembers.Add(data);
+
+        if (popup_PartyEditCharacterInfo != null) popup_PartyEditCharacterInfo.SetActive(false);
+
+        // 💡 [이 자리에 기존 UI 갱신 코드를 넣으세요!] 
+        // 예: UpdatePartyUI(); 등 하단 슬롯 프리팹을 새로고침하는 함수 이름 입력
     }
 
 }
