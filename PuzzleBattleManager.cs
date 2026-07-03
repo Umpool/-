@@ -46,7 +46,7 @@ public class PuzzleBattleManager : MonoBehaviour
 
     [Header("콤보 시스템")]
     public int currentCombo = 0; // 현재 연속 콤보 수
-    public float comboDamageMultiplier = 0.1f; // 1콤보당 추가될 배율 (0.1 = 10%)
+    public float comboDamageMultiplier = 0.1f; // 1콤보당 추가될 데미지 배율 (0.1 = 10%)
 
     [Header("콤보 UI 설정")]
     // 유저님이 TextMeshPro를 사용 중이시므로 아래와 같이 선언합니다.
@@ -523,7 +523,8 @@ private void SetupBattleEntities()
 
         if (realScoreTMP != null)
         {
-
+            // 🎯 화면 상단판에 박혀있던 글자 "누적 데미지: 1,350" 문자열에서 
+            // 철자 오타를 가리지 않고 오직 알맹이 숫자 '1350'만 칼같이 정제하여 finalScore 상자에 배달합니다!
             string scoreString = realScoreTMP.text.Replace("누적 대미지:", "").Replace(",", "").Trim();
             int.TryParse(scoreString, out finalScore);
         }
