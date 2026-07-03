@@ -1,7 +1,8 @@
+using System.Collections.Generic;
+using TMPro;
+using UnityEditor.Localization.Plugins.XLIFF.V20;
 using UnityEngine;
 using UnityEngine.UI;
-using TMPro;
-using System.Collections.Generic;
 
 public class GameManager : MonoBehaviour
 {
@@ -12,6 +13,15 @@ public class GameManager : MonoBehaviour
     public GameObject panel_SubCharacterSelect; // 서브 캐릭터 선택창
     public GameObject panel_Village; // 마을 화면
     public GameObject panel_PartyEditView; // [0-1번 기획]: 새로 배치할 대형 파티 편집 화면 패널
+
+    [Header("🌟 캐릭터 정보 팝업 텍스트 연동 (새로 추가)")]
+    public TextMeshProUGUI characterNameText; // '캐릭터 이름' 오브젝트 연결용
+    public TextMeshProUGUI characterInfoText; // '캐릭터 정보' 오브젝트 연결용
+
+    [Header("마을 파티 편집창 UI 연결")]
+    public GameObject popup_PartyEditCharacterInfo; // 마을 편집창 전용 정보 팝업 (필요시 분리)
+    public TextMeshProUGUI partyEditNameText;
+    public TextMeshProUGUI partyEditInfoText;
 
     [Header("팝업 및 컨테이너 제어")]
     public GameObject popup_CharacterInfo; // 독립된 완전 공용 캐릭터 정보 팝업
@@ -42,6 +52,10 @@ public class GameManager : MonoBehaviour
     public List<CharacterCard> mainCharacterCards;
     public List<CharacterCard> subCharacterCards;
     public List<CharacterCard> warehouseCharacterCards; // [0-2번 기획]: 캐릭터 창고 내부에 나열될 프리팹 카드 목록
+
+    [Header("🌟 중복 안내 시스템 (새로 추가)")]
+    public GameObject popup_AlertWindow;          // 알림창 팝업 오브젝트 자체
+
 
     [Header("데이터 및 파티 관리")]
     public List<CharacterData> allCharacters; // 전체 캐릭터 풀 (창고 풀 데이터)
@@ -93,6 +107,8 @@ public class GameManager : MonoBehaviour
 
     void Start()
     {
+        // 🌟 [코드 제어] 게임 시작 시 알림창 팝업을 무조건 처음부터 OFF 상태로 초기화합니다.
+        if (popup_AlertWindow != null) popup_AlertWindow.SetActive(false);
         if (txt_MainNoticeText != null) txt_MainNoticeText.gameObject.SetActive(false);
         if (panel_PartyEditView != null) panel_PartyEditView.SetActive(false);
 
@@ -399,19 +415,107 @@ public class GameManager : MonoBehaviour
         UpdatePartyUI();
     }
 
+    // ========================================================
+    // ⚔️ [오류 해결] 서브캐릭터 선택창 카드들이 호출하는 핵심 함수
+    // ========================================================
     public void OnClickCharacter(int charId)
     {
         selectedCharId = charId;
-        CharacterData data = allCharacters.Find(x => x.id == selectedCharId);
-        if (data != null)
+        CharacterData data = allCharacters.Find(x => x.id == charId);
+        if (data == null) return;
+
+        if (!CheckPartyAvailability(data)) return; 
+
+        if (popup_AlertWindow != null) popup_AlertWindow.SetActive(false);
+        if (popup_CharacterInfo != null)
         {
-            if (txt_CharacterName) txt_CharacterName.text = data.characterName;
-            if (txt_CharacterInfo) txt_CharacterInfo.text = $"{data.description}\n\nHP: {data.hp} | ATK: {data.attackPower} | DEF: {data.defense}";
-            if (popup_CharacterInfo) popup_CharacterInfo.SetActive(true);
-            if (btn_Confirm3) btn_Confirm3.SetActive(true);
-            if (btn_Cancel3) btn_Cancel3.SetActive(true);
+            if (characterNameText != null) characterNameText.text = data.characterName;
+            if (characterInfoText != null) characterInfoText.text = data.description;
+            
+            popup_CharacterInfo.SetActive(true);
+            
+            Transform confirm3Btn = popup_CharacterInfo.transform.Find("확인3");
+            Transform cancel3Btn = popup_CharacterInfo.transform.Find("취소3");
+            if (confirm3Btn != null) confirm3Btn.gameObject.SetActive(true);
+            if (cancel3Btn != null) cancel3Btn.gameObject.SetActive(true);
         }
     }
+    // ========================================================
+    // 🏡 [여기에 새로 복사해서 붙여넣으세요!] 마을 편집창 창고 캐릭터 클릭 함수
+    // ========================================================
+    public void OnClickPartyEditWarehouseCharacter(int charId)
+    {
+        selectedCharId = charId;
+        CharacterData data = allCharacters.Find(x => x.id == charId);
+        if (data == null) return;
+
+        if (!CheckPartyAvailability(data)) return;
+
+        if (popup_AlertWindow != null) popup_AlertWindow.SetActive(false);
+        
+        if (partyEditNameText != null) partyEditNameText.text = data.characterName;
+        if (partyEditInfoText != null) partyEditInfoText.text = data.description;
+
+        if (popup_PartyEditCharacterInfo != null)
+        {
+            popup_PartyEditCharacterInfo.SetActive(true);
+        }
+    }
+
+
+
+
+    // ========================================================
+    // 🛡️ [공용 마스터 판정기] 오직 AlertWindow 본체만 컨트롤하는 버전
+    // ========================================================
+    private bool CheckPartyAvailability(CharacterData data)
+    {
+        // 🚨 [필수 처리] 중복이나 만석 상황이라면, 화면의 다른 모든 정보/질문창은 즉시 물리적으로 완전 차단!
+        if (popup_CharacterInfo != null) popup_CharacterInfo.SetActive(false);
+        if (popup_PartyEditCharacterInfo != null) popup_PartyEditCharacterInfo.SetActive(false);
+
+        // 1️⃣ [최우선 순위] 정원 만석 검사 (메인 1명 + 서브 4명 = 총 5명 만석 판정)
+        if (partyMembers.Count >= 5)
+        {
+            if (popup_AlertWindow != null)
+            {
+                // '이미 파티에 있습니다.' 오브젝트 본체에 붙어있는 글자 컴포넌트를 직접 변경!
+                TMPro.TextMeshProUGUI mainText = popup_AlertWindow.GetComponent<TMPro.TextMeshProUGUI>();
+                if (mainText != null) mainText.text = "정원이 가득찼습니다";
+
+                popup_AlertWindow.SetActive(true); // 오직 이 최상위 창만 오픈!
+                StopAllCoroutines(); 
+                StartCoroutine(FadeOutAlertWindow());
+            }
+            return false; // 진행 차단
+        }
+
+        // 2️⃣ [차선 순위] 서브 캐릭터(ID 101번 이상) 중복 검사
+        if (data.id >= 101 && partyMembers.Contains(data))
+        {
+            if (popup_AlertWindow != null)
+            {
+                // '이미 파티에 있습니다.' 오브젝트 본체에 붙어있는 글자 컴포넌트를 직접 변경!
+                TMPro.TextMeshProUGUI mainText = popup_AlertWindow.GetComponent<TMPro.TextMeshProUGUI>();
+                if (mainText != null) mainText.text = "이미 파티에 소속된 캐릭터입니다.";
+
+                popup_AlertWindow.SetActive(true); // 오직 이 최상위 창만 오픈!
+                StopAllCoroutines(); 
+                StartCoroutine(FadeOutAlertWindow());
+            }
+            return false; // 진행 차단
+        }
+
+        return true; // 통과!
+    }
+//여기까지 1단락 
+
+
+
+
+
+
+
 
     public void OnClickMainToTitleBackButton()
     {
@@ -438,31 +542,131 @@ public class GameManager : MonoBehaviour
         CharacterData data = allCharacters.Find(x => x.id == selectedCharId);
         if (data == null) return;
 
-        if (panel_CharacterSelect && panel_CharacterSelect.activeSelf)
+        // 🌟 [중복 체크 및 페이드아웃 알림창 가동 구간]
+        if (partyMembers.Contains(data))
         {
-            partyMembers.Add(data);
-            allCharacters.Remove(data);
-            UpdatePartyUI();
-            if (popup_CharacterInfo) popup_CharacterInfo.SetActive(false);
-            if (btn_Confirm3) btn_Confirm3.SetActive(false);
-            if (btn_Cancel3) btn_Cancel3.SetActive(false);
-            if (panel_CharacterSelect) panel_CharacterSelect.SetActive(false);
-            StartSubCharacterSelect();
-        }
-        else if (panel_SubCharacterSelect && panel_SubCharacterSelect.activeSelf)
-        {
-            if (partyMembers.Count >= 5)
+            if (popup_AlertWindow != null)
             {
-                ShowScreenNotice("파티원이 가득 찼습니다.");
-                if (popup_CharacterInfo) popup_CharacterInfo.SetActive(false);
-                return;
+                // [수정] popup_AlertText 변수를 쓰지 않고, AlertWindow 본체에서 글자 컴포넌트를 직접 찾아 바꿉니다!
+                TMPro.TextMeshProUGUI mainText = popup_AlertWindow.GetComponent<TMPro.TextMeshProUGUI>();
+                if (mainText != null)
+                {
+                    mainText.text = "이미 파티에 소속된 캐릭터입니다.";
+                }
+
+                popup_AlertWindow.SetActive(true);
+                StopAllCoroutines();
+                StartCoroutine(FadeOutAlertWindow());
             }
-            partyMembers.Add(data);
-            allCharacters.Remove(data);
-            UpdatePartyUI();
+
             if (popup_CharacterInfo) popup_CharacterInfo.SetActive(false);
+            return;
+        }
+
+        // 🌟 [기존 시스템의 서브캐릭터 4인 제한 및 파티원 등록 구간]
+        if (data.id >= 101 && GetSubCharacterCount() >= 4) return;
+
+        partyMembers.Add(data);
+
+        if (popup_CharacterInfo) popup_CharacterInfo.SetActive(false);
+
+        // [기획 규칙] 메인 캐릭터(1~3) 등록 시 패널 전환
+        if (data.id >= 1 && data.id <= 3)
+        {
+            if (panel_CharacterSelect) panel_CharacterSelect.SetActive(false);
+            if (panel_SubCharacterSelect) panel_SubCharacterSelect.SetActive(true);
+        }
+
+
+        RefreshAllButtonsActiveState(); // 버튼들 숨김/등장 제어 (아래 참고)
+        UpdatePartyUI(); // 파티창 새로고침
+    }
+
+    private int GetSubCharacterCount()
+    {
+        int count = 0;
+        foreach (var member in partyMembers) { if (member.id >= 101) count++; }
+        return count;
+    }
+
+
+    // 🌟 텍스트와 창이 중복 판정 시 즉시 켜지고, 눈 깜짝할 새 빠르게 사라지게 제어하는 함수
+    // ========================================================
+    // ⏳ [수정] 오직 최상위 popup_AlertWindow만 깔끔하게 페이드아웃 시키는 코루틴
+    // ========================================================
+    // ========================================================
+    // ⏳ [오류 해결] System.Collections를 명시하여 제네릭 충돌을 수정한 코루틴
+    // ========================================================
+    private System.Collections.IEnumerator FadeOutAlertWindow()
+    {
+        if (popup_AlertWindow == null) yield break;
+
+        TMPro.TextMeshProUGUI mainText = popup_AlertWindow.GetComponent<TMPro.TextMeshProUGUI>();
+        if (mainText == null) yield break;
+
+        Color originalColor = mainText.color;
+        mainText.color = new Color(originalColor.r, originalColor.g, originalColor.b, 1f);
+
+        yield return new WaitForSeconds(1.0f);
+
+        float duration = 0.3f;
+        float elapsed = 0f;
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float alpha = Mathf.Lerp(1f, 0f, elapsed / duration);
+            mainText.color = new Color(originalColor.r, originalColor.g, originalColor.b, alpha);
+            yield return null;
+        }
+
+        popup_AlertWindow.SetActive(false);
+    }
+
+
+
+
+
+    // 🌟 서브캐 버튼 목록의 UI를 데이터와 매칭하여 실시간 새로고침 (새로 추가)
+    private void RefreshSubCharacterButtonsUI()
+    {
+        if (subCharacterCards == null) return;
+        for (int i = 0; i < subCharacterCards.Count; i++)
+        {
+            if (i < allCharacters.Count)
+            {
+                subCharacterCards[i].gameObject.SetActive(true);
+                subCharacterCards[i].SetupCard(allCharacters[i]); // 데이터 바인딩
+            }
+            else
+            {
+                subCharacterCards[i].gameObject.SetActive(false); // 남는 버튼 숨김
+            }
         }
     }
+
+    public void RefreshAllButtonsActiveState()
+    {
+        // 메인 캐릭터 버튼들 ON/OFF 제어 (ID: 1, 2, 3)
+        for (int i = 0; i < mainCharacterCards.Count; i++)
+        {
+            if (mainCharacterCards[i] == null) continue;
+            int targetId = i + 1;
+            bool isAlreadyInParty = partyMembers.Exists(x => x.id == targetId);
+            mainCharacterCards[i].gameObject.SetActive(!isAlreadyInParty);
+        }
+
+        // 서브 캐릭터 버튼들 ON/OFF 제어 (ID: 101 ~ 106)
+        for (int i = 0; i < subCharacterCards.Count; i++)
+        {
+            if (subCharacterCards[i] == null) continue;
+            int targetId = 101 + i;
+            bool isAlreadyInParty = partyMembers.Exists(x => x.id == targetId);
+            subCharacterCards[i].gameObject.SetActive(!isAlreadyInParty);
+        }
+    }
+
+
+
 
     public void OnClickCancel3()
     {
@@ -531,26 +735,29 @@ public class GameManager : MonoBehaviour
 
     public void OnClickRemoveYes()
     {
-        if (pendingRemoveCharacter == null) return;
-        Debug.Log($"[제거 확정] {pendingRemoveCharacter.characterName} 파티 해제 후 원위치 복구");
-        
-        CharacterData target = pendingRemoveCharacter;
-        partyMembers.Remove(target);
-        allCharacters.Add(target);
-        UpdatePartyUI();
-        RefreshAllCharacterMenuCards();
+        // 🌟 기존에 이미 구현되어 있던 pendingRemoveCharacter를 그대로 활용합니다.
+        CharacterData data = pendingRemoveCharacter;
+        if (data != null)
+        {
+            partyMembers.Remove(data);
+
+            // [기획 규칙] 메인 캐릭터가 제거 되었을 시 메인캐창으로 강제 복귀
+            if (data.id >= 1 && data.id <= 3)
+            {
+                if (panel_SubCharacterSelect) panel_SubCharacterSelect.SetActive(false);
+                if (panel_CharacterSelect) panel_CharacterSelect.SetActive(true);
+            }
+        }
 
         if (panel_ConfirmRemove) panel_ConfirmRemove.SetActive(false);
+
+        // 🌟 602줄의 규칙에 맞춰 제거 처리가 끝났으므로 null로 초기화합니다.
         pendingRemoveCharacter = null;
 
-        if (target.id == 1 || target.id == 2 || target.id == 3)
-        {
-            Debug.Log("[기획 2-1] 파티창에서 메인캐릭터가 사라짐 -> 메인 선택창으로 복귀");
-            if (panel_SubCharacterSelect) panel_SubCharacterSelect.SetActive(false);
-            if (panel_CharacterSelect) panel_CharacterSelect.SetActive(true);
-            if (popup_CharacterInfo) popup_CharacterInfo.SetActive(false);
-        }
+        RefreshAllButtonsActiveState();
+        UpdatePartyUI();
     }
+
 
     public void OnClickRemoveNo()
     {
@@ -561,17 +768,27 @@ public class GameManager : MonoBehaviour
     public void OnClickBackButton()
     {
         Debug.Log("[뒤로가기] 클릭 -> 메인 캐릭터 선택화면으로 이동");
+
+        // 1. 파티에서 메인 캐릭터(ID: 1, 2, 3)를 정확하게 찾아내기
         CharacterData mainChar = partyMembers.Find(x => x.id == 1 || x.id == 2 || x.id == 3);
         if (mainChar != null)
         {
+            // 2. 파티 리스트에서만 안전하게 제거 (allCharacters.Add는 데이터가 꼬이므로 삭제합니다)
             partyMembers.Remove(mainChar);
-            allCharacters.Add(mainChar);
+
+            // 3. 파티창 UI 실시간 새로고침
             UpdatePartyUI();
         }
+
+        // 4. 기획 흐름대로 각 화면 패널 ON/OFF 제어
         if (panel_SubCharacterSelect) panel_SubCharacterSelect.SetActive(false);
         if (panel_CharacterSelect) panel_CharacterSelect.SetActive(true);
         if (popup_CharacterInfo) popup_CharacterInfo.SetActive(false);
+
+        // 🌟 [핵심] 파티에서 빠진 메인 캐릭터의 나열되었던 버튼을 다시 ON 시켜주는 코드 추가!
+        RefreshAllButtonsActiveState();
     }
+
 
     public void OnClickStartAdventureButton()
     {
@@ -606,7 +823,7 @@ public class GameManager : MonoBehaviour
         if (btn_Cancel5) btn_Cancel5.SetActive(false);
         if (panel_SubCharacterSelect) panel_SubCharacterSelect.SetActive(false);
         if (panel_CharacterSelect) panel_CharacterSelect.SetActive(false);
-        
+
         if (obj_NPCListPanel != null && obj_NPCListPanel.transform.parent != null)
         {
             obj_NPCListPanel.transform.parent.gameObject.SetActive(true);
@@ -637,7 +854,7 @@ public class GameManager : MonoBehaviour
         if (panel_PartyEditView != null) panel_PartyEditView.SetActive(true);
         if (panel_TopBar != null) panel_TopBar.SetActive(true);
         if (partyListContainer) partyListContainer.SetActive(true);
-        
+
         UpdatePartyUI();
     }
 
@@ -763,14 +980,7 @@ public class GameManager : MonoBehaviour
 
         if (partyListContainer == null) return;
 
-        partyMembers.Sort((x, y) =>
-        {
-            bool xIsMain = (x.id == 1 || x.id == 2 || x.id == 3);
-            bool yIsMain = (y.id == 1 || y.id == 2 || y.id == 3);
-            if (xIsMain && !yIsMain) return -1;
-            if (!xIsMain && yIsMain) return 1;
-            return 0;
-        });
+        partyMembers.Sort((x, y) => x.id.CompareTo(y.id));
 
         foreach (Transform child in partyListContainer.transform) Destroy(child.gameObject);
 
@@ -789,8 +999,8 @@ public class GameManager : MonoBehaviour
             Button btnVillage = iconVillage.GetComponentInChildren<Button>();
             if (btnVillage != null)
             {
-                btnVillage.onClick.RemoveAllListeners();
-                btnVillage.onClick.AddListener(() => OnClickPartyMemberIcon(member));
+                CharacterData cachedMemberVillage = member; // 데이터가 밀리지 않게 가둡니다.
+                btnVillage.onClick.AddListener(() => OnClickPartyMemberIcon(cachedMemberVillage));
             }
 
             if (editPartyContainer != null)
@@ -812,8 +1022,8 @@ public class GameManager : MonoBehaviour
                 Button btnEdit = iconEdit.GetComponentInChildren<Button>();
                 if (btnEdit != null)
                 {
-                    btnEdit.onClick.RemoveAllListeners();
-                    btnEdit.onClick.AddListener(() => OnClickPartyMemberIcon(member));
+                    CharacterData cachedMemberEdit = member; // 데이터가 밀리지 않게 가둡니다.
+                    btnEdit.onClick.AddListener(() => OnClickPartyMemberIcon(cachedMemberEdit));
                 }
             }
         }
@@ -945,5 +1155,9 @@ public class GameManager : MonoBehaviour
     }
 
     // 빈 껍데기 함수 정의 (에러 방지용)
-    private void RefreshAllCharacterMenuCards() { }
-} // GameManager 클래스 마감선
+    private void RefreshAllCharacterMenuCards()
+    {
+        RefreshSubCharacterButtonsUI(); // 파티 해제(제거) 시에도 UI 갱신
+    }
+
+}
