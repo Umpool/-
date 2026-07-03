@@ -1,0 +1,27 @@
+using UnityEngine;
+using UnityEngine.UI;
+
+// 이 스크립트는 모든 종류의 몬스터가 공통으로 가질 '뼈대'입니다.
+public class BaseMonster : MonoBehaviour
+{
+    [Header("--- 몬스터 공통 정보 ---")]
+    public string monsterName;
+    public float maxHp;
+    public float currentHp;
+    public float attackPower;
+    public Slider hpSlider;
+
+    // 어떤 몬스터든 데미지를 받는 공통 기능 (자식들이 각자 입맛에 맞게 재정의할 수 있게 virtual을 붙입니다)
+    public virtual void TakeDamage(float damage)
+    {
+        currentHp -= damage;
+        if (currentHp <= 0) currentHp = 0;
+
+        UpdateHpUi();
+    }
+
+    protected void UpdateHpUi()
+    {
+        if (hpSlider != null) hpSlider.value = currentHp / maxHp;
+    }
+}
