@@ -25,13 +25,16 @@ public class PuzzleBattleManager : MonoBehaviour
 
     // 🎯 [왕초보 구원] 재생 전에 꺼져 있어도 직속으로 조종할 수 있게 해주는 리모컨 방입니다!
     [Header("--- 재생전 OFF여도 강제 제어할 직속 회선 ---")]
-    public GameObject btn_StartTouchTrigger_Direct; 
+    public GameObject btn_StartTouchTrigger_Direct;
 
 
     [Header("--- 배틀 핵심 UI 패널 록온 ---")]
     public GameObject panel_PuzzleBattle;    // 일반 스테이지 패널 (Panel_NMPuzzleBattle)
     public GameObject panel_InfiniteBattle;  // 💡 [추가] 무한모드 패널 (Panel_INPuzzleBattle)
     public GameObject enemyContainer;
+
+    [Header("실시간 배틀 카드 장부")]
+    public List<CharacterCard> liveCards = new List<CharacterCard>(); // 👈 여기에 실시간으로 담깁니다.
 
     [Header("--- 3매치 퍼즐 보드 직속 회선 연결 ---")]
     public Board puzzleBoardComponent;     // 보드.cs 스크립트 연결 방
@@ -40,9 +43,17 @@ public class PuzzleBattleManager : MonoBehaviour
     public int currentTurn = 0;        // 현재 누적된 턴 수
     public bool isUserAction = false; // 유저가 직접 드래그한 상태인지 체크하는 스위치
 
+    [Header("콤보 시스템")]
+    public int currentCombo = 0; // 현재 연속 콤보 수
+    public float comboDamageMultiplier = 0.1f; // 1콤보당 추가될 데미지 배율 (0.1 = 10%)
+
+    [Header("콤보 UI 설정")]
+    // 유저님이 TextMeshPro를 사용 중이시므로 아래와 같이 선언합니다.
+    public TMPro.TMP_Text comboText;
+
     [Header("--- NPC 전용 1~10위 순위판 UI ---")]
     public TextMeshProUGUI textNPCLeaderboard; // 💡 요 방이 상단에 있어야 맨 밑바닥 함수가 에러가 안 납니다!
-public GameObject panel_NPCLeaderboard_Popup; // 🎯 마을 순위판 팝업창 자체를 기억할 전원 제어 방!
+    public GameObject panel_NPCLeaderboard_Popup; // 🎯 마을 순위판 팝업창 자체를 기억할 전원 제어 방!
 
     private void Start()
     {
@@ -131,7 +142,7 @@ public GameObject panel_NPCLeaderboard_Popup; // 🎯 마을 순위판 팝업창
         }
         // 1. 모드 선택 판정
         // 💡 111번째 줄 무한 모드 판정 구역입니다!
-        
+
         if (gameMode == "infinite" || gameMode == "Infinite")
         {
             // 1. ⏱ 180초 타이머 장부 꽉 채우기
@@ -309,26 +320,26 @@ public GameObject panel_NPCLeaderboard_Popup; // 🎯 마을 순위판 팝업창
                 timeRemaining -= Time.deltaTime;
                 DisplayTime(timeRemaining);
             }
-        else
-        {
-            // // 3분이 모두 끝나서 0초에 도달했을 때
-            timeRemaining = 0;
-            timerIsRunning = false;
-            DisplayTime(timeRemaining);
-
-            // 🎯 [여기에 추가] 시간이 0초가 되면 GAMEOVER TXT와 자식들을 몽땅 ON 시킵니다!
-            if (panel_InfiniteBattle != null)
+            else
             {
-                Transform gameover = panel_InfiniteBattle.transform.Find("GAMEOVER TXT");
-                if (gameover != null)
-                {
-                    gameover.gameObject.SetActive(true); // 👈 부모가 켜지면 자식도 자동으로 ON!
-                    Debug.Log("🎉 [성공] 3분 종료! GAMEOVER TXT 결과창 강제 ON 완료!");
-                }
-            }
+                // // 3분이 모두 끝나서 0초에 도달했을 때
+                timeRemaining = 0;
+                timerIsRunning = false;
+                DisplayTime(timeRemaining);
 
-            Debug.Log("⏰ [초정밀 타이머 경보] 3분 제한 시간 종료!");
-        }
+                // 🎯 [여기에 추가] 시간이 0초가 되면 GAMEOVER TXT와 자식들을 몽땅 ON 시킵니다!
+                if (panel_InfiniteBattle != null)
+                {
+                    Transform gameover = panel_InfiniteBattle.transform.Find("GAMEOVER TXT");
+                    if (gameover != null)
+                    {
+                        gameover.gameObject.SetActive(true); // 👈 부모가 켜지면 자식도 자동으로 ON!
+                        Debug.Log("🎉 [성공] 3분 종료! GAMEOVER TXT 결과창 강제 ON 완료!");
+                    }
+                }
+
+                Debug.Log("⏰ [초정밀 타이머 경보] 3분 제한 시간 종료!");
+            }
         }
     }
 
@@ -364,7 +375,7 @@ public GameObject panel_NPCLeaderboard_Popup; // 🎯 마을 순위판 팝업창
         timerIsRunning = true;
         Debug.Log("🏁 [무한 모드 스타트] 0.001초 카운트다운 폭풍 가동!");
     }
-        public void ForceStopAndResetTimer() //화면이동시 타이머 초기화 
+    public void ForceStopAndResetTimer() //화면이동시 타이머 초기화 
     {
         // 1. 🛑 타이머의 실시간 작동 스위치를 끕니다.
         timerIsRunning = false;
@@ -405,7 +416,7 @@ public GameObject panel_NPCLeaderboard_Popup; // 🎯 마을 순위판 팝업창
         }
     }
 
-        // 💡 [여기서부터 복사해서 맨 밑 괄호 직전에 그대로 붙여넣으세요]
+    // 💡 [여기서부터 복사해서 맨 밑 괄호 직전에 그대로 붙여넣으세요]
 
     // 1. 3분 무한 모드가 끝났을 때 1위~10위까지 보이지 않는 장부를 계산해 저장하는 정산기
     private void OnTimerEnd()
@@ -413,7 +424,7 @@ public GameObject panel_NPCLeaderboard_Popup; // 🎯 마을 순위판 팝업창
         Debug.Log("⏰ 3분 무한 모드 종료! 초정밀 탑 10 랭킹 정산 가동!");
 
         timerIsRunning = false;
-        int finalScore = currentScore; 
+        int finalScore = currentScore;
         int finalTurns = currentTurn;
 
         if (textFinalScore != null) textFinalScore.text = $"최종 대미지 : {finalScore:N0}";
@@ -433,7 +444,7 @@ public GameObject panel_NPCLeaderboard_Popup; // 🎯 마을 순위판 팝업창
             if (finalScore > highScores[i])
             {
                 currentRank = i + 1;
-                break; 
+                break;
             }
         }
 
@@ -486,7 +497,7 @@ public GameObject panel_NPCLeaderboard_Popup; // 🎯 마을 순위판 팝업창
         for (int i = 1; i <= 10; i++)
         {
             int score = PlayerPrefs.GetInt($"INF_RANK_{i}", 0);
-            sb.AppendLine($"{i}위 : {score:N0} 대미지"); 
+            sb.AppendLine($"{i}위 : {score:N0} 대미지");
         }
 
         if (textNPCLeaderboard != null)
@@ -494,12 +505,154 @@ public GameObject panel_NPCLeaderboard_Popup; // 🎯 마을 순위판 팝업창
             textNPCLeaderboard.text = sb.ToString();
         }
 
-                if (panel_NPCLeaderboard_Popup != null)
+        if (panel_NPCLeaderboard_Popup != null)
         {
             panel_NPCLeaderboard_Popup.SetActive(true);
         }
-        
+
         Debug.Log("[NPC 순위판] 보이지 않는 장부에서 탑텐 데이터를 긁어와 새로고침 완료!");
+    }
+    // ✨ [추가] 콤보 글씨를 실시간으로 새로고침하고 1초 뒤 사라지게 만드는 함수
+    // ✨ [속도감 업그레이드] 커지자마자 딜레이 없이 빠르게 스르륵 사라지는 고속 콤보 연출
+    private Coroutine comboFadeCoroutine;
+
+    public void UpdateComboTextUI()
+    {
+        if (comboText == null) return;
+
+        if (currentCombo > 0)
+        {
+            comboText.text = "Combo\n" + currentCombo;
+
+            Color textColor = comboText.color;
+            textColor.a = 1f;
+            comboText.color = textColor;
+
+            if (comboFadeCoroutine != null)
+            {
+                StopCoroutine(comboFadeCoroutine);
+            }
+            comboFadeCoroutine = StartCoroutine(AnimateFastComboTextRoutine());
+        }
+        else
+        {
+            comboText.text = "";
+        }
+    }
+
+    // 💥 쿵! 커진 직후 대기 없이 빠르게 녹아내리는 액션 연출 루틴
+    private System.Collections.IEnumerator AnimateFastComboTextRoutine()
+    {
+        RectTransform rect = comboText.GetComponent<RectTransform>();
+        Vector2 startPosition = rect != null ? rect.anchoredPosition : Vector2.zero;
+
+        // --- [STEP 1: 0.12초 동안 엄청 크고 역동적으로 쿵! 튕기기] ---
+        if (rect != null)
+        {
+            float bounceDuration = 0.12f; // 속도감을 위해 0.15초에서 더 단축
+            float time = 0f;
+            Vector3 targetScale = Vector3.one;
+            Vector3 startScale = Vector3.one * 1.8f; // 순간 폭발력을 위해 1.8배까지 대폭 확대!
+
+            while (time < bounceDuration)
+            {
+                time += UnityEngine.Time.deltaTime;
+                rect.localScale = Vector3.Lerp(startScale, targetScale, time / bounceDuration);
+                yield return null;
+            }
+            rect.localScale = targetScale;
+        }
+
+        // --- [STEP 2: 대기 시간(1초) 완전 삭제! 즉시 0.35초 동안 빠르게 스르륵 소멸] ---
+        float fadeDuration = 0.35f; // 빠르게 사라지도록 0.5초에서 0.35초로 컷!
+        float fadeTime = 0f;
+        Color originalColor = comboText.color;
+
+        while (fadeTime < fadeDuration)
+        {
+            fadeTime += UnityEngine.Time.deltaTime;
+            float progress = fadeTime / fadeDuration;
+
+            // 1. 투명도 고속 다운
+            float alpha = UnityEngine.Mathf.Lerp(1f, 0f, progress);
+            originalColor.a = alpha;
+            comboText.color = originalColor;
+
+            // 2. 위로 가볍게 살짝 슝 솟구치며 사라지는 에어본 효과 추가 (가독성 유지용)
+            if (rect != null)
+            {
+                rect.anchoredPosition = new Vector2(startPosition.x, startPosition.y + (progress * 25f));
+            }
+
+            yield return null;
+        }
+
+        // --- [STEP 3: 완전히 끝나면 깔끔하게 청소 및 위치 리셋] ---
+        comboText.text = "";
+        if (rect != null)
+        {
+            rect.localScale = Vector3.one;
+            rect.anchoredPosition = startPosition;
+        }
+    }
+    // ✨ [추가] 몬스터가 턴 종료 시 살아있는 우리 캐릭터 카드를 무작위로 때리는 핵심 공격 회로
+    public void MonsterAttackRandomPartyCard(float monsterDamage)
+    {
+        // 1. 화면에 생성되어 배치된 모든 캐릭터 카드(CharacterCard) 목록을 전수 조사하여 수거합니다.
+        // 기존 FindObjectsOfType 코드는 아예 삭제합니다!
+        CharacterCard[] activeCards = liveCards.ToArray(); // 👈 실시간 장부를 그대로 가져오므로 꼬일 일이 전혀 없습니다.
+
+
+
+        // 2. 만약 살아 움직이는 파티원 카드가 화면에 한 장이라도 존재한다면 공격을 감행합니다.
+        if (activeCards.Length > 0)
+        {
+            // 3. 무작위로 타겟 카드를 한 장 선정합니다 (예: 4명 중 1명 로또 타격)
+            int randomTargetIndex = Random.Range(0, activeCards.Length);
+            CharacterCard targetCard = activeCards[randomTargetIndex];
+
+            if (targetCard != null)
+            {
+                // 4. 선정된 그 카드의 체력만 정직하게 쾅! 깎아내립니다.
+                targetCard.TakeDamage(monsterDamage);
+                Debug.Log($"💥 [몬스터 반격] 적이 파티원 [{(targetCard.GetComponent<PartyIcon>() != null ? targetCard.GetComponent<PartyIcon>().myData.characterName : "이름 없음")}]을(를) 공격하여 {monsterDamage} 대미지를 입혔습니다!");
+
+            }
+        }
+        else
+        {
+            Debug.Log("💀 화면에 살아있는 파티원 카드가 없어 몬스터가 공격할 대상을 찾지 못했습니다.");
+        }
+    }
+    // ✨ [리모컨 스위치] 몬스터가 턴 종료 시 살아있는 파티원 카드를 무작위로 때리는 명령장치
+    public void Remote_MonsterAttackRandomCard(float damage)
+    {
+        // 1. 현재 전투 화면에 생성되어 배치된 모든 캐릭터 카드(CharacterCard) 목록을 전수 조사합니다.
+        // 기존 FindObjectsOfType 코드는 아예 삭제합니다!
+        CharacterCard[] activeCards = liveCards.ToArray(); // 👈 매장부에 기록된 데이터만 정직하게 꺼내 씁니다.
+
+
+
+        // 2. 살아 움직이는 파티원 카드가 화면에 존재한다면 무작위 타격을 가합니다.
+        if (activeCards.Length > 0)
+        {
+            // 3. 무작위 타겟 선정 (예: 4명 중 1명 로또 타격)
+            int randomTargetIndex = Random.Range(0, activeCards.Length);
+            CharacterCard targetCard = activeCards[randomTargetIndex];
+
+            if (targetCard != null)
+            {
+                // 4. 리모컨 신호 발송! 지목당한 그 카드의 수신기(TakeDamage)를 작동시킵니다.
+                targetCard.TakeDamage(damage);
+                Debug.Log($"💥 [리모컨 작동] 몬스터가 파티원 [{(targetCard.GetComponent<PartyIcon>() != null ? targetCard.GetComponent<PartyIcon>().myData.characterName : "이름 없음")}] 카드를 저격하여 {damage} 대미지를 입혔습니다!");
+
+            }
+        }
+        else
+        {
+            Debug.Log("💀 [경고] 화면에 살아있는 파티원 카드가 없어 리모컨이 타겟을 찾지 못했습니다.");
+        }
     }
 
 }
+
