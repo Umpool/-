@@ -111,7 +111,7 @@ public class PuzzleBattleManager : MonoBehaviour
     [Header("--- 0.001초 초정밀 타이머 시스템 ---")] //타이머관련 코드
     public TextMeshProUGUI timeText;     // 유니티에서 Text_Timer를 연결할 리모컨 방
     public GameObject startTouchTriggerPanel;
-    private float timeRemaining = 180f;  // 180초 (3분) 출발점
+    private float timeRemaining = 3f;  // 180초 (3분) 출발점 //3초라도안보이면
     private bool timerIsRunning = false; // 시계 ON/OFF 스위치
     // 🌟 [전투 정식 개시 스위치]: 무한 모드 버튼을 누르는 순간 GameManager에 의해 원격 가동됩니다!
 
@@ -146,7 +146,7 @@ public class PuzzleBattleManager : MonoBehaviour
         if (gameMode == "infinite" || gameMode == "Infinite")
         {
             // 1. ⏱ 180초 타이머 장부 꽉 채우기
-            timeRemaining = 180f;
+            timeRemaining = 3f;
             timerIsRunning = false;
 
             // 2. 📂 큰 방 패널인 panel_InfiniteBattle을 무조건 가장 먼저 켭니다!
@@ -381,7 +381,7 @@ public class PuzzleBattleManager : MonoBehaviour
         timerIsRunning = false;
 
         // 2. ⏱️ 시간을 무한모드 기본 시간(180초)으로 완전히 초기화(리셋) 합니다.
-        timeRemaining = 180f;
+        timeRemaining = 3f;
 
         // 3. 🖥️ 화면에 표시되는 타이머 텍스트 UI도 3분(03:00)으로 깔끔하게 새로고침 합니다.
         DisplayTime(timeRemaining);
@@ -566,26 +566,33 @@ public class PuzzleBattleManager : MonoBehaviour
         // --- [STEP 2: 대기 시간(1초) 완전 삭제! 즉시 0.35초 동안 빠르게 스르륵 소멸] ---
         float fadeDuration = 0.35f; // 빠르게 사라지도록 0.5초에서 0.35초로 컷!
         float fadeTime = 0f;
-        Color originalColor = comboText.color;
+
+        // 🛠️ [치유 코드 1]: 캐릭터 카드 색상을 절대 침범하지 않는 독립된 안전한 컬러 방 개설
+        Color safeComboColor = (comboText != null) ? comboText.color : Color.white;
 
         while (fadeTime < fadeDuration)
         {
             fadeTime += UnityEngine.Time.deltaTime;
             float progress = fadeTime / fadeDuration;
 
-            // 1. 투명도 고속 다운
+            // 1. 투명도 고속 다운 연산 (원래 부드럽게 사라지는 연출 기능 100% 보존!)
             float alpha = UnityEngine.Mathf.Lerp(1f, 0f, progress);
-            originalColor.a = alpha;
-            comboText.color = originalColor;
 
-            // 2. 위로 가볍게 살짝 슝 솟구치며 사라지는 에어본 효과 추가 (가독성 유지용)
+            // 🛠️ [치유 코드 2]: 다른 프리팹을 오염시키지 않고 오직 콤보 글씨의 투명도만 안전하게 조작!
+            if (comboText != null)
+            {
+                safeComboColor.a = alpha;
+                comboText.color = safeComboColor;
+            }
+
+            // 2. 위로 가볍게 살짝 슝 솟구치며 사라지는 에어본 효과 추가 (원래 애니메이션 기능 100% 보존!)
             if (rect != null)
             {
                 rect.anchoredPosition = new Vector2(startPosition.x, startPosition.y + (progress * 25f));
             }
-
             yield return null;
         }
+
 
         // --- [STEP 3: 완전히 끝나면 깔끔하게 청소 및 위치 리셋] ---
         comboText.text = "";
@@ -652,6 +659,34 @@ public class PuzzleBattleManager : MonoBehaviour
         {
             Debug.Log("💀 [경고] 화면에 살아있는 파티원 카드가 없어 리모컨이 타겟을 찾지 못했습니다.");
         }
+    }
+    // 📄 Board.cs 맨 밑바닥에 추가할 타임오버 종결 단락 함수
+
+    // 🔥 [개발자님 기획 반영]: 타임오버 시 보드판을 리셋하고 마우스를 원천 차단하는 함수
+    public void ForceStopAndClearBoard()
+    {
+        // 1. 이미 정산 중이거나 매칭 중인 코루틴 흐름이 있다면 모두 강제 종료
+        StopAllCoroutines();
+
+        // 2. 화면에 놓여진 6x6 모든 블록 UI 오브젝트들을 싹 파괴하여 제거합니다!
+        if (allBlocks != null)
+        {
+            for (int x = 0; x < width; x++)
+            {
+                for (int y = 0; y < height; y++)
+                {
+                    if (allBlocks[x, y] != null)
+                    {
+                        Destroy(allBlocks[x, y]);
+                        allBlocks[x, y] = null;
+                    }
+                }
+            }
+        }
+
+        // 3. 더 이상 마우스 입력을 받지 않도록 보드판 자체 방어벽을 영원히 true로 잠급니다.
+        isMatching = true;
+        isSwapping = true;
     }
 
 }
