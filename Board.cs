@@ -488,7 +488,7 @@ public class Board : MonoBehaviour
                         }
 
                         Vector2 targetUIPos = GetUIAnchoredPosition(x, y);
-                        StartCoroutine(MoveBlockSmoothlyUI(block, targetUIPos));
+                        yield return StartCoroutine(MoveBlockSmoothlyUI(block, targetUIPos));
 
                         // 원본 프리팹의 온전한 이름 단어 뒤에만 인덱스를 결합시킵니다.
                         block.name = prefabToSpawn.name + "_" + x + "_" + y;
@@ -498,7 +498,6 @@ public class Board : MonoBehaviour
             }
         }
         yield return new WaitForSeconds(0.2f);
-        GameManager.Instance.currentGameState = 0;
     }
 
     // UI RectTransform 전용 초정밀 부드러운 스무스 이동 엔진 코루틴
