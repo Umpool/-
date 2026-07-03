@@ -14,8 +14,6 @@ public class InputManager : MonoBehaviour
     private Vector2 startPosition;
     private bool isDragging;
 
-    private string startBlockColor = ""; // 💡 [추가] 처음 누른 블록의 색상 저장
-
 
     void Awake()
     {
@@ -48,9 +46,7 @@ public class InputManager : MonoBehaviour
     }
     //여기서부터 드래그및 커서에 따라 움직이기 시작? 
     // 💡 InputManager 클래스 내부에 기존 변수들과 함께 추가해주세요.
-    private bool isTrackingSwipe = false;
-    private GameObject selectedBlock = null;
-    public float swipeResistance = 20f; // 이 거리 이상 움직여야 슬라이드 시작으로 인정
+
 
 private void HandlePurePointerInput()
     {
