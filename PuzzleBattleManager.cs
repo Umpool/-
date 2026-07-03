@@ -138,7 +138,7 @@ public class PuzzleBattleManager : MonoBehaviour
     [Header("--- 0.001초 초정밀 타이머 시스템 ---")] //타이머관련 코드
     public TextMeshProUGUI timeText;     // 유니티에서 Text_Timer를 연결할 리모컨 방
     public GameObject startTouchTriggerPanel;
-    private float timeRemaining = 180f;  // 180초 (3분) 출발점 //3초라도안보이면
+    private float timeRemaining = 3f;  // 180초 (3분) 출발점 //3초라도안보이면
     private bool timerIsRunning = false; // 시계 ON/OFF 스위치
     // 🌟 [전투 정식 개시 스위치]: 무한 모드 버튼을 누르는 순간 GameManager에 의해 원격 가동됩니다!
 
@@ -173,7 +173,7 @@ public class PuzzleBattleManager : MonoBehaviour
         if (gameMode == "infinite" || gameMode == "Infinite")
         {
             // 1. ⏱ 180초 타이머 장부 꽉 채우기
-            timeRemaining = 180f;
+            timeRemaining = 3f;
             timerIsRunning = false;
 
             // 2. 📂 큰 방 패널인 panel_InfiniteBattle을 무조건 가장 먼저 켭니다!
@@ -234,32 +234,35 @@ public class PuzzleBattleManager : MonoBehaviour
         }
     }
     // 🌟 [개발자님 최신 계층구조 200% 정밀 반영]: 하단 아군 영웅 5명의 카드와 HP 바 주소를 1대1 유기적 연동시킵니다!
-    private void SetupBattleEntities()
+private void SetupBattleEntities()
+{
+    Debug.Log("[배틀 연산 1단계] 내 정예 파티원 데이터 수거 및 HP 회선 연결 시작!");
+    if (GameManager.Instance == null || GameManager.Instance.partyMembers == null) return;
+
+    // 🌟 [핵심 수정]: 일반 스테이지 패널이나 무한 모드 패널 중 현재 하이어라키에서 실제로 '켜져 있는 패널'을 대장 부모로 선정합니다!
+    GameObject activeBattlePanel = null;
+    if (panel_InfiniteBattle != null && panel_InfiniteBattle.activeSelf) activeBattlePanel = panel_InfiniteBattle;
+    else if (panel_PuzzleBattle != null && panel_PuzzleBattle.activeSelf) activeBattlePanel = panel_PuzzleBattle;
+
+    if (activeBattlePanel != null)
     {
-        Debug.Log("[배틀 연산 1단계] 내 정예 파티원 데이터 수거 및 HP 회선 연결 시작!");
-
-        if (GameManager.Instance == null || GameManager.Instance.partyMembers == null) return;
-        if (panel_PuzzleBattle != null)
+        // 🌟 이제 현재 켜져 있는 전장 패널 밑에서 'PartyContainer_Battle' 상자를 정확하게 조준 타격합니다!
+        Transform battlePartyListTrans = activeBattlePanel.transform.Find("PartyContainer_Battle");
+        if (battlePartyListTrans == null)
         {
-            // 🎯 [하이어라키 진짜 주소 정밀 타격]: 선명한 화면에서 확인한 진짜 부모 이름 'PartyContainer_Battle' 경로를 칼같이 포착합니다!
-            Transform battlePartyListTrans = panel_PuzzleBattle.transform.Find("PartyContainer_Battle");
+            Debug.LogWarning($"[구조 점검] {activeBattlePanel.name} 아래에서 'PartyContainer_Battle' 상자를 찾지 못했습니다.");
+            return;
+        }
 
-            if (battlePartyListTrans == null)
+        // ====== 🚀 이 아래의 자식 슬롯 수집 및 슬라이더 퍼센트 계산(While/Offset) 코드는 방금 수정한 그대로 완벽히 유지해 줍니다! ======
+        List<Transform> heroCardSlots = new List<Transform>();
+        foreach (Transform child in battlePartyListTrans)
+        {
+            if (child.name.Contains("Battle_HeroSlot"))
             {
-                Debug.LogWarning("[구조 점검] Panel_INPuzzleBattle 아래에서 'PartyContainer_Battle' 상자를 찾지 못했습니다.");
-                return;
+                heroCardSlots.Add(child);
             }
-
-            // 5개의 자식 카드 슬롯 배정을 수집 보관합니다 (Battle_HeroSlot_0 ~ 4)
-            List<Transform> heroCardSlots = new List<Transform>();
-            foreach (Transform child in battlePartyListTrans)
-            {
-                // 이름이 슬라이더바가 아닌 진짜 카드 슬롯 본체들만 필터링 수집합니다
-                if (child.name.Contains("Battle_HeroSlot"))
-                {
-                    heroCardSlots.Add(child);
-                }
-            }
+        }
 
             heroHPBars.Clear();
             int activePartyCount = GameManager.Instance.partyMembers.Count;
@@ -284,20 +287,84 @@ public class PuzzleBattleManager : MonoBehaviour
                 }
 
                 // 🌟 [HP 바 연동]: 자식 밑에 매달려 대기 중인 슬라이더 'HP_Bar'를 추적해 캐릭터 고유 체력 영점을 강제 동기화시킵니다!
-                Transform hpBarTrans = heroCardSlots[i].transform.Find("HP_Bar");
-                if (hpBarTrans != null)
+            // 📄 211번 라인 부근 기존 Slider 연결 코드 구역을 찾아 아래 코드로 완전히 교체합니다!
+            Transform hpBarTrans = heroCardSlots[i].transform.Find("HP_Bar");
+            if (hpBarTrans != null)
+            {
+                Slider hpSlider = hpBarTrans.GetComponent<Slider>();
+                if (hpSlider != null)
                 {
-                    Slider hpSlider = hpBarTrans.GetComponent<Slider>();
-                    if (hpSlider != null)
-                    {
-                        float maxHP = currentHeroData.hp;
-                        hpSlider.minValue = 0f;
-                        hpSlider.maxValue = maxHP;
-                        hpSlider.value = maxHP; // 전투 첫 진입이므로 생명력 만땅(100%) 충전 대령!
+                    // 🌟 1. [퍼센트 작동 환경 구축] 슬라이더의 작동 범위를 무조건 0부터 1까지(비율)로 고정합니다.
+                    hpSlider.minValue = 0f;
+                    hpSlider.maxValue = 1f;
 
-                        heroHPBars.Add(hpSlider); // 사령관의 실시간 피통 감시 바구니에 장착 완료!
+                    // 🌟 2. static 주머니에 저장해 둔 이 영웅의 진짜 '최대 체력 원본' 가져오기
+                    int maxHP = 100; // 원본을 못 찾을 때를 대비한 안전 장치 수치
+                    if (partyMaxHpBackup.ContainsKey(currentHeroData.id))
+                    {
+                        maxHP = partyMaxHpBackup[currentHeroData.id];
                     }
+
+                    // 🌟 3. 현재 체력과 최대 체력을 1:1 비교하여 정밀한 비율(0.0 ~ 1.0) 계산
+                    float hpPercent = (float)currentHeroData.hp / maxHP;
+
+                    // 🌟 4. 비율 수치를 슬라이더에 주입하여 풀피일 땐 100% 빈틈없이 초록색으로 꽉 채웁니다!
+                    hpSlider.value = hpPercent;
+
+                    // 🌟 5. [인스펙터 잠금 해제 및 4대 레이아웃 강제 동기화 대완공]
+                    // 프리팹 수치와 상관없이 부모(HP_Bar), 배경, 게이지의 모든 영역을 1:1로 강제 밀착시킵니다.
+                    RectTransform hpBarRect = hpBarTrans.GetComponent<RectTransform>();
+                    RectTransform backgroundRect = hpBarTrans.Find("Background")?.GetComponent<RectTransform>();
+                    RectTransform fillArea = hpBarTrans.Find("Fill Area")?.GetComponent<RectTransform>();
+                    RectTransform fill = fillArea?.Find("Fill")?.GetComponent<RectTransform>();
+
+                    // ① 최상위 부모인 HP_Bar의 높이를 날씬한 일자형(12)으로 강제 픽스
+                    if (hpBarRect != null)
+                    {
+                        var size = hpBarRect.sizeDelta;
+                        size.y = 12f; // 뚱뚱하던 높이를 날씬하게 깎음
+                        hpBarRect.sizeDelta = size;
+                    }
+
+                    // ② 빨간색 배경(Background)을 부모 크기에 100% 꽉 차게 자석 정렬
+                    if (backgroundRect != null)
+                    {
+                        backgroundRect.anchorMin = Vector2.zero;
+                        backgroundRect.anchorMax = Vector2.one;
+                        backgroundRect.offsetMin = Vector2.zero;
+                        backgroundRect.offsetMax = Vector2.zero;
+                    }
+
+                    // ③ 게이지 영역(Fill Area)을 부모 크기에 100% 꽉 차게 자석 정렬
+                    if (fillArea != null)
+                    {
+                        fillArea.anchorMin = Vector2.zero;
+                        fillArea.anchorMax = Vector2.one;
+                        fillArea.offsetMin = Vector2.zero;
+                        fillArea.offsetMax = Vector2.zero;
+                    }
+
+                    // ④ 초록색 피(Fill)의 여백과 앵커를 완벽하게 일치시켜 오차 박멸
+                    if (fill != null)
+                    {
+                        fill.anchorMin = Vector2.zero;
+                        fill.anchorMax = Vector2.one;
+                        fill.offsetMin = Vector2.zero;
+                        fill.offsetMax = Vector2.zero; // 🚀 마이너스로 삐져나가던 붉은 잔상 강제 소멸
+                    }
+
+                    // ⑤ 자동 정렬 시스템(Layout Group)의 강제 찌그러트림 간섭을 최종 차단
+                    UnityEngine.UI.LayoutElement hpLayout = hpSlider.GetComponent<UnityEngine.UI.LayoutElement>();
+                    if (hpLayout != null)
+                    {
+                        hpLayout.ignoreLayout = true;
+                    }
+
+                    // 원래의 매니저 주머니 등록 코드로 부드럽게 이어집니다.
+                    heroHPBars.Add(hpSlider);
                 }
+            }
+
             }
             Debug.Log($"[아군 진형 연동 완공] 총 {heroHPBars.Count}명의 파티원이 실시간 생명력 게이지를 장착 완료했습니다!");
         }
@@ -401,7 +468,7 @@ public class PuzzleBattleManager : MonoBehaviour
         timerIsRunning = false;
 
         // 2. ⏱️ 시간을 무한모드 기본 시간(180초)으로 완전히 초기화(리셋) 합니다.
-        timeRemaining = 180f;
+        timeRemaining = 3f;
 
         // 3. 🖥️ 화면에 표시되는 타이머 텍스트 UI도 3분(03:00)으로 깔끔하게 새로고침 합니다.
         DisplayTime(timeRemaining);
@@ -444,33 +511,45 @@ public class PuzzleBattleManager : MonoBehaviour
     {
         timerIsRunning = false;
 
-        // 🛠️ [최종 대미지 연동 대완공]: 중복 선언을 원천 박멸하고 정석 변수 방을 복원합니다!
+        // 📊 [최종 데이터 연동]: 중복 선언을 원천 박멸하고 정석 변수 방을 복원합니다!
         int finalScore = 0;
-        int finalTurns = currentTurn;
+        int finalTurns = currentTurn; // 👈 현재 진행된 턴 수를 안전하게 복사하여 보관합니다.
 
-        // 💡 [개발자님 정석 기획 완벽 우회 연동]
-        // 대소문자나 변수 유효 범위 벽을 완벽히 무력화하기 위해, 화면 상단에 1,350점을 실시간으로 표기하던 
-        // 진짜 하이어라키 상자(ScoreText)의 컴포넌트를 직접 조준하여 문자열을 낚아챕니다!
+        // 📍 [화면 상단 실시간 누적 데미지 문자열 원격 우회 연동]
+        // 하이오라키 상자의 (ScoreText) 컴포넌트를 직접 조준하여 문자열을 낚아챕니다!
         TMPro.TextMeshProUGUI realScoreTMP = transform.Find("ScoreText")?.GetComponent<TMPro.TextMeshProUGUI>();
         if (realScoreTMP == null) realScoreTMP = GameObject.Find("ScoreText")?.GetComponent<TMPro.TextMeshProUGUI>();
 
         if (realScoreTMP != null)
         {
-            // 🎯 화면 상단판에 박혀있던 글자 "누적 데미지: 1,350" 문자열에서 
-            // 철자 오타를 가리지 않고 오직 알맹이 숫자 '1350'만 칼같이 정제하여 finalScore 상자에 배달합니다!
+            // ✂️ 화면 상단판에 박혀있던 글자 "누적 데미지: 1,350" 문자열에서 오타 처리 후 오직 숫자 알맹이만 정제합니다.
             string scoreString = realScoreTMP.text.Replace("누적 대미지:", "").Replace("누적 대미지 :", "").Replace("누적 데미지:", "").Replace("누적 데미지 :", "").Replace(",", "").Trim();
             int.TryParse(scoreString, out finalScore);
         }
         else
         {
+            // 상단 텍스트를 찾지 못했을 경우 예외 방지용 방어코드
             finalScore = currentScore;
         }
 
-        // 🔍 기존에 존재하던 결과창 글씨 출력 단락과 이쁘게 이어집니다!
+        // ✍️ [결과창 텍스트 출력]: 찌꺼기 없는 청정 화면에 최종 대미지를 예쁘게 출력합니다!
         if (textFinalScore != null)
         {
             textFinalScore.text = $"최종 대미지 : {finalScore:N0}";
         }
+
+        // ⏱️ [턴 수 출력 연동]: 대미지 밑에 걸린 총 턴 수도 함께 갱신하여 유저에게 보여줍니다!
+        // 🌟 만약 결과창에 턴 수를 표시할 전용 텍스트 변수(예: textFinalTurns 등)를 선언해두셨다면 
+        // 아래 주석을 풀고 변수명만 맞춰서 연결해주시면 유니티 인스펙터 세팅 후 완벽히 작동합니다.
+        /*
+        if (textFinalTurns != null)
+        {
+            textFinalTurns.text = $"{finalTurns}턴 걸림";
+        }
+        */
+
+        Debug.Log($"📊 [최종 정산 완료] 반영 대미지: {finalScore} | 소모한 총 턴 수: {finalTurns}턴");
+    }
 
 
 
@@ -678,46 +757,53 @@ public class PuzzleBattleManager : MonoBehaviour
         }
         else
         {
-            Debug.Log("💀 화면에 살아있는 파티원 카드가 없어 몬스터가 공격할 대상을 찾지 못했습니다.");
-        }
-    }
-    // ✨ [리모컨 스위치] 몬스터가 턴 종료 시 살아있는 파티원 카드를 무작위로 때리는 명령장치
-    public void Remote_MonsterAttackRandomCard(float damage)
+    public void OnTimerEnd()
     {
-        // 1. 현재 전투 화면에 생성되어 배치된 모든 캐릭터 카드(CharacterCard) 목록을 전수 조사합니다.
-        // 기존 FindObjectsOfType 코드는 아예 삭제합니다!
-        CharacterCard[] activeCards = liveCards.ToArray(); // 👈 매장부에 기록된 데이터만 정직하게 꺼내 씁니다.
+        timerIsRunning = false;
 
+        int finalScore = 0;
+        int finalTurns = currentTurn; 
 
+        // 📍 [화면 상단 실시간 누적 데미지 문자열 원격 우회 연동]
+        TMPro.TextMeshProUGUI realScoreTMP = transform.Find("ScoreText")?.GetComponent<TMPro.TextMeshProUGUI>();
+        if (realScoreTMP == null) realScoreTMP = GameObject.Find("ScoreText")?.GetComponent<TMPro.TextMeshProUGUI>();
 
-        // 2. 살아 움직이는 파티원 카드가 화면에 존재한다면 무작위 타격을 가합니다.
-        if (activeCards.Length > 0)
+        if (realScoreTMP != null)
         {
-            // 3. 무작위 타겟 선정 (예: 4명 중 1명 로또 타격)
-            int randomTargetIndex = Random.Range(0, activeCards.Length);
-            CharacterCard targetCard = activeCards[randomTargetIndex];
-
-            if (targetCard != null)
-            {
-                // 4. 리모컨 신호 발송! 지목당한 그 카드의 수신기(TakeDamage)를 작동시킵니다.
-                targetCard.TakeDamage(damage);
-                Debug.Log($"💥 [리모컨 작동] 몬스터가 파티원 [{(targetCard.GetComponent<PartyIcon>() != null ? targetCard.GetComponent<PartyIcon>().myData.characterName : "이름 없음")}] 카드를 저격하여 {damage} 대미지를 입혔습니다!");
-
-            }
+            string scoreString = realScoreTMP.text.Replace("누적 대미지:", "").Replace("누적 대미지 :", "").Replace("누적 데미지:", "").Replace("누적 데미지 :", "").Replace(",", "").Trim();
+            int.TryParse(scoreString, out finalScore);
         }
         else
         {
-            Debug.Log("💀 [경고] 화면에 살아있는 파티원 카드가 없어 리모컨이 타겟을 찾지 못했습니다.");
+            finalScore = currentScore;
         }
-    }
-    // 📄 Board.cs 맨 밑바닥에 추가할 타임오버 종결 단락 함수
 
-    // 🔥 [개발자님 기획 반영]: 타임오버 시 보드판을 리셋하고 마우스를 원천 차단하는 함수
-    public void ForceStopAndClearBoard()
-    {
-        // 1. 이미 정산 중이거나 매칭 중인 코루틴 흐름이 있다면 모두 강제 종료
-        StopAllCoroutines();
+        // ✍️ [결과창 텍스트 출력]
+        if (textFinalScore != null)
+        {
+            textFinalScore.text = $"최종 대미지 : {finalScore:N0}";
+        }
 
-    }
-}
+        Debug.Log($"📊 [최종 정산 완료] 반영 대미지: {finalScore} | 소모한 총 턴 수: {finalTurns}턴");
+
+        // 🏆 [무한 모드 랭킹 데이터 정산 연쇄 트리거 복원]
+        // 559번 라인에서 에러가 터졌던 랭킹 갱신 로직을 중괄호 내부에 안전하게 격리 수용합니다.
+        for (int i = 0; i < 5; i++)
+        {
+            int savedScore = PlayerPrefs.GetInt($"INF_RANK_{i + 1}", 0);
+            if (finalScore > savedScore)
+            {
+                for (int j = 4; j > i; j--)
+                {
+                    PlayerPrefs.SetInt($"INF_RANK_{j + 1}", PlayerPrefs.GetInt($"INF_RANK_{j}", 0));
+                }
+                PlayerPrefs.SetInt($"INF_RANK_{i + 1}", finalScore);
+                PlayerPrefs.Save();
+                break;
+            }
+        }
+    } // 👈 OnTimerEnd 함수가 완벽하게 마감되는 안전 괄호
+} // 👈 PuzzleBattleManager 클래스 전체 파일이 끝나는 진짜 최종 마감 괄호
+
+
 
