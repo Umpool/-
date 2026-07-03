@@ -56,10 +56,36 @@ public class PuzzleBattleManager : MonoBehaviour
     public TextMeshProUGUI textNPCLeaderboard; // 💡 요 방이 상단에 있어야 맨 밑바닥 함수가 에러가 안 납니다!
     public GameObject panel_NPCLeaderboard_Popup; // 🎯 마을 순위판 팝업창 자체를 기억할 전원 제어 방!
 
-    private void Start()
+     // 🌟 [새로 추가] 던전 안에서 파티원들의 진짜 최대 체력 원본을 기억해 둘 딕셔너리 주머니
+    private static Dictionary<int, int> partyMaxHpBackup = new Dictionary<int, int>();    private void Start()
     {
         currentTurn = 0;
         UpdateTurnTextUI();
+            if (GameManager.Instance != null && GameManager.Instance.partyMembers != null)
+    {
+        foreach (var character in GameManager.Instance.partyMembers)
+        {
+            if (character == null) continue;
+
+            // 만약 이 캐릭터의 최대 체력이 아직 기록된 적이 없다면 (즉, 던전에 완전히 처음 입장한 상태라면)
+            if (!partyMaxHpBackup.ContainsKey(character.id))
+            {
+            // 1. 인스펙터에 적혀있던 원래 체력을 최대 체력 원본으로 저장
+            partyMaxHpBackup[character.id] = character.hp;
+
+            // 🚀 [여기에 한 줄 추가]: 던전에 처음 들어왔을 때만 체력을 원본 수치로 꽉 채워줍니다(풀피 세팅)!
+            character.hp = partyMaxHpBackup[character.id];
+
+            Debug.Log($"[최초 입장 확인] {character.characterName}의 최대 HP {character.hp}를 안전하게 기록하고 풀피로 시작합니다.");
+            }
+            else
+            {
+                // 🌟 이미 주머니에 원본이 기록되어 있다면 = 연속 배틀 중인 상태입니다!
+                // 이때는 캐릭터의 피를 만지지 않고, 닳아있는 현재 HP 상태를 그대로 존중하여 유지합니다.
+                Debug.Log($"[연속 전투 확인] {character.characterName}의 HP 상태를 리셋하지 않고 그대로 유지합니다. (현재 HP: {character.hp})");
+            }
+        }
+    }
 
         // 🎯 1. [요청 사항] 재생 전에 꺼져(OFF) 있더라도 게임이 시작되면 무조건 가장 먼저 ON!
         if (btn_StartTouchTrigger_Direct != null)
@@ -112,7 +138,7 @@ public class PuzzleBattleManager : MonoBehaviour
     [Header("--- 0.001초 초정밀 타이머 시스템 ---")] //타이머관련 코드
     public TextMeshProUGUI timeText;     // 유니티에서 Text_Timer를 연결할 리모컨 방
     public GameObject startTouchTriggerPanel;
-    private float timeRemaining = 3f;  // 180초 (3분) 출발점 //3초라도안보이면
+    private float timeRemaining = 180f;  // 180초 (3분) 출발점 //3초라도안보이면
     private bool timerIsRunning = false; // 시계 ON/OFF 스위치
     // 🌟 [전투 정식 개시 스위치]: 무한 모드 버튼을 누르는 순간 GameManager에 의해 원격 가동됩니다!
 
@@ -147,7 +173,7 @@ public class PuzzleBattleManager : MonoBehaviour
         if (gameMode == "infinite" || gameMode == "Infinite")
         {
             // 1. ⏱ 180초 타이머 장부 꽉 채우기
-            timeRemaining = 3f;
+            timeRemaining = 180f;
             timerIsRunning = false;
 
             // 2. 📂 큰 방 패널인 panel_InfiniteBattle을 무조건 가장 먼저 켭니다!
@@ -375,7 +401,7 @@ public class PuzzleBattleManager : MonoBehaviour
         timerIsRunning = false;
 
         // 2. ⏱️ 시간을 무한모드 기본 시간(180초)으로 완전히 초기화(리셋) 합니다.
-        timeRemaining = 3f;
+        timeRemaining = 180f;
 
         // 3. 🖥️ 화면에 표시되는 타이머 텍스트 UI도 3분(03:00)으로 깔끔하게 새로고침 합니다.
         DisplayTime(timeRemaining);
