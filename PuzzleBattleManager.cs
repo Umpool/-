@@ -418,38 +418,35 @@ public class PuzzleBattleManager : MonoBehaviour
     {
         timerIsRunning = false;
 
-        // 🛠️ [최종 대미지 연동 대완공]: 중복 선언 방을 해결하고 기존 변수 방을 완벽 복원합니다!
+        // 🛠️ [최종 대미지 연동 대완공]: 중복 선언을 원천 박멸하고 정석 변수 방을 복원합니다!
         int finalScore = 0;
         int finalTurns = currentTurn;
 
-        // 💡 [기능 보존형 안전 우회로 구축]
-        // 외부 변수의 유효 범위 벽을 완벽히 뚫기 위해, 전장에서 1,350점을 실시간으로 가산하여 
-        // 화면 상단에 그려주고 있던 진짜 UI 텍스트 컴포넌트(textTimer 바로 아래에 있는 상자)의 
-        // "누적 대미지 : 1,350" 글씨에서 숫자 1350만 완벽하게 낚아채어 finalScore 장부에 강제 배달합니다!
-        UnityEngine.UI.Text realScoreText = transform.Find("ScoreText")?.GetComponent<UnityEngine.UI.Text>();
-        if (realScoreText == null) realScoreText = GameObject.Find("ScoreText")?.GetComponent<UnityEngine.UI.Text>();
+        // 💡 [개발자님 정석 기획 완벽 우회 연동]
+        // 대소문자나 변수 유효 범위 벽을 완벽히 무력화하기 위해, 화면 상단에 1,350점을 실시간으로 표기하던 
+        // 진짜 하이어라키 상자(ScoreText)의 컴포넌트를 직접 조준하여 문자열을 낚아챕니다!
+        TMPro.TextMeshProUGUI realScoreTMP = transform.Find("ScoreText")?.GetComponent<TMPro.TextMeshProUGUI>();
+        if (realScoreTMP == null) realScoreTMP = GameObject.Find("ScoreText")?.GetComponent<TMPro.TextMeshProUGUI>();
 
-        if (realScoreText != null)
+        if (realScoreTMP != null)
         {
-            string scoreString = realScoreText.text.Replace("누적 대미지:", "").Replace("누적 대미지 :", "").Replace("누적 데미지:", "").Replace("누적 데미지 :", "").Replace(",", "").Trim();
+            // 🎯 화면 상단판에 박혀있던 글자 "누적 데미지: 1,350" 문자열에서 
+            // 철자 오타를 가리지 않고 오직 알맹이 숫자 '1350'만 칼같이 정제하여 finalScore 상자에 배달합니다!
+            string scoreString = realScoreTMP.text.Replace("누적 대미지:", "").Replace("누적 대미지 :", "").Replace("누적 데미지:", "").Replace("누적 데미지 :", "").Replace(",", "").Trim();
             int.TryParse(scoreString, out finalScore);
         }
         else
         {
-            // 만약 상자를 놓쳤을 경우를 대비하여 내부 실시간 연산 스코어 버퍼를 안전 백업으로 연결합니다.
             finalScore = currentScore;
         }
 
-        // 결과창 팝업 가운데에 있는 글자 상자에 한 자릿수 오차도 없이 진짜 전장 점수 1,350점을 고대로 배달합니다!
+        // 🔍 기존에 존재하던 결과창 글씨 출력 단락과 이쁘게 이어집니다!
         if (textFinalScore != null)
         {
             textFinalScore.text = $"최종 대미지 : {finalScore:N0}";
         }
 
-        if (textFinalTurns != null)
-        {
-            textFinalTurns.text = $"소모한 총 턴 수 : {finalTurns}턴";
-        }
+
 
 
         // // 내부 저장소에서 1등부터 10등까지의 점수를 배열로 싹 긁어옵니다. (기존 랭킹 기능 100% 보존)
