@@ -878,18 +878,6 @@ public class GameManager : MonoBehaviour
                     Debug.Log("[퍼즐 소환 완료] 6x6 격자 보석 블록 출력 완료.");
                 }
             }
-            GameObject battleIconObj = Instantiate(partyMemberPrefab, battlePartyContainer.transform);
-            CharacterCard cardComponent = battleIconObj.GetComponent<CharacterCard>();
-
-            if (cardComponent != null)
-            {
-                // 🌟 핵심: 태어나자마자 전투 매니저 장부에 이름 올리기!
-                PuzzleBattleManager puzzleManager = GetComponent<PuzzleBattleManager>();
-                if (puzzleManager != null)
-                {
-                    puzzleManager.liveCards.Add(cardComponent);
-                }
-            }
         }
         else
         {
