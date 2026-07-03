@@ -58,12 +58,14 @@ public class PartyIcon : MonoBehaviour
             maxHP = myData.hp;
             currentHP = maxHP;
 
+            // 📄 PartyIcon.cs 내부 61번째 줄 부근 HP바 제어 단락 교정
+
             if (hpSlider != null)
             {
-                // [수정 줄]: 무조건 true로 켜던 것을, 배틀 스위치 상태(isBattle)에 따라 켜지게 바꿉니다!
+                // 🛠️ [기능 보존형 최종 흐름 정비]: hpSlider 방이 존재할 때만 안전하게 SetActive를 제어합니다.
                 hpSlider.gameObject.SetActive(isBattle);
 
-                // 🌟 [여기서부터 격리 시작!]: 배틀 스위치가 활성화되었을 때만 작동하는 울타리를 칩니다.
+                // 🛠️ [여기서부터 격리 시작!]: 배틀 스위치가 활성화(true)되었을 때만 작동하는 안전핀 울타리입니다.
                 if (isBattle)
                 {
                     hpSlider.minValue = 0f;
@@ -71,6 +73,17 @@ public class PartyIcon : MonoBehaviour
                     hpSlider.value = currentHP;
                 } // 🌟 울타리 마감선!
             }
+            else
+            {
+                // 💡 [서브 캐릭터 화면 안전장치]: 배틀 슬롯이 아닌 서브 캐릭터 창 기물일 때는
+                // 이미지 도화지가 하얗게 굳지 않도록, 내 색상(characterColor)을 한 번 더 투명하게 새로고침해 줍니다!
+                if (img_CharacterVisual != null)
+                {
+                    img_CharacterVisual.color = myData.characterColor;
+                    if (myData.characterSprite != null) img_CharacterVisual.sprite = myData.characterSprite;
+                }
+            }
+
 
             Debug.Log($"🎨 [{myData.characterName}] 배틀 카드 형성 성공! (데이터 색상 주입 및 HP바 동기화 완료)");
         }
