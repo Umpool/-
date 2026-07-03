@@ -200,9 +200,9 @@ public class Board : MonoBehaviour
         selectedBlock = null;
     }//파트2222222222222222222222222222222
      // 기획안 5, 5-1번 충족: 매치 실패 시 부드럽게 원래 위치 원위치 복귀 연출 코루틴
-    private IEnumerator SwapBlocksRoutine(int ax, int ay, int bx, int by)
-    {
-        isSwapping = true;
+private IEnumerator SwapBlocksRoutine(int ax, int ay, int bx, int by)
+{
+    isSwapping = true;
         GameObject blockA = allBlocks[ax, ay];
         GameObject blockB = allBlocks[bx, by];
 
@@ -242,27 +242,34 @@ public class Board : MonoBehaviour
         // 기획안 6번: 교체 후 보드판 매치 점검 가동
         bool hasMatches = CheckHasMatches();
 
-        if (hasMatches)
+            if (hasMatches)
         {
-            isSwapping = false;
-            StartCoroutine(CheckAndDestroyMatchesRoutine());
+        isSwapping = false;
+        StartCoroutine(CheckAndDestroyMatchesRoutine());
         }
-        else
-        {
-
-            // [유저 기획 반영] 드래그로 블록 파괴에 실패했으므로 즉시 콤보를 0으로 리셋합니다.
-            if (PuzzleBattleManager.Instance != null)
+        else     ////여기부터
+            // 2. 0.2초 동안 반대 방향으로 직접 이동시켜서 원위치 (무한 루프 원인 제거)
+            float returnElapsed = 0f;
+            while (returnElapsed < 0.2f)
             {
-                PuzzleBattleManager.Instance.currentCombo = 0;
-                PuzzleBattleManager.Instance.UpdateComboTextUI(); // 화면 글씨도 지우기
+                returnElapsed += Time.deltaTime;
+                float t = returnElapsed / 0.2f;
+                rectA.anchoredPosition = Vector2.Lerp(posB, posA, t); // B -> A 복귀
+                rectB.anchoredPosition = Vector2.Lerp(posA, posB, t); // A -> B 복귀
+                yield return null;
             }
-            // [수정] 올바른 매개변수(ax, ay, bx, by)로 원래 자리 되돌리기 애니메이션 구동
-            yield return StartCoroutine(SwapBlocksRoutine(ax, ay, bx, by));
+            rectA.anchoredPosition = posA;
+            rectB.anchoredPosition = posB;
+
+            // 3. 배열 데이터와 이름도 원래 상태로 완벽하게 복구
+            allBlocks[ax, ay] = blockA;
+            allBlocks[bx, by] = blockB;
+            blockA.name = namePrefixA + "_" + ax + "_" + ay;
+            blockB.name = namePrefixB + "_" + bx + "_" + by;
 
             isSwapping = false;
-            isUserTurn = false; // 매치 실패 시 턴 증가 플래그 리셋
-        } // 👈 꼬여있던 else 문을 닫아주는 중괄호입니다!
-    }
+            isUserTurn = false; 
+        }     ///////여기가끝 
 
         bool CheckHasMatches()
     {
