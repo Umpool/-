@@ -175,11 +175,7 @@ public class PuzzleBattleManager : MonoBehaviour
                 Debug.Log("🚀 [형님 명령] Btn_StartTouchTrigger와 자식 오브젝트들을 화면 정중앙에 강제 ON 완공!");
             }
         }
-        // 1. 모드 선택 판정
-        // 💡 111번째 줄 무한 모드 판정 구역입니다!
 
-        // 1. 모드 선택 판정
-        // 1. 모드 선택 판정
         // 💡 111번째 줄 무한 모드 판정 구역입니다!
         // 💡 1. 무한 모드 판정 및 시동 구역
         if (gameMode == "infinite" || gameMode == "Infinite")
@@ -636,26 +632,24 @@ public void OnTimerEnd()
                 Debug.Log("🎉 [코드로 완벽 제어] 3분 종료! GAMEOVER TXT 결과창 강제 ON 대완공!");
             }
         }
-            if (panel_InfiniteBattle != null)
+        if (panel_InfiniteBattle != null)
         {
-           Transform gameover = panel_InfiniteBattle.transform.Find("GAMEOVER TXT");
+            Transform gameover = panel_InfiniteBattle.transform.Find("GAMEOVER TXT");
             if (gameover != null)
             {
-            gameover.gameObject.SetActive(true);
-            Debug.Log("🎉 [코드로 완벽 제어] 3분 종료! GAMEOVER TXT 결과창 강제 ON 대완공!");
+                gameover.gameObject.SetActive(true);
+                Debug.Log("🎉 [코드로 완벽 제어] 3분 종료! GAMEOVER TXT 결과창 강제 ON 대완공!");
             }
         }
 
-    // 🌟 [교체식 추가]: 게임오버 정산이 완전히 끝나 화면이 멈추더라도, 다음 판 재진입을 위해 미리 체크박스 트리거를 ON 상태로 복구해 둡니다.
-    if (btn_StartTouchTrigger_Direct != null)
-    {
-        btn_StartTouchTrigger_Direct.SetActive(true);
+        // 🌟 [이 구역의 맨 마지막 줄인 여기에 딱 한 줄만 추가하세요!]
+        if (btn_StartTouchTrigger_Direct != null) btn_StartTouchTrigger_Direct.SetActive(false);
     }
-}
+
         
 
 
-    }
+    
 
     // 2. 마을에서 NPC 순위보기 버튼을 누르면 1위부터 10위까지의 보이지 않는 장부를 긁어와 화면에 쾅 꽂아주는 함수
     public void RefreshNPCLeaderboardUI()
@@ -829,6 +823,7 @@ public void OnTimerEnd()
             Debug.Log("💀 [경고] 화면에 살아있는 파티원 카드가 없어 리모컨이 타겟을 찾지 못했습니다.");
         }
     }
+
     // 📄 Board.cs 맨 밑바닥에 추가할 타임오버 종결 단락 함수
 
     // 🔥 [개발자님 기획 반영]: 타임오버 시 보드판을 리셋하고 마우스를 원천 차단하는 함수
@@ -838,6 +833,8 @@ public void OnTimerEnd()
         StopAllCoroutines();
 
     }
+}
+
 
     
 
