@@ -924,48 +924,6 @@ if (InfiniteMonster.Instance != null)
 
     // ✅ 917번째 줄부터 파일 맨 끝까지 이 코드로 통째로 안전 덮어쓰기 하세요!
     // ✅ 917번째 줄부터 파일 맨 마지막 끝 줄까지 이 코드로 통째로 안전 덮어쓰기 하세요!
-    public void ShutdownAndCleanupBoard()
-    {
-        isGameActive = false;
-        isProcessing = true;
-        
-        ClearAllBoardObjects();
-        
-        List<GameObject> leakObjects = new List<GameObject>();
-        foreach (Transform child in transform)
-        {
-            if (child != null && child.gameObject.name.StartsWith("Block_"))
-            {
-                leakObjects.Add(child.gameObject);
-            }
-        }
-
-        for (int i = 0; i < leakObjects.Count; i++)
-        {
-            Destroy(leakObjects[i]);
-        }
-        leakObjects.Clear();
-
-        comboCount = 0;
-        UpdateComboTextUI();
-        Debug.Log("✨ [성공] 보드판 2차 유령 찌꺼기 추적 소멸 완수.");
-
-        // 🚨 기존 953~955번째 줄을 지우고 이 코드를 복사해서 붙여넣으세요!
-        // 부모 오브젝트의 transform을 뒤져서 꺼져있는 'GAMEOVER TXT' 자식을 다이렉트로 찾아 켭니다!
-        Transform parentPanel = transform.parent; // PuzzleBoard의 부모(Panel_INPuzzleBattle)를 찾습니다.
-        if (parentPanel != null)
-        {
-            Transform gameOverTransform = parentPanel.Find("GAMEOVER TXT");
-            if (gameOverTransform != null)
-            {
-                gameOverTransform.gameObject.SetActive(true);
-            }
-            else
-            {
-                Debug.LogError("🚨 [오류] Panel_INPuzzleBattle 자식 목록에서 GAMEOVER TXT를 찾을 수 없습니다!");
-            }
-        }
-
     // 🎯 [재시작 트리거 시스템]: 게임오버 화면 터치 시 보드판을 부활시킵니다.
     public void RestartGameByTouch()
     {
@@ -1027,4 +985,5 @@ if (InfiniteMonster.Instance != null)
         
         if (rt != null) rt.anchoredPosition = targetPosition;
     }
-} // 🚨 설계도 클래스 전체를 가장 마지막에 안전하게 걸어 잠그는 유일무이한 마침표 중괄호입니다. 이 밑에는 공백 외에 아무것도 두지 마세요!
+}
+ // 🚨 설계도 클래스 전체를 가장 마지막에 안전하게 걸어 잠그는 유일무이한 마침표 중괄호입니다. 이 밑에는 공백 외에 아무것도 두지 마세요!
