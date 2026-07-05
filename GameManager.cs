@@ -807,13 +807,20 @@ public void OnClickPartyEditwarehouseCharacter(int charId)
         if (panel_ConfirmRemove) panel_ConfirmRemove.SetActive(false);
     }
 
-    public void OnClickEnterNormalStage()
+public void OnClickEnterNormalStage()
+{
+    Debug.Log("[마을] 일반 모드 클릭 -> Panel_StageSelect와 자식들 ON");
+    stageMode = 1;
+    GameObject panelStageSelect = GameObject.Find("Canvas")?.transform.Find("Panel_StageSelect")?.gameObject;
+    if (panelStageSelect != null) panelStageSelect.SetActive(true);
+
+    // 🌟 [교체식 추가] 버튼을 눌러 스테이지 진입 패널을 켜는 순간, 체크박스를 강제로 ON 합니다.
+    PuzzleBattleManager battleMgr = GameObject.Find("Canvas")?.transform.Find("Panel_INPuzzleBattle")?.GetComponent<PuzzleBattleManager>();
+    if (battleMgr != null && battleMgr.btn_StartTouchTrigger_Direct != null)
     {
-        Debug.Log("[마을] 일반 모드 클릭 -> Panel_StageSelect와 자식들 ON");
-        stageMode = 1;
-        GameObject panelStageSelect = GameObject.Find("Canvas")?.transform.Find("Panel_StageSelect")?.gameObject;
-        if (panelStageSelect != null) panelStageSelect.SetActive(true);
+        battleMgr.btn_StartTouchTrigger_Direct.SetActive(true);
     }
+}
 
     public void OnClickNormalStageBackButton()
     {
@@ -823,13 +830,20 @@ public void OnClickPartyEditwarehouseCharacter(int charId)
         if (panel_Village) panel_Village.SetActive(true);
     }
 
-    public void OnClickEnterInfiniteStage()
+public void OnClickEnterInfiniteStage()
+{
+    Debug.Log("[마을] 무한 모드 클릭 -> Panel_InfiniteStage와 자식들 ON");
+    stageMode = 2;
+    GameObject panelInfinite = GameObject.Find("Canvas")?.transform.Find("Panel_InfiniteStage")?.gameObject;
+    if (panelInfinite != null) panelInfinite.SetActive(true);
+
+    // 🌟 [교체식 추가] 무한모드 버튼을 눌렀을 때도 똑같이 체크박스를 강제로 ON 합니다.
+    PuzzleBattleManager battleMgr = GameObject.Find("Canvas")?.transform.Find("Panel_INPuzzleBattle")?.GetComponent<PuzzleBattleManager>();
+    if (battleMgr != null && battleMgr.btn_StartTouchTrigger_Direct != null)
     {
-        Debug.Log("[마을] 무한 모드 클릭 -> Panel_InfiniteStage와 자식들 ON");
-        stageMode = 2;
-        GameObject panelInfinite = GameObject.Find("Canvas")?.transform.Find("Panel_InfiniteStage")?.gameObject;
-        if (panelInfinite != null) panelInfinite.SetActive(true);
+        battleMgr.btn_StartTouchTrigger_Direct.SetActive(true);
     }
+}
 
     public void OnClickInfiniteStageBackButton()
     {
