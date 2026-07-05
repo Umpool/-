@@ -220,18 +220,47 @@ public class GameManager : MonoBehaviour
     {
         if (panel_Village != null && panel_Village.activeSelf && villageRectTransform != null)
         {
+            // ---------------- [새로 추가된 키보드 이동 시스템] ----------------
+            Vector2 keyboardInput = Vector2.zero;
+
+            // 새로운 인풋 시스템(Input System) 패키지 기준 키 입력 감지
+            if (UnityEngine.InputSystem.Keyboard.current != null)
+            {
+                if (UnityEngine.InputSystem.Keyboard.current.wKey.isPressed || UnityEngine.InputSystem.Keyboard.current.upArrowKey.isPressed) { keyboardInput.y -= 1f; } // 이미지 반전 고려
+                if (UnityEngine.InputSystem.Keyboard.current.sKey.isPressed || UnityEngine.InputSystem.Keyboard.current.downArrowKey.isPressed) { keyboardInput.y += 1f; }
+                if (UnityEngine.InputSystem.Keyboard.current.aKey.isPressed || UnityEngine.InputSystem.Keyboard.current.leftArrowKey.isPressed) { keyboardInput.x += 1f; }
+                if (UnityEngine.InputSystem.Keyboard.current.dKey.isPressed || UnityEngine.InputSystem.Keyboard.current.rightArrowKey.isPressed) { keyboardInput.x -= 1f; }
+            }
+
+            // 키보드 입력이 있을 때만 마을 UI 좌표를 실시간으로 직접 이동시킵니다.
+            if (keyboardInput.sqrMagnitude > 0.01f)
+            {
+                float moveSpeed = 500f; // 키보드 이동 속도 (원하는 대로 변경 가능)
+                Vector2 targetPos = villageRectTransform.anchoredPosition + (keyboardInput.normalized * moveSpeed * Time.deltaTime);
+                
+                // 283번째 줄에 이미 만들어두신 '화면 밖 이탈 방지 감금 함수'를 그대로 재활용하여 안전성 확보!
+                villageRectTransform.anchoredPosition = RestrictPositionInsideVillage(targetPos);
+            }
+            // ------------------------------------------------------------------
+
+            // 기존에 잘 돌아가던 마우스 드래그 관성 시스템 유지
             HandleVillageInertiaDrag();
         }
     }
-
-    public void GoToVillage()
+    public void OnClickReturnToVillage()
     {
-        if (Panel_Village != null) Panel_Village.SetActive(true);
-        if (PartyListContainer != null)
+        // 1. 배틀 매니저 청소 (기존 코드 유지)
+        if (PuzzleBattleManager.Instance != null)
         {
-            PartyListContainer.SetActive(false);
-            Debug.Log("[성공] 마을 도착! PartyListContainer를 깔끔하게 1회 OFF 했습니다.");
+            PuzzleBattleManager.Instance.ResetBattleSystemForNextEntry();
         }
+
+        // 2. 대소문자를 엄격하게 맞춘 원본 변수들을 사용하여 직접 켜고 끕니다.
+        if (Panel_Village != null) Panel_Village.SetActive(true);
+        if (Panel_INPuzzleBattle != null) Panel_INPuzzleBattle.SetActive(false);
+        if (PartyListContainer != null) PartyListContainer.SetActive(false);
+
+        Debug.Log("🏡 [성공] 마을 복귀 및 배틀 패널 완전 세탁 완료!");
     }
 
     private void HandleVillageInertiaDrag()
@@ -342,22 +371,27 @@ public class GameManager : MonoBehaviour
         switch (npcIndex)
         {
             case 0:
-                targetPosition = new Vector2(800f, -500f);
+                // 촌장 (기존: -1468, 818 -> 반전: X는 플러스, Y는 마이너스)
+                targetPosition = new Vector2(1468f, -818f);
                 Debug.Log("[빠른이동] 촌장님 좌표로 비행을 개시합니다.");
                 break;
             case 1:
+                // 물약 (기존: -1522, -776 -> 반전: X는 플러스, Y는 플러스)
                 targetPosition = new Vector2(1522f, 776f);
                 Debug.Log("[빠른이동] 물약 상점의 진짜 물리 좌표로 정밀 추적 비행을 개시합니다.");
                 break;
             case 2:
-                targetPosition = new Vector2(-800f, 500f);
+                // 대장간 (기존: 1534, -776 -> 반전: X는 마이너스, Y는 플러스)
+                targetPosition = new Vector2(-1534f, 776f);
                 Debug.Log("[빠른이동] 대장간 좌표로 비행을 개시합니다.");
                 break;
             case 3:
+                // 무한모드 (기존: 1012, 713 -> 반전: X는 마이너스, Y는 마이너스)
                 targetPosition = new Vector2(-1012f, -713f);
                 Debug.Log("[빠른이동] 무한모드 NPC 진짜 좌표로 정밀 추적 비행을 개시합니다.");
                 break;
             case 4:
+                // 일반스테이지 (기존: 1471, 713 -> 반전: X는 마이너스, Y는 마이너스)
                 targetPosition = new Vector2(-1471f, -713f);
                 Debug.Log("[빠른이동] 일반모드 NPC 진짜 좌표로 정밀 추적 비행을 개시합니다.");
                 break;
