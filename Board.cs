@@ -925,65 +925,42 @@ if (InfiniteMonster.Instance != null)
     // ✅ 917번째 줄부터 파일 맨 끝까지 이 코드로 통째로 안전 덮어쓰기 하세요!
     // ✅ 917번째 줄부터 파일 맨 마지막 끝 줄까지 이 코드로 통째로 안전 덮어쓰기 하세요!
     // 🎯 [재시작 트리거 시스템]: 게임오버 화면 터치 시 보드판을 부활시킵니다.
-    public void RestartGameByTouch()
+    // ✅ 여기서부터 복사해서 파일 끝까지 덮어쓰기 하세요!
+        // ✅ [정품 연동 핵심]: 인스펙터에 조립 완료된 매니저에게 정산 명령을 위임합니다.
+    public void ShutdownAndCleanupBoard()
     {
-        // 1. 켜져 있던 게임오버 관련 UI들을 깨끗하게 꺼줍니다.
-        // ✅ 기존 973~974번째 줄을 마우스로 긁어서 이 코드로 완전히 바꾸세요!
-        Transform parentPanel = transform.parent;
-        if (parentPanel != null)
-        {
-            Transform gameOverTransform = parentPanel.Find("GAMEOVER TXT");
-            if (gameOverTransform != null)
-            {
-                gameOverTransform.gameObject.SetActive(false);
-            }
-        }
-
-        // 2. 잠겨있던 보드판의 스위치들을 초기 상태로 시원하게 풀어줍니다.
-        isGameActive = true;
-        isProcessing = false;
-        isSwapping = false;
-        isMatching = false;
+        isGameActive = false;
+        isProcessing = true;
+        
+        ClearAllBoardObjects(); // 보드 찌꺼기 청소
         comboCount = 0;
-        currentTurn = 0;
+        UpdateComboTextUI();
+        Debug.Log("✨ [성공] 보드판 소멸 완수.");
 
-        // 3. 배틀 매니저 정보가 연동되어 있다면 턴 UI를 원상복구합니다.
+        // 🎯 [핵심] 매니저의 정산 기능(`OnTimerEnd`)을 실행하여 랭킹 및 UI 처리
         if (PuzzleBattleManager.Instance != null)
         {
+            PuzzleBattleManager.Instance.currentTurn = currentTurn;
+            PuzzleBattleManager.Instance.OnTimerEnd(); 
+        }
+    }
+
+    // 🎯 [재시작 트리거]: 결과창 닫기 및 보드 초기화
+    public void RestartGameByTouch()
+    {
+        if (PuzzleBattleManager.Instance != null)
+        {
+            PuzzleBattleManager.Instance.panel_InfiniteReward?.SetActive(false);
             PuzzleBattleManager.Instance.currentTurn = 0;
             PuzzleBattleManager.Instance.UpdateTurnTextUI();
         }
 
-        // 4. 보드판 전면 초기화 엔진을 가동하여 가운데서부터 사방으로 새 블록들을 깔아줍니다!
+        isGameActive = true;
+        isProcessing = false;
+        comboCount = 0;
+        currentTurn = 0;
+
         InitializeNewBoard();
-        
-        Debug.Log("🔄 [재시작 완료] 유저 터치를 감지하여 3분 무한모드를 처음부터 다시 시작합니다!");
+        Debug.Log("🔄 [재시작 완료] 무한모드 다시 시작.");
     }
-
-    // 🎯 [정밀 UI 픽셀 위치 복구 부품]: 위치가 뒤틀려 튕기거나 아래로 밀려 내려가던 현상을 완벽하게 수리하는 핵심 엔진입니다.
-    private IEnumerator MoveBlockSmoothlyUI(GameObject target, Vector2 targetPosition)
-    {
-        if (target == null) yield break;
-        RectTransform rt = target.GetComponent<RectTransform>();
-        if (rt == null) yield break;
-
-        rt.SetAsLastSibling(); // 이동하는 Block이 다른 Block 뒤로 숨지 않게 레이어 맨 앞으로 올립니다.
-        Vector2 startPos = rt.anchoredPosition;
-        float elapsed = 0f;
-        float duration = 0.15f; // 우리가 지정해 둔 0.15초 쾌속 슬라이딩 스피드
-
-        while (elapsed < duration)
-        {
-            elapsed += Time.deltaTime;
-            float t = elapsed / duration;
-            
-            // 부드러운 감속 효과(SmoothStep)를 적용하여 정밀 이동합니다.
-            t = t * t * (3f - 2f * t);
-            if (rt != null) rt.anchoredPosition = Vector2.Lerp(startPos, targetPosition, t);
-            yield return null;
-        }
-        
-        if (rt != null) rt.anchoredPosition = targetPosition;
-    }
-}
- // 🚨 설계도 클래스 전체를 가장 마지막에 안전하게 걸어 잠그는 유일무이한 마침표 중괄호입니다. 이 밑에는 공백 외에 아무것도 두지 마세요!
+} // 🚨 파일 마감 괄호
