@@ -927,40 +927,93 @@ if (InfiniteMonster.Instance != null)
     // 🎯 [재시작 트리거 시스템]: 게임오버 화면 터치 시 보드판을 부활시킵니다.
     // ✅ 여기서부터 복사해서 파일 끝까지 덮어쓰기 하세요!
         // ✅ [정품 연동 핵심]: 인스펙터에 조립 완료된 매니저에게 정산 명령을 위임합니다.
+        // ✅ 사진 속 929번째 줄부터 파일 맨 마지막 끝 줄까지 이 코드로 통째로 안전 덮어쓰기 하세요!
+        // ✅ 뽄형님이 짚어주신 시작/종료 담당 오브젝트 규칙을 완벽하게 적용한 최종 종결 코드입니다!
     public void ShutdownAndCleanupBoard()
     {
         isGameActive = false;
         isProcessing = true;
         
-        ClearAllBoardObjects(); // 보드 찌꺼기 청소
+        ClearAllBoardObjects(); // 보드판 블록 찌꺼기 완벽 청소
         comboCount = 0;
         UpdateComboTextUI();
         Debug.Log("✨ [성공] 보드판 소멸 완수.");
 
-        // 🎯 [핵심] 매니저의 정산 기능(`OnTimerEnd`)을 실행하여 랭킹 및 UI 처리
+        // 🎯 [게임오버 발동]: 시간이 종료되었으므로 매니저의 정산 기능을 깨웁니다.
         if (PuzzleBattleManager.Instance != null)
         {
             PuzzleBattleManager.Instance.currentTurn = currentTurn;
-            PuzzleBattleManager.Instance.OnTimerEnd(); 
+            PuzzleBattleManager.Instance.OnTimerEnd(); // 이 함수 안에서 최종 대미지와 턴수를 정산합니다.
+
+            // ⚡ [스위치 작동 1]: 게임이 끝났으므로 '시작 담당 리모컨'은 확실하게 꺼줍니다!
+            if (PuzzleBattleManager.Instance.btn_StartTouchTrigger_Direct != null)
+            {
+                PuzzleBattleManager.Instance.btn_StartTouchTrigger_Direct.SetActive(false);
+            }
+
+            // ⚡ [스위치 작동 2]: 대신 '종료 담당 결과창(GAMEOVER TXT)' 본체를 화면에 확실하게 켭니다!
+            if (PuzzleBattleManager.Instance.panel_InfiniteReward != null)
+            {
+                PuzzleBattleManager.Instance.panel_InfiniteReward.SetActive(true);
+            }
         }
     }
 
-    // 🎯 [재시작 트리거]: 결과창 닫기 및 보드 초기화
+    // 🎯 [재시작 트리거]: 결과창 화면을 터치했을 때 다시 태초의 상태로 부활시키는 함수
     public void RestartGameByTouch()
     {
         if (PuzzleBattleManager.Instance != null)
         {
-            PuzzleBattleManager.Instance.panel_InfiniteReward?.SetActive(false);
+            // ⚡ [스위치 작동 3]: 다시 게임을 시작해야 하므로 떠 있던 '종료 담당 결과창'은 깨끗이 끕니다.
+            if (PuzzleBattleManager.Instance.panel_InfiniteReward != null)
+            {
+                PuzzleBattleManager.Instance.panel_InfiniteReward.SetActive(false);
+            }
+                
             PuzzleBattleManager.Instance.currentTurn = 0;
             PuzzleBattleManager.Instance.UpdateTurnTextUI();
+            
+            // ⚡ [스위치 작동 4]: 다음 판 첫 터치(드래그) 시작을 감지할 수 있도록 '시작 담당 리모컨'을 다시 켭니다!
+            if (PuzzleBattleManager.Instance.btn_StartTouchTrigger_Direct != null)
+            {
+                PuzzleBattleManager.Instance.btn_StartTouchTrigger_Direct.SetActive(true);
+            }
         }
 
+        // 보드 제어용 변수들도 첫 게임 시작 상태로 깔끔하게 영점 조절합니다.
         isGameActive = true;
         isProcessing = false;
+        isSwapping = false;
+        isMatching = false;
         comboCount = 0;
         currentTurn = 0;
 
+        // 가운데서부터 사방으로 피어나는 정품 새 보드판 배치 가동!
         InitializeNewBoard();
-        Debug.Log("🔄 [재시작 완료] 무한모드 다시 시작.");
+        Debug.Log("🔄 [순환 완공] 게임오버 창이 닫히고 스타트 트리거 버튼이 켜지며 무한모드가 재시작됩니다!");
     }
-} // 🚨 파일 마감 괄호
+
+    // 🎯 [정밀 UI 픽셀 위치 이동 부품]: 블록들이 꼬이거나 아래로 밀려 내려가지 않게 막아주는 방어선 코드
+    private IEnumerator MoveBlockSmoothlyUI(GameObject target, Vector2 targetPosition)
+    {
+        if (target == null) yield break;
+        RectTransform rt = target.GetComponent<RectTransform>();
+        if (rt == null) yield break;
+
+        rt.SetAsLastSibling(); // 드래그 중인 블록이 다른 블록 뒤로 숨지 않게 레이어 맨 앞으로 이동
+        Vector2 startPos = rt.anchoredPosition;
+        float elapsed = 0f;
+        float duration = 0.15f; // 쾌속 슬라이딩 스피드 0.15초 고정
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / duration;
+            t = t * t * (3f - 2f * t); // 부드러운 감속 연출 효과
+            if (rt != null) rt.anchoredPosition = Vector2.Lerp(startPos, targetPosition, t);
+            yield return null;
+        }
+        
+        if (rt != null) rt.anchoredPosition = targetPosition;
+    }
+} // 🚨 파일의 맨 마지막을 닫아주는 전체 마침표 중괄호입니다! 이 밑에는 아무것도 적지 마세요.
