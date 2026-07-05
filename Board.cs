@@ -404,38 +404,47 @@ public void OnClickRealStartInfiniteTimer()
     // 🎯 [완전 복구] 날아가버렸던 드래그 자리 교체 및 1턴 소모 전담 엔진
     // 🎯 [d-2 정품 + 최신 턴/콤보 융합] Block 이동 및 1턴 소모
     // ---- [복붙 시작] 앵커 방식을 완전히 제거하고 정밀 UI 픽셀 위치로 자리 교체 및 턴 소모 ----
-    private IEnumerator SwapBlocksRoutine( int x1, int y1, int x2, int y2)
+    // ✅ 기존 최신 기획 기능(이름 규칙, 유저 턴 기록 등)을 보존하며 옛날 복귀만 이식한 코드입니다!
+    private IEnumerator SwapBlocksRoutine(int x1, int y1, int x2, int y2)
     {
         isSwapping = true;
-        isUserTurn = true; // 🎯 기획 반영: 유저가 직접 드래그했음을 기록하여 자동 연쇄 폭발과 구분합니다!
+        isUserTurn = true; // 🎯 [기존 기능 보존] 유저 턴 기록
 
         GameObject b1 = allBlocks[x1, y1];
         GameObject b2 = allBlocks[x2, y2];
 
         if (b1 != null && b2 != null)
         {
-            // 🌟 옛날 코드의 완벽한 픽셀 목적지 좌표 계산식 가동
+            // 🌟 계산 공식으로 부드러운 위치 계산
             float startX = -((width - 1) * blockSpacing) / 2f;
             float startY = -((height - 1) * blockSpacing) / 2f;
 
             Vector2 posA = new Vector2(startX + (x1 * blockSpacing), startY + (y1 * blockSpacing));
             Vector2 posB = new Vector2(startX + (x2 * blockSpacing), startY + (y2 * blockSpacing));
 
-            // 두 Block을 서로의 목적지로 동시에 부드럽게 슬라이딩시킵니다.
             StartCoroutine(MoveBlockSmoothlyUI(b1, posB));
             yield return StartCoroutine(MoveBlockSmoothlyUI(b2, posA));
         }
 
-        // 데이터 장부(배열) 정보 동기화 교체
+        // 데이터 교체
         allBlocks[x1, y1] = b2;
         allBlocks[x2, y2] = b1;
 
-        if (b1 != null) b1. name = $"Block_{GetBlockColor(b1)}_{x2}_{y2}";
-        if (b2 != null) b2. name = $"Block_{GetBlockColor(b2)}_{x1}_{y1}";
+        // 🎯 [기존 기능 보존] 영문 "Block_" 이름 규칙 적용
+        if (b1 != null) b1.name = $"Block_{GetBlockColor(b1)}_{x2}_{y2}";
+        if (b2 != null) b2.name = $"Block_{GetBlockColor(b2)}_{x1}_{y1}";
 
-        // 자리가 바뀌었으니 3매치가 맞았는지 판정하러 이동합니다.
+        currentTurn++;
+        if (PuzzleBattleManager.Instance != null)
+        {
+            PuzzleBattleManager.Instance.currentTurn = currentTurn;
+            PuzzleBattleManager.Instance.UpdateTurnTextUI();
+        }
+
+
         yield return StartCoroutine(JudgeMatchAndProcess(x1, y1, x2, y2));
     }
+
     // 🛠️ 공통 이동/복귀 로직 (옛날 정품 뼈대)
     // ✅ 이 함수 전체를 복사해서 기존의 복잡한 앵커식 MoveBlocks 함수 자리에 통째로 덮어씌우세요!
     private IEnumerator MoveBlocks(GameObject b1, GameObject b2, int x1, int y1, int x2, int y2, float speed)
@@ -565,23 +574,16 @@ public void OnClickRealStartInfiniteTimer()
             UpdateComboTextUI();
 
             // 유저가 직접 드래그해서 첫 번째 매치가 터진 순간에만 실행됩니다!
-            if (isUserTurn)
-            {
-                currentTurn++; 
-                if (PuzzleBattleManager.Instance != null)
-                {
-                    PuzzleBattleManager.Instance.UpdateTurnTextUI();
-                }
-
-                // 🔔 [Monster 타격 연동 코드]: 터진 블록의 총 개수당 100 데미지 계산
-                if (InfiniteMonster.Instance != null)
-                {
-                    float damageDealt = matches.Count * 100f;
-                    InfiniteMonster.Instance.TakeDamage(damageDealt);
-                }
-
-                isUserTurn = false; // 첫 연쇄 이후 플래그 초기화
-            }
+if (isUserTurn)
+{
+    // 🔔 [Monster 타격 연동 코드]: 터진 블록의 총 개수당 100 데미지 계산
+    if (InfiniteMonster.Instance != null)
+    {
+        float damageDealt = matches.Count * 100f;
+        InfiniteMonster.Instance.TakeDamage(damageDealt);
+    }
+    isUserTurn = false; // 첫 연쇄 이후 플래그 초기화
+}
 
             // 2. 옛날 d-2 정품 방식: 안전하게 장부(배열) 비우고 화면에서 Block 제거
             foreach (GameObject block in matches)
@@ -599,7 +601,7 @@ public void OnClickRealStartInfiniteTimer()
             }
 
             // Block이 팡 터지는 연출을 위한 잠깐의 대기시간
-            yield return new WaitForSeconds(0.25f);
+            yield return new WaitForSeconds(0.15f);
 
             // 3. 옛날 d-2 정품 방식: 기존 Block을 아래로 떨구고, 천장에서 새 Block 리필
             yield return StartCoroutine(DropExistingBlocksRoutine());
@@ -821,7 +823,7 @@ public void OnClickRealStartInfiniteTimer()
                 }
             }
             // 한 줄 지울 때마다 0.05초씩 쉬어서 스르륵 사라지는 그라데이션 느낌 연출
-            yield return new WaitForSeconds(0.05f);
+            yield return new WaitForSeconds(0.08f);
         }
 
         yield return new WaitForSeconds(0.2f);
