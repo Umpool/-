@@ -8,9 +8,9 @@ using UnityEngine.EventSystems; // 🎯 [오류 해결]: PointerEventData를 컴
 public class Board : MonoBehaviour
 {
     [Header("ㅡ 보드 기본 설정 ㅡ")]
-    public int rows = 6;      // 가로 6칸
-    public int cols = 6;      // 세로 6칸
-    public float cellSize = 100f; // UI 블록 한 칸의 크기
+public int width = 6; // 가로 6칸 고정
+public int height = 6; // 세로 6칸 고정
+private float blockSpacing = 105f; // [보완] 블록이 겹쳐서 오작동하는걸 막는 안전 간격
     public float blockPadding = 0.02f; 
 
     [Header("ㅡ 블록 원본 프리팩 (6색) ㅡ")]
@@ -71,22 +71,25 @@ public class Board : MonoBehaviour
         return comboDamageMultipliers[index];
     }
     // 💡 [2단계 핵심]: 게임 시작 시 3매치가 미리 터지는 것을 방지하는 안전 생성 엔진
+    // 🎯 [완전 보강] 옛날 코드(d-2)의 정밀 격자 좌표 시스템을 이식한 보드 초기화 엔진
+    // 🎯 [ rows / cols 장부 완벽 연동 ] 현재 코드의 변수 명칭을 100% 보존한 초기화 엔진
     public void InitializeNewBoard()
     {
         ClearAllBoardObjects();
-
+        
+        // rows(가로)와 cols(세로) 장부 크기 그대로 안전하게 반복문을 돌립니다.
         for (int x = 0; x < rows; x++)
         {
             for (int y = 0; y < cols; y++)
             {
+                // 시작하자마자 3매치가 미리 터지는 버그 방지 목록 계산
                 List<int> allowedIndices = new List<int>();
-                
                 for (int i = 0; i < blockPrefabs.Length; i++)
                 {
                     if (x >= 2 && GetBlockColor(allBlocks[x - 1, y]) == GetBlockColor(blockPrefabs[i]) &&
-                                 GetBlockColor(allBlocks[x - 2, y]) == GetBlockColor(blockPrefabs[i])) continue;
+                        GetBlockColor(allBlocks[x - 2, y]) == GetBlockColor(blockPrefabs[i])) continue;
                     if (y >= 2 && GetBlockColor(allBlocks[x, y - 1]) == GetBlockColor(blockPrefabs[i]) &&
-                                 GetBlockColor(allBlocks[x, y - 2]) == GetBlockColor(blockPrefabs[i])) continue;
+                        GetBlockColor(allBlocks[x, y - 2]) == GetBlockColor(blockPrefabs[i])) continue;
                     
                     allowedIndices.Add(i);
                 }
@@ -95,24 +98,30 @@ public class Board : MonoBehaviour
                 SpawnBlockAt(randomIndex, x, y);
             }
         }
-        Debug.Log("🎲 [성공] 자동 매칭이 방지된 6x6 보드가 배치되었습니다.");
+        Debug.Log("🎲 [성공] 변수 충돌이 해결된 6x6 보드가 배치되었습니다.");
     }
 
-    // InitializeNewBoard 함수의 바깥쪽 독립된 공간에 정확히 위치해야 합니다!
+    // 🎯 [ rows / cols 장부 완벽 연동 ] 현재 코드의 앵커 시스템과 이름 규칙을 일치시킨 생성 엔진
     private void SpawnBlockAt(int prefabIndex, int x, int y)
     {
         GameObject newBlock = Instantiate(blockPrefabs[prefabIndex], transform);
         RectTransform rt = newBlock.GetComponent<RectTransform>();
+        
         if (rt != null)
         {
+            // 현재 코드의 앵커 계산 공식(cols와 rows)을 그대로 유지하여 UI 배치가 깨지지 않게 방지합니다.
             rt.anchorMin = new Vector2((float)x / cols, (float)y / rows);
             rt.anchorMax = new Vector2((float)(x + 1) / cols, (float)(y + 1) / rows);
             rt.offsetMin = new Vector2(5f, 5f);
             rt.offsetMax = new Vector2(-5f, -5f);
             rt.localScale = Vector3.one;
         }
+
         string rawColor = GetBlockColor(blockPrefabs[prefabIndex]);
-        newBlock.name = $"블록_{rawColor}_{Random.Range(10, 99)}";
+        
+        // [핵심 기획 반영] 프리팹 원본 이름 뒤에 현재 연동 중인 x와 y 좌표를 선명하게 박아줍니다!
+        newBlock.name = blockPrefabs[prefabIndex].name + "_" + x + "_" + y;
+        
         allBlocks[x, y] = newBlock;
     }
 
@@ -318,52 +327,46 @@ private void HandleMouseInput()
         }
     }
 
-    private IEnumerator SwapBlocksRoutine(int x1, int y1, int x2, int y2)
-    {
-        isSwappingNow = true;
-        currentTurn++; 
+private IEnumerator SwapBlocksRoutine(int x1, int y1, int x2, int y2)
+{
+    isSwappingNow = true;
+    currentTurn++; // 턴 소모
+    if (PuzzleBattleManager.Instance != null) PuzzleBattleManager.Instance.UpdateTurnTextUI();
 
-        if (PuzzleBattleManager.Instance != null)
-        {
-            PuzzleBattleManager.Instance.UpdateTurnTextUI();
-        }
-
-        Debug.Log($"⏳ [턴 카운트] 유저 조작 감지! 현재 누적 턴수: {currentTurn}턴");
-
-        GameObject block1 = allBlocks[x1, y1];
-        GameObject block2 = allBlocks[x2, y2];
-
-        if (dragLayerParent != null) block1.transform.SetParent(dragLayerParent);
-        else block1.transform.SetAsLastSibling();
-
-        Vector2 pos1 = new Vector2(x1 * cellSize, y1 * cellSize);
-        Vector2 pos2 = new Vector2(x2 * cellSize, y2 * cellSize);
-
-        float duration = 0.25f; 
-        float elapsed = 0f;
-
-        while (elapsed < duration)
-        {
-            elapsed += Time.deltaTime;
-            float t = elapsed / duration;
-
-            if (block1 != null) block1.GetComponent<RectTransform>().anchoredPosition = Vector2.Lerp(pos1, pos2, t);
-            if (block2 != null) block2.GetComponent<RectTransform>().anchoredPosition = Vector2.Lerp(pos2, pos1, t);
-            yield return null;
-        }
-
-        allBlocks[x1, y1] = block2;
-        allBlocks[x2, y2] = block1;
-
-        if (block1 != null) block1.transform.SetParent(transform);
-
-        yield return StartCoroutine(JudgeMatchAndProcess(x1, y1, x2, y2));
+    GameObject block1 = allBlocks[x1, y1], block2 = allBlocks[x2, y2];
+    
+    // 블록 레이어 최상위 설정 및 이동
+    if (dragLayerParent != null) block1.transform.SetParent(dragLayerParent);
+    
+    Vector2 pos1 = new Vector2(x1 * cellSize, y1 * cellSize), pos2 = new Vector2(x2 * cellSize, y2 * cellSize);
+    float duration = 0.25f, elapsed = 0f;
+    while (elapsed < duration) {
+        elapsed += Time.deltaTime;
+        float t = elapsed / duration;
+        if (block1 != null) block1.GetComponent<RectTransform>().anchoredPosition = Vector2.Lerp(pos1, pos2, t);
+        if (block2 != null) block2.GetComponent<RectTransform>().anchoredPosition = Vector2.Lerp(pos2, pos1, t);
+        yield return null;
     }
+
+    // 데이터 갱신 및 원상 복구
+    allBlocks[x1, y1] = block2; allBlocks[x2, y2] = block1;
+    if (block1 != null) block1.transform.SetParent(transform);
+
+    // 판정 및 콤보, 채우기 연결
+    yield return StartCoroutine(JudgeMatchAndProcess(x1, y1, x2, y2));
+}
 
     private IEnumerator JudgeMatchAndProcess(int x1, int y1, int x2, int y2)
     {
         isProcessing = true;
-        List<GameObject> matchedBlocks = FindAllMatches();
+List<GameObject> matchedBlocks = new List<GameObject>();
+
+// 🎯 [기획 규칙 반영]: 바꾼 두 블록의 색상이 서로 일치할 때만 3매치를 탐색합니다.
+if (GetBlockColor(allBlocks[x1, y1]) == GetBlockColor(allBlocks[x2, y2]))
+{
+    matchedBlocks = FindAllMatches();
+}
+// 색상이 다르면 matchedBlocks가 0개이므로 자동으로 매치 실패 처리가 되어 제자리로 돌아갑니다.
 
         if (matchedBlocks.Count > 0)
         {
@@ -553,7 +556,7 @@ foreach (GameObject block in matches)
                     rt.localScale = Vector3.one;
 
                     string rawColor = GetBlockColor(blockPrefabs[randomIndex]);
-                    newBlock.name = $"블록_{rawColor}_{Random.Range(10, 99)}";
+                    newBlock.name = $"블록_{rawColor}_{x}_{y}";
 
                     // 데이터 저장
                     allBlocks[x, y] = newBlock;
@@ -672,6 +675,7 @@ foreach (GameObject block in matches)
         }
     }
 
+    // 🎯 [완전 보강] 옛날 코드(d-2)의 철통 안전 검사식을 rows/cols에 맞게 이식한 데드락 탐색 엔진
     private bool CheckPossibleMatchesExist()
     {
         for (int x = 0; x < rows; x++)
@@ -680,19 +684,30 @@ foreach (GameObject block in matches)
             {
                 if (allBlocks[x, y] == null) continue;
 
-// 1. 오른쪽 탐색 (x+1이 rows 범위 내인지 확인)
-if (x + 1 < rows && allBlocks[x, y] != null && allBlocks[x + 1, y] != null)
-{
-    if (SimulateSwapAndCheckMatch(x, y, x + 1, y)) return true;
-}
-// 2. 위쪽 탐색 (y+1이 cols 범위 내인지 확인)
-if (y + 1 < cols && allBlocks[x, y] != null && allBlocks[x, y + 1] != null)
-{
-    if (SimulateSwapAndCheckMatch(x, y, x, y + 1)) return true;
-}
+                // 1. 오른쪽 칸 탐색 (x + 1이 가로 크기인 rows보다 작을 때만 안전하게 검사)
+                if (x + 1 < rows)
+                {
+                    if (allBlocks[x + 1, y] != null)
+                    {
+                        // 가상으로 자리를 바꿔서 3매치가 성립되는지 체크
+                        if (SimulateSwapAndCheckMatch(x, y, x + 1, y)) return true;
+                    }
+                }
+
+                // 2. 위쪽 칸 탐색 (y + 1이 세로 크기인 cols보다 작을 때만 안전하게 검사)
+                if (y + 1 < cols)
+                {
+                    if (allBlocks[x, y + 1] != null)
+                    {
+                        // 가상으로 자리를 바꿔서 3매치가 성립되는지 체크
+                        if (SimulateSwapAndCheckMatch(x, y, x, y + 1)) return true;
+                    }
+                }
             }
         }
-        return false; 
+        
+        // 보드판 전체를 다 뒤졌는데도 단 한 군데도 움직여서 터트릴 곳이 없다면 false(데드락 상태)를 리턴합니다.
+        return false;
     }
 
     private bool SimulateSwapAndCheckMatch(int x1, int y1, int x2, int y2)
@@ -710,18 +725,34 @@ if (y + 1 < cols && allBlocks[x, y] != null && allBlocks[x, y + 1] != null)
         return hasMatch;
     }
 
-    private IEnumerator ResolveDeadlockRoutine()
+private IEnumerator ResolveDeadlockRoutine()
+{
+    isProcessing = true;
+    Debug. LogWarning("🚨 [데드락] 움직일 조합 없음! 12시→6시 순서로 그라데이션 소멸 후 새로 채웁니다.");
+
+    // 1. [기획서 반영] 12시(위쪽 y=cols-1)부터 6시(아래쪽 y=0) 방향으로 순서대로 삭제
+    for (int y = cols - 1; y >= 0; y--)
     {
-        isProcessing = true;
-        Debug.LogWarning("🚨 [데드락 감지] 움직일 조합이 없습니다! 판을 비우고 하늘에서 새로 떨어집니다.");
-
-        ClearAllBoardObjects();
-        yield return new WaitForSeconds(0.2f);
-        yield return StartCoroutine(RefillNewBlocksRoutine());
-
-        isProcessing = false;
-        yield return StartCoroutine(CheckPostProcessAndDeadlock());
+        for (int x = 0; x < rows; x++)
+        {
+            if (allBlocks[x, y] != null)
+            {
+                Destroy(allBlocks[x, y]);
+                allBlocks[x, y] = null;
+            }
+        }
+        // 한 줄 지울 때마다 0.05초씩 쉬어서 위에서 아래로 스르륵 사라지는 느낌 연출
+        yield return new WaitForSeconds(0.05f);
     }
+
+    yield return new WaitForSeconds(0.2f);
+
+    // 2. 새로운 블록들을 12시 방향에서 아래로 내려보내기
+    yield return StartCoroutine(RefillNewBlocksRoutine());
+    
+    isProcessing = false;
+    yield return StartCoroutine(CheckPostProcessAndDeadlock());
+}
 
     private IEnumerator CheckPostProcessAndDeadlock()
     {
