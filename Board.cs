@@ -361,35 +361,27 @@ private void FindBlockIndex(GameObject block, out int x, out int y)
     }
 
 
-
+    //주로 바꾸는곳 시작점
+    // 🎯 [완전 복구] 옛날 d-2 정품 구조를 100% 이식한 3매치 정방향 사후 판정 엔진
     private IEnumerator JudgeMatchAndProcess(int x1, int y1, int x2, int y2)
     {
         isProcessing = true;
 
-        // 🎯 바꾼 두 위치의 블록 색상이 완벽히 똑같은지 추출하여 1차 판정합니다.
-        string color1 = GetBlockColor(allBlocks[x1, y1]);
-        string color2 = GetBlockColor(allBlocks[x2, y2]);
-
-        List<GameObject> matchedBlocks = new List<GameObject>();
-
-        // 두 블록의 색상이 서로 일치할 때만 전체 보드판 3매치 연쇄 폭발을 탐색합니다.
-        if (color1 == color2)
-        {
-            matchedBlocks = FindAllMatches();
-        }
+        // 🌟 [교정] 옛날 d-2 방식대로, 자리가 바뀐 직후 전체 판의 3매치 연속성을 다이렉트로 검사합니다.
+        List<GameObject> matchedBlocks = FindAllMatches();
 
         if (matchedBlocks.Count > 0)
         {
-            // ⭕ 매칭 성공: 점수 콤보 누적 및 파괴 처리
-            Debug.Log($"🔥 [매칭 성공] {matchedBlocks.Count}개의 블록이 기획 규칙에 맞춰 터집니다!");
+            // ⭕ 3매치 성공: 파괴, 점수, 콤보 누적 및 빈칸 채우기 가동
+            Debug.Log($"🔥 [판정 성공] {matchedBlocks.Count}개의 블록이 연속 배치되어 파괴 루틴을 격발합니다.");
             yield return StartCoroutine(DestroyAndRefillRoutine(matchedBlocks));
         }
         else
         {
-            // ❌ 매칭 실패: 원래 출발 위치로 부드럽게 복귀
-            Debug.LogWarning("❌ [매칭 실패] 도착지의 블록 색상 조건이 달라 원래 위치로 복귀 애니메이션을 격발합니다.");
+            // ❌ 3매치 실패: 1턴을 소모한 채 원래 출발 전 위치로 완벽하게 되돌려놓습니다.
+            Debug.LogWarning("❌ [판정 실패] 3매치 조건이 성립되지 않아 블록을 원래 자리로 복귀시킵니다.");
 
-            GameObject block1 = allBlocks[x1, y1]; // 옮겨갔던 블록들
+            GameObject block1 = allBlocks[x1, y1]; // 옮겨갔던 블록 장부 백업
             GameObject block2 = allBlocks[x2, y2];
 
             if (block1 != null && block2 != null)
@@ -397,12 +389,13 @@ private void FindBlockIndex(GameObject block, out int x, out int y)
                 RectTransform rt1 = block1.GetComponent<RectTransform>();
                 RectTransform rt2 = block2.GetComponent<RectTransform>();
 
-                // 앵커 비율 기반 역산으로 완벽하고 부드럽게 제자리 순간이동 없이 되돌려놓습니다.
+                // 출발 전 원래 자리의 정확한 격자 앵커 좌표 계산
                 Vector2 startMin1 = new Vector2((float)x1 / width, (float)y1 / height);
                 Vector2 startMax1 = new Vector2((float)(x1 + 1) / width, (float)(y1 + 1) / height);
                 Vector2 startMin2 = new Vector2((float)x2 / width, (float)y2 / height);
                 Vector2 startMax2 = new Vector2((float)(x2 + 1) / width, (float)(y2 + 1) / height);
 
+                // 제자리 순간이동 버그를 막기 위해 되돌아갈 때도 부드러운 Lerp 시간을 기다려줍니다.
                 float duration = 0.2f, elapsed = 0f;
                 while (elapsed < duration)
                 {
@@ -413,81 +406,30 @@ private void FindBlockIndex(GameObject block, out int x, out int y)
                     yield return null;
                 }
 
-                // 오차 강제 고정 원상복구
+                // 이동 완료 후 앵커 위치 최종 고정
                 if (rt1 != null) { rt1.anchorMin = startMin1; rt1.anchorMax = startMax1; }
                 if (rt2 != null) { rt2.anchorMin = startMin2; rt2.anchorMax = startMax2; }
             }
 
-            // 실제 장부(배열 데이터)도 출발 전 원래 데이터 주소로 완벽하게 되돌려놓습니다.
+            // 🔄 시각적 이동이 끝났으니 실제 데이터 장부(배열) 주소도 원래대로 원상복구합니다.
             allBlocks[x1, y1] = block1;
             allBlocks[x2, y2] = block2;
         }
 
-        // 연산 프로세스 종료 스위치 원복
+        // 스와이프 및 연산 플래그 잠금 해제
         isSwappingNow = false;
         isProcessing = false;
 
-        // 보드판 정리가 모두 끝난 후 데드락 여부를 최종 검사합니다.
+        // 보드판의 모든 움직임이 안정화된 후 최종 데드락 여부를 체크합니다.
         yield return StartCoroutine(CheckPostProcessAndDeadlock());
     }
-    // 🎯 [완전 복구] 날아가버렸던 드래그 자리 교체 및 1턴 소모 전담 엔진
-    // 🎯 [기획서 흐름 100% 반영] 부드러운 교체 연출 후 즉시 도착지 판정 제어탑으로 신호를 넘기는 엔진
-    private IEnumerator SwapBlocksRoutine(int x1, int y1, int x2, int y2)
-    {
-        isSwappingNow = true;
-        currentTurn++; // 1턴 소모
-        if (PuzzleBattleManager.Instance != null) PuzzleBattleManager.Instance.UpdateTurnTextUI();
 
-        GameObject block1 = allBlocks[x1, y1];
-        GameObject block2 = allBlocks[x2, y2];
-
-        if (block1 != null && block2 != null)
-        {
-            RectTransform rt1 = block1.GetComponent<RectTransform>();
-            RectTransform rt2 = block2.GetComponent<RectTransform>();
-
-            // [기획서 반영]: 출발한 블록이 다른 블록보다 가장 최상위 레이어(맨 위)에 표시되게 만듭니다.
-            if (rt1 != null) rt1.SetAsLastSibling();
-
-            // 도착 목표 지점의 앵커 계산
-            Vector2 targetMin1 = new Vector2((float)x2 / width, (float)y2 / height);
-            Vector2 targetMax1 = new Vector2((float)(x2 + 1) / width, (float)(y2 + 1) / height);
-            Vector2 targetMin2 = new Vector2((float)x1 / width, (float)y1 / height);
-            Vector2 targetMax2 = new Vector2((float)(x1 + 1) / width, (float)(y1 + 1) / height);
-
-            // 🎯 [부드러운 이동 연출]: 두 블록이 서로 완전히 교체될 때까지 물리적 시간을 대기합니다.
-            float duration = 0.2f, elapsed = 0f;
-            while (elapsed < duration)
-            {
-                elapsed += Time.deltaTime;
-                float t = elapsed / duration;
-                if (rt1 != null) { rt1.anchorMin = Vector2.Lerp(rt1.anchorMin, targetMin1, t); rt1.anchorMax = Vector2.Lerp(rt1.anchorMax, targetMax1, t); }
-                if (rt2 != null) { rt2.anchorMin = Vector2.Lerp(rt2.anchorMin, targetMin2, t); rt2.anchorMax = Vector2.Lerp(rt2.anchorMax, targetMax2, t); }
-                yield return null;
-            }
-
-            // 이동 애니메이션 최종 착지 고정
-            if (rt1 != null) { rt1.anchorMin = targetMin1; rt1.anchorMax = targetMax1; }
-            if (rt2 != null) { rt2.anchorMin = targetMin2; rt2.anchorMax = targetMax2; }
-        }
-
-        // 🔄 이동 완료 직후, 컴퓨터 데이터 장부(배열) 주소 상호 갱신
-        allBlocks[x1, y1] = block2;
-        allBlocks[x2, y2] = block1;
-
-        Debug.Log($"🏁 [이동 코루틴 완료] 화면상에 완전히 교체 완료되었습니다. 이제 도착지 판정을 시작합니다!");
-
-        // 🎯 [순서 개편 핵심]: 화면 이동과 장부 갱신이 '완벽히 끝난 후'에 판정 함수를 호출하여 파괴/복귀 여부를 결정합니다.
-        yield return StartCoroutine(JudgeMatchAndProcess(x1, y1, x2, y2));
-    }
-
-
-    // 🎯 [옛날 정품 d-2 엔진 이식] 가로/세로 3매치 연속성을 한 치의 오차도 없이 낚아채는 탐색기
+    // 🎯 [완전 복구] 가로/세로 3개 이상 연속된 컬러 매칭을 한 치의 오차도 없이 적출하는 정품 탐색기
     private List<GameObject> FindAllMatches()
     {
         List<GameObject> matches = new List<GameObject>();
 
-        // 1. 가로축 3매치 연속성 검사 (width - 2 범위까지만 안전하게 서치)
+        // 1. 가로축 3연속 매칭 추적 검사 (width - 2까지만 안전하게 순회)
         for (int y = 0; y < height; y++)
         {
             for (int x = 0; x < width - 2; x++)
@@ -498,7 +440,7 @@ private void FindBlockIndex(GameObject block, out int x, out int y)
 
                 if (b1 != null && b2 != null && b3 != null)
                 {
-                    // 대소문자 무시 추출한 색상 명장부가 일치하는지 비교합니다.
+                    // 대소문자를 무시하고 추출한 문자열 색상이 연속으로 일치하는지 비교합니다.
                     if (GetBlockColor(b1) == GetBlockColor(b2) && GetBlockColor(b2) == GetBlockColor(b3))
                     {
                         if (!matches.Contains(b1)) matches.Add(b1);
@@ -509,7 +451,7 @@ private void FindBlockIndex(GameObject block, out int x, out int y)
             }
         }
 
-        // 2. 세로축 3매치 연속성 검사 (height - 2 범위까지만 안전하게 서치)
+        // 2. 세로축 3연속 매칭 추적 검사 (height - 2까지만 안전하게 순회)
         for (int x = 0; x < width; x++)
         {
             for (int y = 0; y < height - 2; y++)
@@ -531,6 +473,58 @@ private void FindBlockIndex(GameObject block, out int x, out int y)
         }
 
         return matches;
+    }
+    // 🎯 [완전 복구] 날아가버렸던 드래그 자리 교체 및 1턴 소모 전담 엔진
+    private IEnumerator SwapBlocksRoutine(int x1, int y1, int x2, int y2)
+    {
+        isSwappingNow = true;
+        
+        // 🎯 [기획서 반영]: 유저가 블록을 움직였다면 3매치 성공/실패 여부와 관계없이 1턴을 먼저 소모합니다.
+        currentTurn++; 
+        if (PuzzleBattleManager.Instance != null)
+        {
+            PuzzleBattleManager.Instance.UpdateTurnTextUI();
+        }
+
+        GameObject block1 = allBlocks[x1, y1];
+        GameObject block2 = allBlocks[x2, y2];
+
+        if (block1 != null && block2 != null)
+        {
+            RectTransform rt1 = block1.GetComponent<RectTransform>();
+            RectTransform rt2 = block2.GetComponent<RectTransform>();
+
+            // [기획서 반영]: 출발한 블록이 다른 블록보다 가장 최상위 레이어(맨 위)에 표시되게 만듭니다.
+            if (rt1 != null) rt1.SetAsLastSibling();
+
+            // 교체 완료될 정밀 격자 비율 기반 앵커 목적지 설정
+            Vector2 targetMin1 = new Vector2((float)x2 / width, (float)y2 / height);
+            Vector2 targetMax1 = new Vector2((float)(x2 + 1) / width, (float)(y2 + 1) / height);
+            Vector2 targetMin2 = new Vector2((float)x1 / width, (float)y1 / height);
+            Vector2 targetMax2 = new Vector2((float)(x1 + 1) / width, (float)(y1 + 1) / height);
+
+            // 두 블록이 서로 크로스하며 부드럽게 이동하는 애니메이션
+            float duration = 0.2f, elapsed = 0f;
+            while (elapsed < duration)
+            {
+                elapsed += Time.deltaTime;
+                float t = elapsed / duration;
+                if (rt1 != null) { rt1.anchorMin = Vector2.Lerp(rt1.anchorMin, targetMin1, t); rt1.anchorMax = Vector2.Lerp(rt1.anchorMax, targetMax1, t); }
+                if (rt2 != null) { rt2.anchorMin = Vector2.Lerp(rt2.anchorMin, targetMin2, t); rt2.anchorMax = Vector2.Lerp(rt2.anchorMax, targetMax2, t); }
+                yield return null;
+            }
+
+            // 오차 방지 목적지 좌표 강제 고정
+            if (rt1 != null) { rt1.anchorMin = targetMin1; rt1.anchorMax = targetMax1; }
+            if (rt2 != null) { rt2.anchorMin = targetMin2; rt2.anchorMax = targetMax2; }
+        }
+
+        // 실제 보드판 장부(배열 데이터)의 위치도 상호 교환합니다.
+        allBlocks[x1, y1] = block2;
+        allBlocks[x2, y2] = block1;
+
+        // 자리가 바뀌었으니, 기획 규칙에 따른 색상 매칭 및 복귀 판정 함수를 연달아 호출합니다!
+        yield return StartCoroutine(JudgeMatchAndProcess(x1, y1, x2, y2));
     }
 
     // 🎯 [완전 융합] 현재 코드의 콤보 배율/연쇄 폭발 장치를 100% 보존하면서 옛날 점수 연동을 이식한 엔진
