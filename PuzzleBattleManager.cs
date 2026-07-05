@@ -296,6 +296,7 @@ using UnityEngine.UI; // 🌟 슬라이더 및 UI 컴포넌트 제어용 필수 
             Debug.Log($"[전투 전용 자동 연동] 영웅 HP 바 등록 완료! (현재 {heroHPBars.Count}개)");
         }
     }
+    }
     
     
     public void OnClickBackToVillageFromInfinite()
@@ -568,15 +569,3 @@ using UnityEngine.UI; // 🌟 슬라이더 및 UI 컴포넌트 제어용 필수 
             Debug.Log("🧹 [PuzzleBattleManager] 배틀 데이터 초기화 완수!");
         }
     }
-    
-    
-    
-    
-    
-
-
-
-
-    
-
-
