@@ -429,13 +429,13 @@ public class GameManager : MonoBehaviour
     if (popup_PartyEditCharacterInfo != null) popup_PartyEditCharacterInfo.SetActive(false);
 
     // 🌟 [교정 1] 철벽 만석 판정 : 파티원이 이미 5명이면 경고창을 띄우고 "즉시 함수 종료"
-    if (partyMembers.Contains(data))
+    if (partyMembers.Count >= 5)
     {
         if (popup_AlertWindow != null)
         {
             popup_AlertWindow.SetActive(true);
             StopAllCoroutines();
-            StartCoroutine(FadeOutAlertWindow_SubCharSelect("이미 파티에 소속된 캐릭터입니다."));
+            StartCoroutine(FadeOutAlertWindow_SubCharSelect("정원이 가득찼습니다"));
         }
         return; // 🚀 여기서도 철저하게 리턴으로 잘라줍니다!
     }
