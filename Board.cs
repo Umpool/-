@@ -479,23 +479,37 @@ public void OnClickRealStartInfiniteTimer()
         else
         {
             // 3매치 실패 시: 옛날 구형 앵커식을 지우고 정밀 UI 픽셀 좌표로 완벽 복귀
-            GameObject block1 = allBlocks[x1, y1];
-            GameObject block2 = allBlocks[x2, y2];
+// ✅ 에러가 났던 부분을 지우고, 이 코드를 복사해서 그대로 덮어씌우세요!
+GameObject block1 = allBlocks[x1, y1];
+GameObject block2 = allBlocks[x2, y2];
 
-            if (block1 != null && block2 != null)
-            {
-                // 옛날 코드(d-2)의 완벽한 픽셀 정중앙 기준선 계산 공식을 그대로 가동합니다.
-                float startX = -((width - 1) * blockSpacing) / 2f;
-                float startY = -((height - 1) * blockSpacing) / 2f;
+// 1. 장부(배열) 정보를 완전히 원래대로 돌려놓습니다.
+allBlocks[x1, y1] = block2;
+allBlocks[x2, y2] = block1;
 
-                // 원래 돌아가야 할 정밀 UI 픽셀 목적지 좌표 계산
-                Vector2 originalPos1 = new Vector2(startX + (x1 * blockSpacing), startY + (y1 * blockSpacing));
-                Vector2 originalPos2 = new Vector2(startX + (x2 * blockSpacing), startY + (y2 * blockSpacing));
+// 2. 블록의 이름(텍스트)을 원래 좌표 이름으로 되돌려놓습니다.
+if (block1 != null) block1.name = $"Block_{GetBlockColor(block1)}_{x1}_{y1}";
+if (block2 != null) block2.name = $"Block_{GetBlockColor(block2)}_{x2}_{y2}";
 
-                // 3매치 실패 시 원래 자리로 부드럽게 픽셀 슬라이딩 되돌리기
-                StartCoroutine(MoveBlockSmoothlyUI(block1, originalPos1));
-                yield return StartCoroutine(MoveBlockSmoothlyUI(block2, originalPos2));
-            }
+// 3. 컴포넌트 에러를 방지하기 위해, 유니티 내부 메시지 기능을 이용하여 좌표를 원상복구합니다.
+if (block1 != null) block1.SendMessage("SetGridPosition", new Vector2Int(x1, y1), SendMessageOptions.DontRequireReceiver);
+if (block2 != null) block2.SendMessage("SetGridPosition", new Vector2Int(x2, y2), SendMessageOptions.DontRequireReceiver);
+
+if (block1 != null && block2 != null)
+{
+
+    float startX = -((width - 1) * blockSpacing) / 2f;
+    float startY = -((height - 1) * blockSpacing) / 2f;
+
+    // 원래 돌아가야 할 정밀 UI 픽셀 목적지 좌표 계산
+    Vector2 originalPos1 = new Vector2(startX + (x2 * blockSpacing), startY + (y2 * blockSpacing));
+    Vector2 originalPos2 = new Vector2(startX + (x1 * blockSpacing), startY + (y1 * blockSpacing));
+
+    // 3매치 실패 시 원래 자리로 부드럽게 픽셀 슬라이딩 되돌리기
+    StartCoroutine(MoveBlockSmoothlyUI(block1, originalPos1));
+    yield return StartCoroutine(MoveBlockSmoothlyUI(block2, originalPos2));
+}
+
 
             // 데이터 장부(배열) 정보를 완벽하게 원상복구 동기화합니다.
             allBlocks[x1, y1] = block1;
@@ -567,7 +581,7 @@ public void OnClickRealStartInfiniteTimer()
             }
 
             // Block이 팡 터지는 연출을 위한 잠깐의 대기시간
-            yield return new WaitForSeconds(0.15f);
+            yield return new WaitForSeconds(0.25f);
 
             // 3. 옛날 d-2 정품 방식: 기존 Block을 아래로 떨구고, 천장에서 새 Block 리필
             yield return StartCoroutine(DropExistingBlocksRoutine());
