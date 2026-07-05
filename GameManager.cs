@@ -103,11 +103,19 @@ public class GameManager : MonoBehaviour
         if (Instance == null) Instance = this;
         else Destroy(gameObject);
 
+        // 💡 [최우선 순위 격리 차단]: 게임이 켜지는 0.00초 마스터 타이밍에 인트로 외 다른 UI는 원천 셧다운합니다.
+        if (panel_Village != null) panel_Village.SetActive(false);
+        if (panel_CharacterSelect != null) panel_CharacterSelect.SetActive(false);
+        if (panel_PartyEditView != null) panel_PartyEditView.SetActive(false);
+
         RefreshAllCharacterMenuCards();
     }
 
     void Start()
     {
+                // 💡 [여기에 한 줄 추가!]: 캔버스 내부의 인트로 패널을 게임매니저가 시작하자마자 강제로 쾅 켜서 선점합니다!
+        GameObject introPanelObj = GameObject.Find("Canvas")?.transform.Find("Panel_Intro")?.gameObject;
+        if (introPanelObj != null) introPanelObj.SetActive(true);
         if (popup_PartyAddConfirm != null) popup_PartyAddConfirm.SetActive(false);
         // 🌟 [코드 제어] 게임 시작 시 알림창 팝업을 무조건 처음부터 OFF 상태로 초기화합니다.
         if (popup_AlertWindow != null) popup_AlertWindow.SetActive(false);
@@ -255,10 +263,23 @@ public class GameManager : MonoBehaviour
             PuzzleBattleManager.Instance.ResetBattleSystemForNextEntry();
         }
 
-        // 2. 대소문자를 엄격하게 맞춘 원본 변수들을 사용하여 직접 켜고 끕니다.
-        if (Panel_Village != null) Panel_Village.SetActive(true);
-        if (Panel_INPuzzleBattle != null) Panel_INPuzzleBattle.SetActive(false);
-        if (PartyListContainer != null) PartyListContainer.SetActive(false);
+        // 2. [에러 완벽 박멸] 꼬여버린 GoToVillage 함수 대신, 실제 변수를 사용해 직접 마을을 켭니다!
+        if (panel_Village != null) 
+        {
+            panel_Village.SetActive(true);
+        }
+        
+        if (partyListContainer != null) 
+        {
+            partyListContainer.SetActive(false);
+        }
+
+        // 3. 인게임 퍼즐 배틀 패널을 하이어라키에서 직접 찾아서 안전하게 꺼버립니다.
+        GameObject ingameBattlePanel = GameObject.Find("Canvas")?.transform.Find("Panel_INPuzzleBattle")?.gameObject;
+        if (ingameBattlePanel != null)
+        {
+            ingameBattlePanel.SetActive(false);
+        }
 
         Debug.Log("🏡 [성공] 마을 복귀 및 배틀 패널 완전 세탁 완료!");
     }
@@ -1184,12 +1205,16 @@ if (partyEditInfoText != null) partyEditInfoText.text = $"{targetData.descriptio
             puzzleManager.enemyHPBar.value = Mathf.Max(0f, currentHP - (amount / 100f));
             Debug.Log($"[몬스터 타격!] 대미지 {amount} 적중! 남은 HP 게이지: {puzzleManager.enemyHPBar.value}");
 
-            if (puzzleManager.enemyHPBar.value <= 0f)
-            {
-                Debug.Log("[전투 승리 선포] 무한 모드 몬스터 격파! 보상 창 전개.");
-                Board boardComponent = puzzleManager.panel_PuzzleBattle?.GetComponentInChildren<Board>();
-                if (boardComponent != null) boardComponent.OnClickRewardConfirmButton();
-            }
+        if (puzzleManager.enemyHPBar.value <= 0f)
+        {
+            Debug.Log("[전투 승리 선포] 무한 모드 몬스터 격파! 보상 창 전개.");
+            // 💡 [1203번 줄 수정]: 문장 맨 끝에 영광의 세미콜론(;)을 확실하게 쾅 찍어 문단을 마감해 줍니다!
+            Board boardComponent = puzzleManager.puzzleBoardComponent; 
+
+            // 💡 [1204번 줄 수정]: if문 수식을 정돈하고, 최신형 클리너 명령어인 ShutdownAndCleanupBoard(); 로 단어를 교체합니다!
+            if (boardComponent != null) boardComponent.ShutdownAndCleanupBoard();
+        }
+
         }
         else
         {
@@ -1310,13 +1335,15 @@ if (partyEditInfoText != null) partyEditInfoText.text = $"{targetData.descriptio
             {
                 puzzleBoardTrans.gameObject.SetActive(true);
                 Board boardComponent = puzzleBoardTrans.GetComponent<Board>();
-                if (boardComponent != null)
-                {
-                    boardComponent.SetupStage(6, 6);
-                    boardComponent.CreateBoard();
-                    InitializeDynamicBattlePartyUI();
-                    Debug.Log("[퍼즐 소환 완료] 6x6 격자 보석 블록 출력 완료.");
-                }
+            if (boardComponent != null)
+            {
+                // 💡 [수정 완료]: 옛날식 수동 세팅 2줄을 지우고, 최신형 자동 폭발 방지 엔진 1줄로 통합 교체합니다!
+                boardComponent.InitializeNewBoard();
+
+                InitializeDynamicBattlePartyUI();
+                Debug.Log("[퍼즐 소환 완료] 6x6 격자 보석 블록 출력 완료.");
+            }
+
             }
         }
         else
