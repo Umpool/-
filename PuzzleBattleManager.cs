@@ -178,61 +178,40 @@ public class PuzzleBattleManager : MonoBehaviour
 
         // 💡 111번째 줄 무한 모드 판정 구역입니다!
         // 💡 1. 무한 모드 판정 및 시동 구역
-        if (gameMode == "infinite" || gameMode == "Infinite")
+    public void StartPuzzleBattle(string gameMode)
+    {
+        currentTurn = 0;
+        UpdateTurnTextUI();
+
+        // 1. [다이렉트 화면 전환]: 무한모드 패널은 무조건 켜고, 일반 패널은 무조건 끕니다.
+        if (panel_PuzzleBattle != null) panel_PuzzleBattle.SetActive(false);
+        if (panel_InfiniteBattle != null) panel_InfiniteBattle.SetActive(true);
+
+        // 2. [불필요한 UI 및 결과창 빛의 속도로 청소]
+        GameObject realPartyList = GameObject.Find("Canvas")?.transform.Find("PartyListContainer")?.gameObject;
+        if (realPartyList != null) realPartyList.SetActive(false);
+
+        if (panel_InfiniteBattle != null)
         {
-            // [A] 큰 방 패널 활성화
-            if (panel_InfiniteBattle != null)
-            {
-                panel_InfiniteBattle.SetActive(true);
-            }
-
-            // [B] 트리거 즉시 멱살 잡고 ON [V]
-            if (btn_StartTouchTrigger_Direct != null)
-            {
-                btn_StartTouchTrigger_Direct.SetActive(true);
-            }
-            if (panel_InfiniteBattle != null)
-            {
-                Transform triggerBtn = panel_InfiniteBattle.transform.Find("Btn_StartTouchTrigger");
-                if (triggerBtn != null) triggerBtn.gameObject.SetActive(true);
-            }
-
-            // [C] 타이머 3분 리셋 및 시계 대기
-            timeRemaining = 3f;
-            timerIsRunning = false;
-
-            // [D] 불필요한 UI 청소 및 결과창 OFF
-            GameObject realPartyList2 = GameObject.Find("Canvas")?.transform.Find("PartyListContainer")?.gameObject;
-            if (realPartyList2 != null) realPartyList2.SetActive(false);
-
-            if (panel_InfiniteBattle != null)
-            {
-                Transform gameover = panel_InfiniteBattle.transform.Find("GAMEOVER TXT");
-                if (gameover != null) gameover.gameObject.SetActive(false);
-            }
-
-            Debug.Log("🏁 무한모드 메인 시동 완료!");
+            Transform gameover = panel_InfiniteBattle.transform.Find("GAMEOVER TXT");
+            if (gameover != null) gameover.gameObject.SetActive(false); // 결과창은 칼같이 끔
         }
 
+        // 3. 🎯 [형님 기획 100% 다이렉트 반영]: 판정 없이 트리거 버튼과 패널을 무조건 True(ON)로 박아버립니다!
+        if (btn_StartTouchTrigger_Direct != null) btn_StartTouchTrigger_Direct.SetActive(true);
+        if (startTouchTriggerPanel != null) startTouchTriggerPanel.SetActive(true);
 
+        // 4. [타이머 리셋 및 보드 가동]
+        timeRemaining = 3f; // 테스트용 3초 유지
+        timerIsRunning = false;
 
-
-
-        else
-        {
-
-            // 💡 일반 스테이지 패널을 켭니다!
-            if (panel_PuzzleBattle != null) panel_PuzzleBattle.SetActive(true);
-            Debug.Log("[일반 배틀 화면 전개 ON]");
-        }
-
-        // 2. 아군 소환 및 6x6 보드 엔진 가동 (공통 실행)
         SetupBattleEntities();
         if (puzzleBoardComponent != null)
         {
             puzzleBoardComponent.SetupStage(6, 6);
             puzzleBoardComponent.CreateBoard();
         }
+    }
     }
     public void UpdateTurnTextUI()
     {
@@ -621,39 +600,39 @@ public void OnTimerEnd()
             {
                 PlayerPrefs.SetInt($"INF_RANK_{i + 1}", highScores[i]);
             }
-            PlayerPrefs.Save();
-        }
-        if (panel_InfiniteBattle != null)
-        {
-            Transform gameover = panel_InfiniteBattle.transform.Find("GAMEOVER TXT");
-            if (gameover != null)
-            {
-                gameover.gameObject.SetActive(true);
-                Debug.Log("🎉 [코드로 완벽 제어] 3분 종료! GAMEOVER TXT 결과창 강제 ON 대완공!");
-            }
-        }
-        if (panel_InfiniteBattle != null)
-        {
-            Transform gameover = panel_InfiniteBattle.transform.Find("GAMEOVER TXT");
-            if (gameover != null)
-            {
-                gameover.gameObject.SetActive(true);
-                Debug.Log("🎉 [코드로 완벽 제어] 3분 종료! GAMEOVER TXT 결과창 강제 ON 대완공!");
-            }
-        }
+        // 💾 [624번 라인 PlayerPrefs.Save(); 바로 아랫줄부터 드래그해서 교체하세요!]
+        PlayerPrefs.Save();
+    } // 🔒 1. highScores 기록을 밀어내던 if (currentRank >= 1 ...) 문을 완전히 닫아줍니다.
 
-        // 🌟 [이 구역의 맨 마지막 줄인 여기에 딱 한 줄만 추가하세요!]
-        if (btn_StartTouchTrigger_Direct != null) btn_StartTouchTrigger_Direct.SetActive(false);
+    // 🌟 [무한모드 패널 제어 및 교차 편집]
+    if (panel_InfiniteBattle != null)
+    {
+        // [A] 결과창 텍스트 박스(GAMEOVER TXT)를 확실하게 ON 합니다.
+        Transform gameover = panel_InfiniteBattle.transform.Find("GAMEOVER TXT");
+        if (gameover != null)
+        {
+            gameover.gameObject.SetActive(true); 
+        }
     }
 
-        
-
-
-    
-
-    // 2. 마을에서 NPC 순위보기 버튼을 누르면 1위부터 10위까지의 보이지 않는 장부를 긁어와 화면에 쾅 꽂아주는 함수
-    public void RefreshNPCLeaderboardUI()
+    // [B] 게임오버 순간이므로 스타트 트리거 버튼은 완벽하게 끕니다.
+    if (btn_StartTouchTrigger_Direct != null)
     {
+        btn_StartTouchTrigger_Direct.SetActive(false);
+    }
+    
+    Debug.Log("🏁 [최적화 완공] GAMEOVER TXT는 ON, 트리거 버튼은 OFF 교차 편집 완료!");
+
+} // 🔒 2. 가장 중요! OnTimerEnd() 함수 전체를 확실하게 닫아주는 최종 바깥 중괄호입니다!
+
+// =========================================================================
+// ⚔️ 여기서부터 상단 함수와 완전히 분리된 깨끗한 독립형 새 함수가 시작됩니다!
+// =========================================================================
+
+// // 2. 마을에서 NPC 순위보기 버튼을 누르면 1위부터 10위까지의 보이지 않는 장부를 긁어와 화면에 쾅 꽂아주는 함수
+public void RefreshNPCLeaderboardUI()
+{
+
         System.Text.StringBuilder sb = new System.Text.StringBuilder();
         sb.AppendLine("무한모드 랭킹보드 (Top 10)\n");
 
@@ -675,6 +654,7 @@ public void OnTimerEnd()
 
         Debug.Log("[NPC 순위판] 보이지 않는 장부에서 탑텐 데이터를 긁어와 새로고침 완료!");
     }
+
     // ✨ [추가] 콤보 글씨를 실시간으로 새로고침하고 1초 뒤 사라지게 만드는 함수
     // ✨ [속도감 업그레이드] 커지자마자 딜레이 없이 빠르게 스르륵 사라지는 고속 콤보 연출
     private Coroutine comboFadeCoroutine;
