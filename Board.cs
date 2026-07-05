@@ -405,6 +405,7 @@ public void OnClickRealStartInfiniteTimer()
 
         return matches;
     }
+    
     // 🎯 [완전 복구] 날아가버렸던 드래그 자리 교체 및 1턴 소모 전담 엔진
     // 🎯 [d-2 정품 + 최신 턴/콤보 융합] 블록 이동 및 1턴 소모
     // ---- [복붙 시작] 앵커 방식을 완전히 제거하고 정밀 UI 픽셀 위치로 자리 교체 및 턴 소모 ----
@@ -627,7 +628,7 @@ public void OnClickRealStartInfiniteTimer()
     }
     // ---- [복붙 끝] ----------------------------------------------------
     }
-    
+
     public void UpdateComboTextUI()
     {
         if (comboText == null) return;
@@ -698,8 +699,8 @@ public void OnClickRealStartInfiniteTimer()
             rect.anchoredPosition = startPosition;
         }
     }
-    }
 
+    
     // 🎯 [완전 보강] 옛날 코드(d-2)의 철통 안전 검사식을 width/height에 맞게 이식한 데드락 탐색 엔진
     // 🎯 [중괄호 오류 완벽 수정] 안전하게 정돈된 데드락 탐색 엔진
     private bool CheckPossibleMatchesExist()
@@ -816,4 +817,30 @@ public void OnClickRealStartInfiniteTimer()
         UpdateComboTextUI();
         Debug.Log("✨ [성공] 보드판 2차 유령 찌꺼기 추적 소멸 완수.");
     }
+        // 🎯 [복구] 앵커 방식을 완전히 제거하고 정밀 UI 픽셀 위치로 부드럽게 슬라이딩 시키는 핵심 엔진
+    private IEnumerator MoveBlockSmoothlyUI(GameObject target, Vector2 targetPosition)
+    {
+        if (target == null) yield break;
+        RectTransform rt = target.GetComponent<RectTransform>();
+        if (rt == null) yield break;
+
+        rt.SetAsLastSibling(); // 이동하는 블록이 다른 블록 뒤로 숨지 않게 맨 앞으로 뺍니다.
+        Vector2 startPos = rt.anchoredPosition;
+        float elapsed = 0f;
+        float duration = 0.2f; // 0.2초 동안 부드럽게 이동
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / duration;
+            // 부드러운 감속 효과(SmoothStep)를 적용하여 정밀 이동합니다.
+            t = t * t * (3f - 2f * t); 
+            
+            if (rt != null) rt.anchoredPosition = Vector2.Lerp(startPos, targetPosition, t);
+            yield return null;
+        }
+
+        if (rt != null) rt.anchoredPosition = targetPosition; // 마지막 목적지 픽셀 강제 고정
+    }
+
 } // ⭕ 클래스를 안전하게 닫아주는 영광의 웅장한 닫는 중괄호!!
