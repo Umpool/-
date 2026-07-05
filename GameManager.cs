@@ -106,21 +106,14 @@ public class GameManager : MonoBehaviour
         RefreshAllCharacterMenuCards();
     }
 
-    void Start()
-    {
-    // 🏁 [1순위: 메인 화면 제어] 재생 즉시 인트로를 강제로 켜고, 나머지 대형 화면들은 원천 차단합니다.
-    GameObject introPanelObj = GameObject.Find("Canvas")?.transform.Find("Panel_Intro")?.gameObject;
-    if (introPanelObj != null) introPanelObj.SetActive(true);
-
-    if (panel_village != null) panel_village.SetActive(false);
-    if (panel_CharacterSelect != null) panel_CharacterSelect.SetActive(false);
-    if (panel_PartyEditView != null) panel_PartyEditView.SetActive(false);
-
-        // 🔔 [2순위: 팝업 및 알림창 초기화] 게임 시작 시 방해되는 팝업들을 일괄 정리합니다.
-    if (popup_PartyAddConfirm != null) popup_PartyAddConfirm.SetActive(false);
+void Start()
+{
+    // 🏁 [정석 복구 완료]: 불필요한 패널 차단 트롤링을 전부 걷어내고 안전하게 방 장부만 세팅합니다!
     if (popup_AlertWindow != null) popup_AlertWindow.SetActive(false);
     if (txt_MainNoticeText != null) txt_MainNoticeText.gameObject.SetActive(false);
-        GameObject topMenuBar = GameObject.Find("Canvas")?.transform.Find("상단 단축바")?.gameObject;
+    if (panel_PartyEditView != null) panel_PartyEditView.SetActive(false);
+    if (popup_PartyAddConfirm != null) popup_PartyAddConfirm.SetActive(false);
+    GameObject topMenuBar = GameObject.Find("Canvas")?.transform.Find("상단 단축바")?.gameObject;
         if (topMenuBar != null)
         {
             RectTransform topBarRect = topMenuBar.GetComponent<RectTransform>();
