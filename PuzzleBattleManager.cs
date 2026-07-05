@@ -78,6 +78,7 @@ public class PuzzleBattleManager : MonoBehaviour
             }
         }
     }
+    }
     
 
     public void OnUserDragBlock()
@@ -294,9 +295,9 @@ public class PuzzleBattleManager : MonoBehaviour
             Debug.Log($"[전투 전용 자동 연동] 영웅 HP 바 등록 완료! (현재 {heroHPBars.Count}개)");
         }
 
-    }
+    
 
-    }
+
     public void OnClickBackToVillageFromInfinite()
     {
         // [기존 필수 1] 켜져 있던 무한모드 결과창 패널(GAMEOVER TXT)을 시원하게 꺼버립니다.
@@ -317,9 +318,9 @@ public class PuzzleBattleManager : MonoBehaviour
             puzzleBoardComponent.ForceStopAndClearBoard();
         }
 
-    // 🌟 PuzzleBattleManager.cs 내부 OnClickBackToVillageFromInfinite() 함수 끝자락 교체 구역
-    if (GameManager.Instance != null)
-    {
+     // 🌟 PuzzleBattleManager.cs 내부 OnClickBackToVillageFromInfinite() 함수 끝자락 교체 구역
+     if (GameManager.Instance != null)
+     {
         // 1. 기존의 무한모드 화면 정돈 명령 가동
         GameManager.Instance.OnClickInfiniteStageBackButton();
         
@@ -328,14 +329,16 @@ public class PuzzleBattleManager : MonoBehaviour
         GameManager.Instance.ExitBattleStage();
         
         Debug.Log("🎪 [대완공] ExitBattleStage 함수 원격 가동! 빠른 이동 버튼이 완벽하게 ON 복구되었습니다.");
+     }
+    }
     }
 
-}
 
-    // 💡 [여기서부터 복사해서 맨 밑 괄호 직전에 그대로 붙여넣으세요]
 
-    // 1. 3분 무한 모드가 끝났을 때 1위~10위까지 보이지 않는 장부를 계산해 저장하는 정산기
-    // 🛠️ Board.cs에서 모든 연쇄가 끝났을 때 원격 호출하는 최종 정산 사령탑 단락
+     // 💡 [여기서부터 복사해서 맨 밑 괄호 직전에 그대로 붙여넣으세요]
+
+     // 1. 3분 무한 모드가 끝났을 때 1위~10위까지 보이지 않는 장부를 계산해 저장하는 정산기
+     // 🛠️ Board.cs에서 모든 연쇄가 끝났을 때 원격 호출하는 최종 정산 사령탑 단락
 public void OnTimerEnd()
 {
     timerIsRunning = false;
@@ -456,9 +459,9 @@ public void OnTimerEnd()
 
 } // 🔒 2. 가장 중요! OnTimerEnd() 함수 전체를 확실하게 닫아주는 최종 바깥 중괄호입니다!
 
-// =========================================================================
-// ⚔️ 여기서부터 상단 함수와 완전히 분리된 깨끗한 독립형 새 함수가 시작됩니다!
-// =========================================================================
+ // =========================================================================
+ // ⚔️ 여기서부터 상단 함수와 완전히 분리된 깨끗한 독립형 새 함수가 시작됩니다!
+ // =========================================================================
 
 // // 2. 마을에서 NPC 순위보기 버튼을 누르면 1위부터 10위까지의 보이지 않는 장부를 긁어와 화면에 쾅 꽂아주는 함수
 public void RefreshNPCLeaderboardUI()
