@@ -34,6 +34,11 @@ public class PuzzleBattleManager : MonoBehaviour
     public List<Slider> heroHPBars = new List<Slider>(); // 아군 영웅 5인 체력바 슬라이더 리스트
     public TextMeshProUGUI turnTextUI;
 
+    public int currentTurn = 0; 
+    public int currentScore = 0; 
+    public GameObject btn_StartTouchTrigger_Direct; 
+
+    public Board puzzleBoardComponent; 
 
 
     public static PuzzleBattleManager Instance { get; private set; }
@@ -316,7 +321,7 @@ public class PuzzleBattleManager : MonoBehaviour
         // 🛠️ [변수명 일치 교정]: puzzleBoard -> puzzleBoardComponent
         if (puzzleBoardComponent != null)
         {
-            puzzleBoardComponent.ForceStopAndClearBoard();
+            puzzleBoardComponent.ShutdownAndCleanupBoard(); 
         }
 
      // 🌟 PuzzleBattleManager.cs 내부 OnClickBackToVillageFromInfinite() 함수 끝자락 교체 구역
@@ -342,7 +347,6 @@ public class PuzzleBattleManager : MonoBehaviour
      // 🛠️ Board.cs에서 모든 연쇄가 끝났을 때 원격 호출하는 최종 정산 사령탑 단락
     public void OnTimerEnd()
      {
-      timerIsRunning = false;
 
      // 🛠 최종 대미지 및 턴수 연동 장부 개설
      int finalScore = 0;
@@ -572,7 +576,31 @@ public class PuzzleBattleManager : MonoBehaviour
             Debug.Log("🧹 [PuzzleBattleManager] 배틀 데이터 초기화 완수!");
         }
     }
+        public void UpdateTurnTextUI()
+    {
+        if (turnTextUI != null)
+        {
+            turnTextUI.text = $"{currentTurn} 턴";
+        }
+    }
+public void StartInfiniteStageViaButton(string modeName)
+{
+    if (modeName == "infinite")
+    {
+        // 🌟 [에러 완벽 해결]: 내부에서 사용 중인 정확한 모드 시작 신호를 호출합니다.
+        if (GameManager.Instance != null) GameManager.Instance.stageMode = 2;
+
+        // 🌟 [경고 완벽 해결]: 유니티 6 표준 규격인 FindAnyObjectByType으로 변경했습니다!
+        Board mainBoard = FindAnyObjectByType<Board>();
+        if (mainBoard != null)
+        {
+            mainBoard.OnClickRealStartInfiniteTimer();
+        }
+    }
 }
+
+}
+
 
      
     
