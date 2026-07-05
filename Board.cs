@@ -264,13 +264,12 @@ public void OnClickRealStartInfiniteTimer()
     private bool isSwappingNow = false;
 
     // 🎯 [완전 구현] 인스펙터/프리팹 투명 가림막을 무력화하는 무적의 픽셀 좌표 추적 시스템
-    // 🎯 [옛날 정품 d-2 엔진 이식] 인스펙터나 프리팹 세팅에 간섭받지 않는 무적의 클릭&드래그 시스템
-    // 🎯 [완전 융합] 최신 Update 마우스 엔진에 옛날 d-2 정품 드래그/대각선 차단 공식을 주입합니다.
     private void Update()
     {
-        // ---- [복붙 시작] 블록이 움직이거나 매칭 계산 중일 때 마우스 입력 철저히 차단 ----
+        // 블록이 움직이거나 매칭 계산 중일 때 마우스 입력 철저히 차단
         if (isProcessing || isSwappingNow || isSwapping || isMatching) return;
-        // 1. 마우스 왼쪽 버튼을 누르는 순간
+
+        // 1. 마우스 왼쪽 버튼을 누르는 순간 (클릭)
         if (Input.GetMouseButtonDown(0))
         {
             UnityEngine.EventSystems.PointerEventData eventData = new UnityEngine.EventSystems.PointerEventData(UnityEngine.EventSystems.EventSystem.current) { position = Input.mousePosition };
@@ -282,23 +281,29 @@ public void OnClickRealStartInfiniteTimer()
                 if (result.gameObject != null && (result.gameObject.name.StartsWith("Block_") || result.gameObject.name.StartsWith("블록_")))
                 {
                     selectedBlock = result.gameObject;
-                    clickStartPos = Input.mousePosition; // 누른 시점의 픽셀 좌표 기억
-                    FindBlockIndex(selectedBlock, out startX, out startY); // 격자 주소 분석
+                    clickStartPos = Input.mousePosition; // 누른 시점 픽셀 기억
+                    FindBlockIndex(selectedBlock, out startX, out startY); // 격자 인덱스 추적
                     break;
                 }
-        // 2. 마우스 왼쪽 버튼을 떼는 순간 (드래그 방향 분석)
+            }
+        } // <- 🎯 GetMouseButtonDown(0) 조건문이 완전히 끝나는 닫는 괄호
+
+        // 2. 마우스 왼쪽 버튼을 떼는 순간 (드래그 완료 판정) - foreach 바깥으로 정상 탈출!
         if (Input.GetMouseButtonUp(0) && selectedBlock != null)
         {
             Vector2 clickEndPos = Input.mousePosition;
             Vector2 swipeDelta = clickEndPos - clickStartPos;
 
-            // 최소 40픽셀 이상 확실히 움직였을 때만 드래그로 인정합니다.
+            // 드래그 누적 거리가 최소 40픽셀 이상 확실히 움직였을 때만 격발
             if (swipeDelta.magnitude > 40f)
             {
                 CalculateSwipeDirection(swipeDelta);
             }
-            selectedBlock = null; // 선택 초기화
+            selectedBlock = null; // 조작 대상 초기화
         }
+    } // <- 🎯 Update() 함수 전체가 예쁘게 마무리되는 닫는 괄호
+
+
     
         
 
@@ -323,8 +328,8 @@ public void OnClickRealStartInfiniteTimer()
 
             selectedBlock = null; // 선택 초기화
         }
-            }
-        }
+            
+        
     
 
 
@@ -432,7 +437,7 @@ public void OnClickRealStartInfiniteTimer()
     // 🎯 [완전 복구] 날아가버렸던 드래그 자리 교체 및 1턴 소모 전담 엔진
     // 🎯 [d-2 정품 + 최신 턴/콤보 융합] 블록 이동 및 1턴 소모
     // ---- [복붙 시작] 앵커 방식을 완전히 제거하고 정밀 UI 픽셀 위치로 자리 교체 및 턴 소모 ----
-    private IEnumerator SwapBlocksRoutine(int x1, int y1, int x2, int y2)
+    private IEnumerator SwapBlocksRoutine( int x1, int y1, int x2, int y2)
     {
         isSwapping = true;
         isUserTurn = true; // 🎯 기획 반영: 유저가 직접 드래그했음을 기록하여 자동 연쇄 폭발과 구분합니다!
@@ -566,7 +571,7 @@ public void OnClickRealStartInfiniteTimer()
         isProcessing = false;
         yield return StartCoroutine(CheckPostProcessAndDeadlock());
     }
-    }
+    
 
 
 
