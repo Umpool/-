@@ -304,35 +304,6 @@ public void OnClickRealStartInfiniteTimer()
     } // <- 🎯 Update() 함수 전체가 예쁘게 마무리되는 닫는 괄호
 
 
-    
-        
-
-
-        // 2. 마우스 왼쪽 버튼을 떼는 순간
-        if (Input.GetMouseButtonUp(0) && selectedBlock != null)
-        {
-            Vector2 clickEndPos = Input.mousePosition;
-            Vector2 swipeDelta = clickEndPos - clickStartPos;
-
-            Debug. Log($"👋 [4단계 마우스 뗌] 블록 [{selectedBlock.name}] 드래그 누적 거리: {swipeDelta.magnitude} 픽셀");
-
-            if (swipeDelta.magnitude > 40f)
-            {
-                Debug.Log($"🚀 [5단계 격발] 거리가 40픽셀 이상({swipeDelta.magnitude}px)이므로 CalculateSwipeDirection 함수를 원격 호출합니다!");
-                CalculateSwipeDirection(swipeDelta);
-            }
-            else
-            {
-                Debug.LogWarning($"⚠️ [드래그 취소] 움직인 거리가 {swipeDelta.magnitude}픽셀로 너무 짧아 스와이프를 취소합니다. (최소 40픽셀 필요)");
-            }
-
-            selectedBlock = null; // 선택 초기화
-        }
-            
-        
-    
-
-
     private void FindBlockIndex(GameObject block, out int x, out int y)
 {
     x = -1; y = -1;
@@ -469,36 +440,6 @@ public void OnClickRealStartInfiniteTimer()
         // 자리가 바뀌었으니 3매치가 맞았는지 판정하러 이동합니다.
         yield return StartCoroutine(JudgeMatchAndProcess(x1, y1, x2, y2));
     }
-    // ---- [복붙 끝] ----------------------------------------------------------------------
-
-
-    // 🎯 [d-2 정품 + 복귀 기능] 3매치 판정 및 실패 시 6배속 되돌리기
-    private IEnumerator JudgeMatchAndProcess(int x1, int y1, int x2, int y2)
-    {
-        isProcessing = true;
-        List<GameObject> matches = FindAllMatches();
-
-        if (matches.Count > 0)
-        {
-            yield return StartCoroutine(DestroyAndRefillRoutine(matches));
-        }
-        else
-        {
-            // ❌ 3매치 실패 시 원상복구 (역방향 6배속)
-            GameObject b1 = allBlocks[x1, y1], b2 = allBlocks[x2, y2];
-            if (b1 != null && b2 != null)
-            {
-                yield return StartCoroutine(MoveBlocks(b1, b2, x1, y1, x2, y2, 6f));
-            }
-            // 데이터 원상복구
-            allBlocks[x1, y1] = b2; allBlocks[x2, y2] = b1;
-            if (b1 != null) b1.name = $"블록_{GetBlockColor(b1)}_{x1}_{y1}";
-            if (b2 != null) b2.name = $"블록_{GetBlockColor(b2)}_{x2}_{y2}";
-        }
-        isSwappingNow = false; isProcessing = false;
-        yield return StartCoroutine(CheckPostProcessAndDeadlock());
-    }
-
     // 🛠️ 공통 이동/복귀 로직 (옛날 정품 뼈대)
     private IEnumerator MoveBlocks(GameObject b1, GameObject b2, int x1, int y1, int x2, int y2, float speed)
     {
