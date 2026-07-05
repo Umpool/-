@@ -2,6 +2,8 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine.UI;
+using UnityEngine.EventSystems; // 🎯 [오류 해결]: PointerEventData를 컴퓨터가 인식할 수 있게 문을 열어줍니다!
+
 
 public class Board : MonoBehaviour
 {
@@ -9,6 +11,7 @@ public class Board : MonoBehaviour
     public int rows = 6;      // 가로 6칸
     public int cols = 6;      // 세로 6칸
     public float cellSize = 100f; // UI 블록 한 칸의 크기
+    public float blockPadding = 0.02f; 
 
     [Header("ㅡ 블록 원본 프리팩 (6색) ㅡ")]
     public GameObject[] blockPrefabs; 
@@ -37,6 +40,7 @@ public class Board : MonoBehaviour
     [Header("ㅡ 진입 및 타이머 설정 ㅡ")]
     public float limitTime = 180f; // 무한모드 3분(180초) 제한시간
     private bool isGameActive = false;
+
 
     private float[] comboDamageMultipliers = new float[] { 1.0f, 1.2f, 1.5f, 1.8f, 2.0f, 2.5f };
 
@@ -99,21 +103,21 @@ public class Board : MonoBehaviour
         RectTransform rt = newBlock.GetComponent<RectTransform>();
         if (rt != null)
         {
-            // ⭕ [비율 기반 자석 6x6 배치 대완공]
-            // 가로 6칸(cols), 세로 6칸(rows) 안에서 내 칸(x, y)이 차지해야 할 '시작 비율'과 '끝 비율'을 정밀 계산합니다.
-            float anchorMinX = (float)x / cols;
-            float anchorMaxX = (float)(x + 1) / cols;
-            float anchorMinY = (float)y / rows;
-            float anchorMaxY = (float)(y + 1) / rows;
+            // ⭕ [36칸 보드에 블록들의 간격]
+    float anchorMinX = (float)x / cols;
+    float anchorMaxX = (float)(x + 1) / cols;
+    float anchorMinY = (float)y / rows;
+    float anchorMaxY = (float)(y + 1) / rows;
 
-            // 계산된 비율 칸막이 안에 자석처럼 쏙 들어가서 여백을 0으로 밀착시킵니다!
-            rt.anchorMin = new Vector2(anchorMinX, anchorMinY);
-            rt.anchorMax = new Vector2(anchorMaxX, anchorMaxY);
-            rt.offsetMin = Vector2.zero;
-            rt.offsetMax = Vector2.zero;
-            
-            rt.localScale = Vector3.one;
-        }
+    rt.anchorMin = new Vector2(anchorMinX, anchorMinY);
+    rt.anchorMax = new Vector2(anchorMaxX, anchorMaxY);
+
+    rt.offsetMin = new Vector2(5f, 5f);
+    rt.offsetMax = new Vector2(-5f, -5f);
+    rt.localScale = Vector3.one;
+}
+
+
 
         string rawColor = GetBlockColor(blockPrefabs[prefabIndex]);
         newBlock.name = $"블록_{rawColor}_{Random.Range(10, 99)}";
@@ -138,11 +142,10 @@ public class Board : MonoBehaviour
 
     public void StartInfiniteMode()
     {
-        InitializeNewBoard();
-        currentTurn = 0;
-        comboCount = 0;
-        isGameActive = true;
-        StartCoroutine(InfiniteTimerRoutine());
+    currentTurn = 0;
+    comboCount = 0;
+    isGameActive = true;
+    StartCoroutine(InfiniteTimerRoutine());
     }
 
     private IEnumerator InfiniteTimerRoutine()
@@ -172,15 +175,14 @@ public class Board : MonoBehaviour
         Debug.Log("⚔️ [시작] 일반모드가 가동되었습니다. 보스를 처치하세요!");
     }
 
-    public void OnClickRealStartInfiniteTimer()
+public void OnClickRealStartInfiniteTimer()
+{
+    if (startTouchTriggerPanel != null)
     {
-        if (startTouchTriggerPanel != null)
-        {
-            startTouchTriggerPanel.SetActive(false);
-        }
-        StartInfiniteMode();
-        Debug.Log("🏁 [무한 모드 스타트 성공] 팝업창 차단 해제 및 엔진 가동 개시!");
+        startTouchTriggerPanel.SetActive(false);
     }
+    StartInfiniteMode();
+}
 
     private void DisplayTime(float timeToDisplay)
     {
@@ -205,31 +207,44 @@ public class Board : MonoBehaviour
         HandleMouseInput();
     }
 
-    private void HandleMouseInput()
+private void HandleMouseInput()
+{
+    // 마우스 왼쪽 버튼을 딱 누르는 타이밍을 감지합니다.
+    if (Input.GetMouseButtonDown(0))
     {
-        if (Input.GetMouseButtonDown(0))
+        // 🎯 [UI 전용 레이캐스트]: 화면 맨 앞 투명 버튼을 통과하여 블록만 골라냅니다.
+        PointerEventData eventData = new PointerEventData(EventSystem.current) { position = Input.mousePosition };
+        List<RaycastResult> results = new List<RaycastResult>();
+        EventSystem.current.RaycastAll(eventData, results);
+
+        foreach (var result in results)
         {
-            RaycastHit2D hit = Physics2D.Raycast(Camera.main.ScreenToWorldPoint(Input.mousePosition), Vector2.zero);
-            if (hit.collider != null && hit.collider.gameObject.name.StartsWith("블록_"))
+            // 찾은 오브젝트 이름이 "블록_"으로 시작할 때만 낚아챕니다.
+            if (result.gameObject != null && result.gameObject.name.StartsWith("블록_"))
             {
-                selectedBlock = hit.collider.gameObject;
+                selectedBlock = result.gameObject;
                 clickStartPos = Input.mousePosition;
                 FindBlockIndex(selectedBlock, out startX, out startY);
+                break;
             }
-        }
-
-        if (Input.GetMouseButtonUp(0) && selectedBlock != null)
-        {
-            Vector2 clickEndPos = Input.mousePosition;
-            Vector2 swipeDelta = clickEndPos - clickStartPos;
-
-            if (swipeDelta.magnitude > 40f)
-            {
-                CalculateSwipeDirection(swipeDelta);
-            }
-            selectedBlock = null;
         }
     }
+
+    // 2-2: 마우스 버튼을 뗐을 때 드래그 거리를 계산하여 블록 이동 처리
+    if (Input.GetMouseButtonUp(0) && selectedBlock != null)
+    {
+        Vector2 clickEndPos = Input.mousePosition;
+        Vector2 swipeDelta = clickEndPos - clickStartPos;
+
+        // 드래그 거리(40픽셀)가 충분하면 스와이프 방향 계산
+        if (swipeDelta.magnitude > 40f)
+        {
+            CalculateSwipeDirection(swipeDelta);
+        }
+        selectedBlock = null; // 선택 해제
+    }
+} // HandleMouseInput 함수 끝
+
 
     private void FindBlockIndex(GameObject target, out int xPos, out int yPos)
     {
