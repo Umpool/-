@@ -105,7 +105,14 @@ public class PuzzleBattleManager : MonoBehaviour
             }
         }
     }
-
+    private void OnEnable()
+    {
+        if (btn_StartTouchTrigger_Direct != null)
+        {
+            btn_StartTouchTrigger_Direct.SetActive(true);
+            Debug.Log("🔒 [보안 가동] 화면 활성화 감지로 트리거 강제 ON!");
+        }
+    }
     public void OnUserDragBlock()
     {
         // 💡 [안전 장치 추가] 현재 이 배틀 매니저 스크립트가 붙어있는 오브젝트(배틀 화면)가 
@@ -170,42 +177,47 @@ public class PuzzleBattleManager : MonoBehaviour
         // 1. 모드 선택 판정
         // 💡 111번째 줄 무한 모드 판정 구역입니다!
 
+        // 1. 모드 선택 판정
+        // 1. 모드 선택 판정
+        // 💡 111번째 줄 무한 모드 판정 구역입니다!
+        // 💡 1. 무한 모드 판정 및 시동 구역
         if (gameMode == "infinite" || gameMode == "Infinite")
         {
-            // 1. ⏱ 180초 타이머 장부 꽉 채우기
-            timeRemaining = 3f;
-            timerIsRunning = false;
-
-            // 2. 📂 큰 방 패널인 panel_InfiniteBattle을 무조건 가장 먼저 켭니다!
+            // [A] 큰 방 패널 활성화
             if (panel_InfiniteBattle != null)
             {
                 panel_InfiniteBattle.SetActive(true);
             }
 
-            // 3. 🧼 메인 Canvas에 이사 가 있던 파티창 대장을 찾아 다이렉트로 꺼버립니다.
+            // [B] 트리거 즉시 멱살 잡고 ON [V]
+            if (btn_StartTouchTrigger_Direct != null)
+            {
+                btn_StartTouchTrigger_Direct.SetActive(true);
+            }
+            if (panel_InfiniteBattle != null)
+            {
+                Transform triggerBtn = panel_InfiniteBattle.transform.Find("Btn_StartTouchTrigger");
+                if (triggerBtn != null) triggerBtn.gameObject.SetActive(true);
+            }
+
+            // [C] 타이머 3분 리셋 및 시계 대기
+            timeRemaining = 3f;
+            timerIsRunning = false;
+
+            // [D] 불필요한 UI 청소 및 결과창 OFF
             GameObject realPartyList2 = GameObject.Find("Canvas")?.transform.Find("PartyListContainer")?.gameObject;
             if (realPartyList2 != null) realPartyList2.SetActive(false);
 
-            // 4. 🚀 [형님 요청 완벽 반영] 재생 전에 에디터에서 체크박스가 꺼져(OFF) 있어도 코드로 무조건 가장 먼저 강제 ON!
-            if (btn_StartTouchTrigger_Direct != null)
-            {
-                btn_StartTouchTrigger_Direct.SetActive(true); // 👈 이름으로 찾지 않고 직속 회선으로 즉시 켜버립니다!
-                Debug.Log("🚀 [코드로 완벽 제어] 재생 전 OFF 상태였던 Btn_StartTouchTrigger 강제 ON 완공!");
-            }
-            else
-            {
-                Debug.LogWarning("⚠️ 유니티 인스펙터 창에서 btn_StartTouchTrigger_Direct 방에 오브젝트를 연결하지 않았습니다!");
-            }
-
-            // 5. 🛑 게임오버 결과창은 시작할 때 무조건 꺼져있어야 하므로 가려줍니다.
             if (panel_InfiniteBattle != null)
             {
                 Transform gameover = panel_InfiniteBattle.transform.Find("GAMEOVER TXT");
                 if (gameover != null) gameover.gameObject.SetActive(false);
             }
 
-            Debug.Log("🏁 무한모드 전장 전개! 시작 트리거 팝업 자동 가동 완료!");
+            Debug.Log("🏁 무한모드 메인 시동 완료!");
         }
+
+
 
 
 
@@ -462,18 +474,24 @@ private void SetupBattleEntities()
         timerIsRunning = true;
         Debug.Log("🏁 [무한 모드 스타트] 0.001초 카운트다운 폭풍 가동!");
     }
-    public void ForceStopAndResetTimer() //화면이동시 타이머 초기화 
+    public void ForceStopAndResetTimer() // 화면이동시 타이머 초기화
     {
-        // 1. 🛑 타이머의 실시간 작동 스위치를 끕니다.
+        // 1. 🛑 타이머의 실시간 작동 스위치를 니다.
         timerIsRunning = false;
 
-        // 2. ⏱️ 시간을 무한모드 기본 시간(180초)으로 완전히 초기화(리셋) 합니다.
-        timeRemaining = 3f;
+        // 2. ⏱ 시간을 무한모드 기본 시간으로 완전히 초기화(리셋) 합니다.
+        timeRemaining = 3f; // 임시 테스트용 3초 보존
 
-        // 3. 🖥️ 화면에 표시되는 타이머 텍스트 UI도 3분(03:00)으로 깔끔하게 새로고침 합니다.
+        // 3. 🖥 화면에 표시되는 타이머 텍스트 UI도 깔끔하게 새로고침 합니다.
         DisplayTime(timeRemaining);
 
-        Debug.Log("⏱️ [타이머 강제 제어] 배틀 화면 탈출 감지! 타이머를 안전하게 멈추고 180초로 초기화했습니다.");
+        // 🔒 [재진입 버그 완파]: 다음 판을 위해 마을로 도망갈 때, 안내창 리모컨 방을 강제로 다시 ON [V] 복원해 둡니다!
+        if (startTouchTriggerPanel != null)
+        {
+            startTouchTriggerPanel.SetActive(true);
+        }
+
+        Debug.Log("⏱ [타이머 및 안내창 초기화 완공] 두 번째 진입을 위해 startTouchTriggerPanel을 정상 복원했습니다.");
     }
     public void OnClickBackToVillageFromInfinite()
     {
@@ -507,37 +525,45 @@ private void SetupBattleEntities()
 
     // 1. 3분 무한 모드가 끝났을 때 1위~10위까지 보이지 않는 장부를 계산해 저장하는 정산기
     // 🛠️ Board.cs에서 모든 연쇄가 끝났을 때 원격 호출하는 최종 정산 사령탑 단락
-    public void OnTimerEnd()
+public void OnTimerEnd()
+{
+    timerIsRunning = false;
+
+    // 🛠 최종 대미지 및 턴수 연동 장부 개설
+    int finalScore = 0;
+    int finalTurns = currentTurn;
+
+    // 💡 하이어라키 세상을 뒤져 ScoreText(상단 텍스트판)의 컴포넌트를 조준 사격합니다.
+    TMPro.TextMeshProUGUI realScoreTMP = transform.Find("ScoreText")?.GetComponent<TMPro.TextMeshProUGUI>();
+    if (realScoreTMP == null) realScoreTMP = GameObject.Find("ScoreText")?.GetComponent<TMPro.TextMeshProUGUI>();
+
+    if (realScoreTMP != null)
     {
-        timerIsRunning = false;
+        // 🎯 [정규식 특수 안전망]: "대미지", "데미지", 공백(" "), 콜론(":") 등 글자는 몽땅 소멸시키고
+        // 오직 순수한 숫자 알맹이(예: 800, 1040)만 정확하게 추출하여 finalScore에 주입합니다!
+        string cleanNumbers = System.Text.RegularExpressions.Regex.Replace(realScoreTMP.text, @"[^\d]", "");
+        int.TryParse(cleanNumbers, out finalScore);
+    }
+    else
+    {
+        finalScore = currentScore;
+    }
 
-        // 🛠️ [최종 대미지 연동 대완공]: 중복 선언을 원천 박멸하고 정석 변수 방을 복원합니다!
-        int finalScore = 0;
-        int finalTurns = currentTurn;
+    // 🖥️ [인스펙터 연동 1단계]: 최종 대미지 결과창 텍스트 박스에 3자리 콤마(,N0)를 찍어 출력합니다.
+    if (textFinalScore != null)
+    {
+        textFinalScore.text = $"최종 대미지 : {finalScore:N0}";
+    }
 
-        // 💡 [개발자님 정석 기획 완벽 우회 연동]
-        // 대소문자나 변수 유효 범위 벽을 완벽히 무력화하기 위해, 화면 상단에 1,350점을 실시간으로 표기하던 
-        // 진짜 하이어라키 상자(ScoreText)의 컴포넌트를 직접 조준하여 문자열을 낚아챕니다!
-        TMPro.TextMeshProUGUI realScoreTMP = transform.Find("ScoreText")?.GetComponent<TMPro.TextMeshProUGUI>();
-        if (realScoreTMP == null) realScoreTMP = GameObject.Find("ScoreText")?.GetComponent<TMPro.TextMeshProUGUI>();
+    // 🖥️ [인스펙터 연동 2단계]: 묶여있던 최종 걸린 턴수 데이터를 글자로 주입하고 컴포넌트를 강제 ON 합니다!
+    if (textFinalTurns != null)
+    {
+        textFinalTurns.text = $"걸린 턴수 : {finalTurns} 턴";
+        textFinalTurns.gameObject.SetActive(true);
+    }
 
-        if (realScoreTMP != null)
-        {
-            // 🎯 화면 상단판에 박혀있던 글자 "누적 데미지: 1,350" 문자열에서 
-            // 철자 오타를 가리지 않고 오직 알맹이 숫자 '1350'만 칼같이 정제하여 finalScore 상자에 배달합니다!
-            string scoreString = realScoreTMP.text.Replace("누적 대미지:", "").Replace(",", "").Trim();
-            int.TryParse(scoreString, out finalScore);
-        }
-        else
-        {
-            finalScore = currentScore;
-        }
+    // (※ 이 바로 아래에 배치되어 있는 int[] highScores = new int[10]; 로직부터 명예의 전당 Top 10 밀어내기 및 GAMEOVER TXT 활성화 코드는 절대로 지우지 말고 그대로 매끄럽게 이어붙이시면 성공입니다!)
 
-        // 🔍 기존에 존재하던 결과창 글씨 출력 단락과 이쁘게 이어집니다!
-        if (textFinalScore != null)
-        {
-            textFinalScore.text = $"최종 대미지 : {finalScore:N0}";
-        }
 
 
 
