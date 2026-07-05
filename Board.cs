@@ -253,49 +253,46 @@ public void OnClickRealStartInfiniteTimer()
 
     // 🎯 [완전 구현] 인스펙터/프리팹 투명 가림막을 무력화하는 무적의 픽셀 좌표 추적 시스템
     // 🎯 [옛날 정품 d-2 엔진 이식] 인스펙터나 프리팹 세팅에 간섭받지 않는 무적의 클릭&드래그 시스템
+    // 🎯 [완전 융합] 최신 Update 마우스 엔진에 옛날 d-2 정품 드래그/대각선 차단 공식을 주입합니다.
     private void Update()
     {
-        // 블록이 움직이는 연산 중에는 입력을 막습니다 (이건 로그 안 찍고 패스)
+        // 블록이 움직이거나 계산 중일 때는 마우스 입력을 원천 차단합니다.
         if (isProcessing || isSwappingNow) return;
 
         // 1. 마우스 왼쪽 버튼을 누르는 순간
         if (Input.GetMouseButtonDown(0))
         {
-            Debug.Log("🖱️ [1단계] 마우스 누름 감지! 화면 레이더(Raycast) 발사합니다.");
-
             UnityEngine.EventSystems.PointerEventData eventData = new UnityEngine.EventSystems.PointerEventData(UnityEngine.EventSystems.EventSystem.current) { position = Input.mousePosition };
             List<UnityEngine.EventSystems.RaycastResult> results = new List<UnityEngine.EventSystems.RaycastResult>();
             UnityEngine.EventSystems.EventSystem.current.RaycastAll(eventData, results);
 
-            Debug.Log($"🎯 [2단계] 마우스 아래에 걸린 UI 오브젝트 개수: {results.Count}개");
-
-            bool blockFound = false;
             foreach (var result in results)
             {
-                if (result.gameObject != null)
+                if (result.gameObject != null && (result.gameObject.name.StartsWith("Block_") || result.gameObject.name.StartsWith("블록_")))
                 {
-                    Debug.Log($"🔍 [탐색 로그] 마우스가 스친 오브젝트 이름: {result.gameObject.name}");
-
-if (result.gameObject.name.StartsWith("Block_"))
-                    {
-                        selectedBlock = result.gameObject;
-                        clickStartPos = Input.mousePosition; // 출발 픽셀 저장
-                        
-                        // 이름 뒤에 박아둔 x, y 주소 장부 낚아채기
-                        FindBlockIndex(selectedBlock, out startX, out startY);
-                        
-                        Debug.Log($"✅ [3단계 록온 성공] 격자 주소: ({startX}, {startY}) | 블록 이름: {selectedBlock.name}를 잡았습니다!");
-                        blockFound = true;
-                        break;
-                    }
+                    selectedBlock = result.gameObject;
+                    clickStartPos = Input.mousePosition; // 누른 시점의 픽셀 좌표 기억
+                    FindBlockIndex(selectedBlock, out startX, out startY); // 격자 주소 분석
+                    break;
                 }
             }
-
-            if (!blockFound)
-            {
-                Debug.LogWarning("❌ [3단계 실패] 마우스 아래에 '블록_'으로 시작하는 오브젝트를 단 하나도 찾지 못했습니다. (가림막이나 프리팹 이름 확인 필요!)");
-            }
         }
+
+        // 2. 마우스 왼쪽 버튼을 떼는 순간 (드래그 방향 분석)
+        if (Input.GetMouseButtonUp(0) && selectedBlock != null)
+        {
+            Vector2 clickEndPos = Input.mousePosition;
+            Vector2 swipeDelta = clickEndPos - clickStartPos;
+
+            // 최소 40픽셀 이상 확실히 움직였을 때만 드래그로 인정합니다.
+            if (swipeDelta.magnitude > 40f)
+            {
+                CalculateSwipeDirection(swipeDelta);
+            }
+            selectedBlock = null; // 선택 초기화
+        }
+    }
+
 
         // 2. 마우스 왼쪽 버튼을 떼는 순간
         if (Input.GetMouseButtonUp(0) && selectedBlock != null)
@@ -338,37 +335,36 @@ private void FindBlockIndex(GameObject block, out int x, out int y)
 
     // 🎯 [기획 규칙 완벽 이식] 드래그 방향에 따라 정확히 인접한 칸(Target)을 지정하는 조작 엔진
     // 🎯 [완전 수정] 대각선 이동을 철저히 차단하는 철통 방어 조작 엔진
+    // 🎯 [완전 보강] 대각선 이동을 철저히 차단하는 철통 방어 조작 엔진
+    // 🎯 [d-2 정품 이식] 옛날 버전의 확실한 단방향 정밀 스와이프 및 대각선 방어 수식
     private void CalculateSwipeDirection(Vector2 delta)
     {
         int targetX = startX;
         int targetY = startY;
 
-        // 최소 40픽셀 이상 확실히 움직였을 때만 판정합니다.
-        if (delta.magnitude < 40f) return;
-
-        // 수평(좌우) 움직임의 절대값이 수직(상하) 움직임의 절대값보다 크다면 -> 좌우 이동만 인정!
+        // 옛날 d-2 코드의 가장 직관적이고 확실한 가로/세로 축 가리기 공식
         if (Mathf.Abs(delta.x) > Mathf.Abs(delta.y))
         {
-            if (delta.x > 0) { Debug.Log("➡ [방향 고정] 오른쪽"); targetX = startX + 1; }
-            else { Debug.Log("⬅ [방향 고정] 왼쪽"); targetX = startX - 1; }
+            // 가로 움직임이 크면 오직 좌우로만 딱 1칸 이동 인정
+            targetX += delta.x > 0 ? 1 : -1;
         }
-        // 반대로 수직(상하) 움직임이 더 크다면 -> 상하 이동만 인정! (대각선 완벽 차단)
         else
         {
-            if (delta.y > 0) { Debug.Log("⬆ [방향 고정] 위쪽"); targetY = startY + 1; }
-            else { Debug.Log("⬇ [방향 고정] 아래쪽"); targetY = startY - 1; }
+            // 세로 움직임이 크면 오직 상하로만 딱 1칸 이동 인정 (대각선 미끄러짐 원천 차단)
+            targetY += delta.y > 0 ? 1 : -1;
         }
 
-        // 보드 격자 내의 안전 범위일 때만 이동 코루틴 가동
+        // 6x6 보드 격자판 안쪽의 안전한 범위일 때만 실제 자리 교체 가동
         if (targetX >= 0 && targetX < width && targetY >= 0 && targetY < height)
         {
             StartCoroutine(SwapBlocksRoutine(startX, startY, targetX, targetY));
         }
         else
         {
-            Debug.LogWarning($"⚠ [벽 차단] 보드판 바깥 영역이라 조작을 취소합니다.");
+            Debug.LogWarning($"⚠ [벽 차단] ({targetX}, {targetY})는 보드판 바깥 영역이라 조작을 취소합니다.");
         }
     }
+
 
 
     // 🎯 [완전 복구] 가로/세로 3개 이상 연속된 컬러 매칭을 한 치의 오차도 없이 적출하는 정품 탐색기
@@ -422,51 +418,76 @@ private void FindBlockIndex(GameObject block, out int x, out int y)
         return matches;
     }
     // 🎯 [완전 복구] 날아가버렸던 드래그 자리 교체 및 1턴 소모 전담 엔진
+    // 🎯 [d-2 정품 + 최신 턴/콤보 융합] 블록 이동 및 1턴 소모
     private IEnumerator SwapBlocksRoutine(int x1, int y1, int x2, int y2)
     {
         isSwappingNow = true;
         currentTurn++; // 1턴 소모
         if (PuzzleBattleManager.Instance != null) PuzzleBattleManager.Instance.UpdateTurnTextUI();
 
-        GameObject block1 = allBlocks[x1, y1];
-        GameObject block2 = allBlocks[x2, y2];
-
-        if (block1 != null && block2 != null)
+        GameObject b1 = allBlocks[x1, y1], b2 = allBlocks[x2, y2];
+        if (b1 != null && b2 != null)
         {
-            RectTransform rt1 = block1.GetComponent<RectTransform>();
-            RectTransform rt2 = block2.GetComponent<RectTransform>();
-
-            if (rt1 != null) rt1.SetAsLastSibling(); // 출발 블록 최상위 레이어
-
-            // 목표 앵커 좌표 계산
-            Vector2 targetMin1 = new Vector2((float)x2 / width, (float)y2 / height);
-            Vector2 targetMax1 = new Vector2((float)(x2 + 1) / width, (float)(y2 + 1) / height);
-            Vector2 targetMin2 = new Vector2((float)x1 / width, (float)y1 / height);
-            Vector2 targetMax2 = new Vector2((float)(x1 + 1) / width, (float)(y1 + 1) / height);
-
-            Vector2 startMin1 = rt1.anchorMin; Vector2 startMax1 = rt1.anchorMax;
-            Vector2 startMin2 = rt2.anchorMin; Vector2 startMax2 = rt2.anchorMax;
-
-            // 🎯 [옛날 d-2 가속도 속도 이식]: 획일적인 0.2초 분할 계산 대신, 초당 6배속 프레임 연산 가동
-            float time = 0f;
-            while (time < 1f)
-            {
-                time += Time.deltaTime * 6f; // 옛날 코드(d-2) 정품 속도 계수 적용!
-                if (rt1 != null) { rt1.anchorMin = Vector2.Lerp(startMin1, targetMin1, time); rt1.anchorMax = Vector2.Lerp(startMax1, targetMax1, time); }
-                if (rt2 != null) { rt2.anchorMin = Vector2.Lerp(startMin2, targetMin2, time); rt2.anchorMax = Vector2.Lerp(startMax2, targetMax2, time); }
-                yield return null;
-            }
-
-            if (rt1 != null) { rt1.anchorMin = targetMin1; rt1.anchorMax = targetMax1; }
-            if (rt2 != null) { rt2.anchorMin = targetMin2; rt2.anchorMax = targetMax2; }
+            // 6배속 부드러운 위치 교체 애니메이션
+            yield return StartCoroutine(MoveBlocks(b1, b2, x1, y1, x2, y2, 6f));
         }
 
-        allBlocks[x1, y1] = block2;
-        allBlocks[x2, y2] = block1;
+        // 데이터(배열) 및 이름 동기화
+        allBlocks[x1, y1] = b2; allBlocks[x2, y2] = b1;
+        if (b1 != null) b1.name = $"블록_{GetBlockColor(b1)}_{x2}_{y2}";
+        if (b2 != null) b2.name = $"블록_{GetBlockColor(b2)}_{x1}_{y1}";
 
         yield return StartCoroutine(JudgeMatchAndProcess(x1, y1, x2, y2));
-    }    //여기???
+    }
+
+    // 🎯 [d-2 정품 + 복귀 기능] 3매치 판정 및 실패 시 6배속 되돌리기
+    private IEnumerator JudgeMatchAndProcess(int x1, int y1, int x2, int y2)
+    {
+        isProcessing = true;
+        List<GameObject> matches = FindAllMatches();
+
+        if (matches.Count > 0)
+        {
+            yield return StartCoroutine(DestroyAndRefillRoutine(matches));
+        }
+        else
+        {
+            // ❌ 3매치 실패 시 원상복구 (역방향 6배속)
+            GameObject b1 = allBlocks[x1, y1], b2 = allBlocks[x2, y2];
+            if (b1 != null && b2 != null)
+            {
+                yield return StartCoroutine(MoveBlocks(b1, b2, x1, y1, x2, y2, 6f));
+            }
+            // 데이터 원상복구
+            allBlocks[x1, y1] = b2; allBlocks[x2, y2] = b1;
+            if (b1 != null) b1.name = $"블록_{GetBlockColor(b1)}_{x1}_{y1}";
+            if (b2 != null) b2.name = $"블록_{GetBlockColor(b2)}_{x2}_{y2}";
+        }
+        isSwappingNow = false; isProcessing = false;
+        yield return StartCoroutine(CheckPostProcessAndDeadlock());
+    }
+
+    // 🛠️ 공통 이동/복귀 로직 (옛날 정품 뼈대)
+    private IEnumerator MoveBlocks(GameObject b1, GameObject b2, int x1, int y1, int x2, int y2, float speed)
+    {
+        RectTransform rt1 = b1.GetComponent<RectTransform>(), rt2 = b2.GetComponent<RectTransform>();
+        rt1.SetAsLastSibling();
+        Vector2 sMin1 = rt1.anchorMin, sMax1 = rt1.anchorMax, sMin2 = rt2.anchorMin, sMax2 = rt2.anchorMax;
+        Vector2 tMin1 = new Vector2((float)x2 / width, (float)y2 / height), tMax1 = new Vector2((float)(x2 + 1) / width, (float)(y2 + 1) / height);
+        Vector2 tMin2 = new Vector2((float)x1 / width, (float)y1 / height), tMax2 = new Vector2((float)(x1 + 1) / width, (float)y1 / height);
+        
+        float t = 0f;
+        while (t < 1f) {
+            t += Time.deltaTime * speed;
+            rt1.anchorMin = Vector2.Lerp(sMin1, tMin1, t); rt1.anchorMax = Vector2.Lerp(sMax1, tMax1, t);
+            rt2.anchorMin = Vector2.Lerp(sMin2, tMin2, t); rt2.anchorMax = Vector2.Lerp(sMax2, tMax2, t);
+            yield return null;
+        }
+        rt1.anchorMin = tMin1; rt1.anchorMax = tMax1; rt2.anchorMin = tMin2; rt2.anchorMax = tMax2;
+    }
+
     // 🎯 [복구] 3매치 정방향 사후 판정 및 6배속 복귀 엔진
+    // 🎯 [복구 완료] 3매치 정방향 사후 판정 및 6배속 복귀 엔진
     private IEnumerator JudgeMatchAndProcess(int x1, int y1, int x2, int y2)
     {
         isProcessing = true;
@@ -478,7 +499,7 @@ private void FindBlockIndex(GameObject block, out int x, out int y)
         }
         else
         {
-            // ❌ [원상복구 엔진]: 매치 실패 시 6배속으로 블록을 원래 자리로 되돌립니다.
+            // ❌ [원상복구 엔진] 매치 실패 시 원래 자리로 부드럽게 되돌리기
             GameObject block1 = allBlocks[x1, y1];
             GameObject block2 = allBlocks[x2, y2];
 
@@ -489,24 +510,27 @@ private void FindBlockIndex(GameObject block, out int x, out int y)
 
                 if (rt1 != null) rt1.SetAsLastSibling();
 
-                // 6배속 프레임 연산으로 부드럽게 원위치 슬라이딩 (Lerp)
+                // 6배속 복귀 애니메이션 (보정값 적용)
                 float backTime = 0f;
                 while (backTime < 1f)
                 {
-                    backTime += Time.deltaTime * 6f; // 정품 속도 계수 적용
-                    if (rt1 != null) { 
-                        rt1.anchorMin = Vector2.Lerp(rt1.anchorMin, new Vector2((float)x1 / width, (float)y1 / height), backTime);
-                        rt1.anchorMax = Vector2.Lerp(rt1.anchorMax, new Vector2((float)(x1 + 1) / width, (float)(y1 + 1) / height), backTime);
+                    backTime += Time.deltaTime * 6f;
+                    Vector2 targetPos1 = new Vector2((float)x1 / width, (float)y1 / height);
+                    Vector2 targetPos2 = new Vector2((float)x2 / width, (float)y2 / height);
+                    
+                    if (rt1 != null) {
+                        rt1.anchorMin = Vector2.Lerp(rt1.anchorMin, targetPos1, backTime);
+                        rt1.anchorMax = Vector2.Lerp(rt1.anchorMax, targetPos1 + new Vector2(1f/width, 1f/height), backTime);
                     }
                     if (rt2 != null) {
-                        rt2.anchorMin = Vector2.Lerp(rt2.anchorMin, new Vector2((float)x2 / width, (float)y2 / height), backTime);
-                        rt2.anchorMax = Vector2.Lerp(rt2.anchorMax, new Vector2((float)(x2 + 1) / width, (float)(y2 + 1) / height), backTime);
+                        rt2.anchorMin = Vector2.Lerp(rt2.anchorMin, targetPos2, backTime);
+                        rt2.anchorMax = Vector2.Lerp(rt2.anchorMax, targetPos2 + new Vector2(1f/width, 1f/height), backTime);
                     }
                     yield return null;
                 }
             }
 
-            // 💡 [중요] 배열 데이터 원상복구
+            // 💡 [데이터 원상복구] 스왑 실패 시 배열 정보 다시 교환
             allBlocks[x1, y1] = block2;
             allBlocks[x2, y2] = block1;
         }
@@ -521,23 +545,22 @@ private void FindBlockIndex(GameObject block, out int x, out int y)
     // 🎯 [완전 복구] 콤보 배율과 연쇄 폭발을 보존한 옛날 d-2 정품 파괴/리필 통합 엔진
     // 🎯 [완전 융합] 콤보 및 연쇄 폭발을 처리하는 통합 엔진 (리팩토링 버전)
     // 🎯 [오류 해결 완료 버전] 콤보와 연쇄 폭발을 에러 없이 완벽 처리하는 통합 엔진
+    // 🎯 [완전 복구] 콤보와 연쇄 폭발을 에러 없이 완벽 처리하는 통합 엔진
+    // 🎯 [d-2 정품 연쇄 폭발 + 최신 콤보 시스템 융합]
     private IEnumerator DestroyAndRefillRoutine(List<GameObject> matches)
     {
         while (matches.Count > 0)
         {
+            // 1. 최신 기획 반영: 폭발할 때마다 콤보 수치 상승 및 UI 반영
             comboCount++;
-            
-            // 1. [오류 1번 해결] 만약 배틀 매니저 연결에 실패하더라도 게임이 튕기거나 멈추지 않도록 안전 조치
-            if (matches != null && PuzzleBattleManager.Instance != null)
+            UpdateComboTextUI(); 
+
+            if (PuzzleBattleManager.Instance != null)
             {
-                string blockColor = GetBlockColor(matches[0]);
-                int count = matches.Count;
-                Debug.Log($"💥 [배틀 신호 전송] {blockColor} 블록 {count}개 매치 성공!");
-                
-                // 임시로 안전 로그만 찍고, 나중에 배틀 매니저 기능이 확인되면 여기에 코드를 연결합니다.
+                PuzzleBattleManager.Instance.UpdateTurnTextUI();
             }
 
-            // 2. [오류 2번 해결] FindBlockIndex 문법을 규칙에 맞게 수정하여 장부 비우기
+            // 2. 옛날 d-2 정품 방식: 안전하게 장부(배열) 비우고 화면에서 블록 제거
             foreach (GameObject block in matches)
             {
                 if (block != null)
@@ -552,15 +575,23 @@ private void FindBlockIndex(GameObject block, out int x, out int y)
                 }
             }
 
+            // 블록이 팡 터지는 연출을 위한 잠깐의 대기시간
             yield return new WaitForSeconds(0.15f);
 
-            // 3. 빈칸 채우기 및 2차 연쇄 확인
+            // 3. 옛날 d-2 정품 방식: 기존 블록을 아래로 떨구고, 천장에서 새 블록 소환
             yield return StartCoroutine(DropExistingBlocksRoutine());
             yield return StartCoroutine(RefillNewBlocksRoutine());
+
+            // 4. [무한 콤보 핵심]: 다 떨어져 내린 후 또 3개가 맞았는지 보드판 전수 조사!
             matches = FindAllMatches();
         }
+
+        // 연속 폭발이 완전히 끝났을 때 콤보 초기화 및 판막힘(데드락) 최종 검사
+        comboCount = 0;
         yield return StartCoroutine(CheckPostProcessAndDeadlock());
     }
+
+
 
 
 
@@ -767,34 +798,38 @@ private void FindBlockIndex(GameObject block, out int x, out int y)
     }
 
 
-private IEnumerator ResolveDeadlockRoutine()
-{
-    isProcessing = true;
-    Debug. LogWarning("🚨 [데드락] 움직일 조합 없음! 12시→6시 순서로 그라데이션 소멸 후 새로 채웁니다.");
-
-    // 1. [기획서 반영] 12시(위쪽 y=height-1)부터 6시(아래쪽 y=0) 방향으로 순서대로 삭제
-    for (int y = height - 1; y >= 0; y--)
+    // 🎯 [d-2 정품 이식] 움직일 조합이 없을 때 12시->6시 방향으로 부드럽게 판을 밀고 리필하는 엔진
+    private IEnumerator ResolveDeadlockRoutine()
     {
-        for (int x = 0; x < width; x++)
+        isProcessing = true;
+        Debug.LogWarning("🚨 [데드락 발동] 움직일 조합 없음! 위에서 아래로 순서대로 소멸 후 재배치합니다.");
+
+        // 1. 옛날 정품 d-2 방식: 12시(맨 윗줄 y=height-1)부터 6시(맨 아랫줄 y=0) 방향으로 시간차 삭제
+        for (int y = height - 1; y >= 0; y--)
         {
-            if (allBlocks[x, y] != null)
+            for (int x = 0; x < width; x++)
             {
-                Destroy(allBlocks[x, y]);
-                allBlocks[x, y] = null;
+                if (allBlocks[x, y] != null)
+                {
+                    Destroy(allBlocks[x, y]);
+                    allBlocks[x, y] = null;
+                }
             }
+            // 한 줄 지울 때마다 0.05초씩 쉬어서 스르륵 사라지는 그라데이션 느낌 연출
+            yield return new WaitForSeconds(0.05f);
         }
-        // 한 줄 지울 때마다 0.05초씩 쉬어서 위에서 아래로 스르륵 사라지는 느낌 연출
-        yield return new WaitForSeconds(0.05f);
+
+        yield return new WaitForSeconds(0.2f);
+
+        // 2. 새로운 블록들을 천장에서 대량 낙하시켜 빈칸 채우기
+        yield return StartCoroutine(RefillNewBlocksRoutine());
+        
+        isProcessing = false;
+
+        // 3. 새로 채워진 보드판에 자동으로 터지는 블록이 있는지 2차 연쇄 추적 점검
+        yield return StartCoroutine(CheckPostProcessAndDeadlock());
     }
 
-    yield return new WaitForSeconds(0.2f);
-
-    // 2. 새로운 블록들을 12시 방향에서 아래로 내려보내기
-    yield return StartCoroutine(RefillNewBlocksRoutine());
-    
-    isProcessing = false;
-    yield return StartCoroutine(CheckPostProcessAndDeadlock());
-}
 
     private IEnumerator CheckPostProcessAndDeadlock()
     {
