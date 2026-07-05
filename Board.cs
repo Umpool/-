@@ -299,7 +299,8 @@ public void OnClickRealStartInfiniteTimer()
             }
             selectedBlock = null; // 선택 초기화
         }
-    }
+    
+        
 
 
         // 2. 마우스 왼쪽 버튼을 떼는 순간
@@ -322,10 +323,12 @@ public void OnClickRealStartInfiniteTimer()
 
             selectedBlock = null; // 선택 초기화
         }
-    }
+            }
+        }
+    
 
 
-private void FindBlockIndex(GameObject block, out int x, out int y)
+    private void FindBlockIndex(GameObject block, out int x, out int y)
 {
     x = -1; y = -1;
     if (block == null) return;
@@ -340,6 +343,7 @@ private void FindBlockIndex(GameObject block, out int x, out int y)
         int.TryParse(nameParts[nameParts.Length - 1], out y);
     }
 }
+
 
     // 🎯 [기획 규칙 완벽 이식] 드래그 방향에 따라 정확히 인접한 칸(Target)을 지정하는 조작 엔진
     // 🎯 [완전 수정] 대각선 이동을 철저히 차단하는 철통 방어 조작 엔진
@@ -562,6 +566,8 @@ private void FindBlockIndex(GameObject block, out int x, out int y)
         isProcessing = false;
         yield return StartCoroutine(CheckPostProcessAndDeadlock());
     }
+    }
+
 
 
     // 🎯 [완전 융합] 현재 코드의 콤보 배율/연쇄 폭발 장치를 100% 보존하면서 옛날 점수 연동을 이식한 엔진
@@ -668,7 +674,7 @@ private void FindBlockIndex(GameObject block, out int x, out int y)
                     }
                 }
             }
-        }
+        
         
         // 블록들이 바닥에 안착할 때까지 안전하게 0.2초 대기
         yield return new WaitForSeconds( 0.2f);
@@ -744,6 +750,7 @@ private void FindBlockIndex(GameObject block, out int x, out int y)
             rect.localScale = Vector3.one;
             rect.anchoredPosition = startPosition;
         }
+    }
     }
 
     // 🎯 [완전 보강] 옛날 코드(d-2)의 철통 안전 검사식을 width/height에 맞게 이식한 데드락 탐색 엔진
