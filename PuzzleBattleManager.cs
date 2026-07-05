@@ -4,11 +4,10 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI; // 🌟 슬라이더 및 UI 컴포넌트 제어용 필수 도구상자
 
-
-
-
+public class PuzzleBattleManager : MonoBehaviour
+{
     [Header("--- 무한모드 최종 정산 시스템 ---")]
-    public GameObject panel_InfiniteReward;  // 💡 형님이 만드신 결과창 패널(InfiniteRewardPanel 등)을 통째로 연결할 방
+    public GameObject panel_InfiniteReward;  // 결과창 패널(InfiniteRewardPanel 등)을 통째로 연결할 방
     public TextMeshProUGUI textFinalScore;   // Text_FinalScore 연결
     public TextMeshProUGUI textFinalTurns;   // Text_FinalTurns 연결
     public TextMeshProUGUI textRecordNotice; // Text_RecordNotice 연결
@@ -36,9 +35,8 @@ using UnityEngine.UI; // 🌟 슬라이더 및 UI 컴포넌트 제어용 필수 
     public TextMeshProUGUI turnTextUI;
 
 
-    public class PuzzleBattleManager : MonoBehaviour
-    {
-     public static PuzzleBattleManager Instance { get; private set; }
+
+    public static PuzzleBattleManager Instance { get; private set; }
 
     private void Awake()
     {
@@ -48,6 +46,8 @@ using UnityEngine.UI; // 🌟 슬라이더 및 UI 컴포넌트 제어용 필수 
     }
     
     
+    
+    
 
      // 🌟 [새로 추가] 던전 안에서 파티원들의 진짜 최대 체력 원본을 기억해 둘 딕셔너리 주머니
     private static Dictionary<int, int> partyMaxHpBackup = new Dictionary<int, int>();
@@ -55,32 +55,27 @@ using UnityEngine.UI; // 🌟 슬라이더 및 UI 컴포넌트 제어용 필수 
     {
         currentTurn = 0;
         UpdateTurnTextUI();
-            if (GameManager.Instance != null && GameManager.Instance.partyMembers != null)
-    {
-        foreach (var character in GameManager.Instance.partyMembers)
+
+        if (GameManager.Instance != null && GameManager.Instance.partyMembers != null)
         {
-            if (character == null) continue;
-
-            // 만약 이 캐릭터의 최대 체력이 아직 기록된 적이 없다면 (즉, 던전에 완전히 처음 입장한 상태라면)
-            if (!partyMaxHpBackup.ContainsKey(character.id))
+            foreach (var character in GameManager.Instance.partyMembers)
             {
-            // 1. 인스펙터에 적혀있던 원래 체력을 최대 체력 원본으로 저장
-            partyMaxHpBackup[character.id] = character.hp;
+                if (character == null) continue;
 
-            // 🚀 [여기에 한 줄 추가]: 던전에 처음 들어왔을 때만 체력을 원본 수치로 꽉 채워줍니다(풀피 세팅)!
-            character.hp = partyMaxHpBackup[character.id];
+                if (!partyMaxHpBackup.ContainsKey(character.id))
+                {
+                    partyMaxHpBackup[character.id] = character.hp;
+                    character.hp = partyMaxHpBackup[character.id];
+                    Debug.Log($"[최초 입장] {character.characterName} HP: {character.hp}");
+                }
+                else
+                {
+                    Debug.Log($"[연속 전투] {character.characterName} HP 유지: {character.hp}");
+                }
+            } // foreach 종료
+        } // if 종료
+    } // Start() 최종 종료
 
-            Debug.Log($"[최초 입장 확인] {character.characterName}의 최대 HP {character.hp}를 안전하게 기록하고 풀피로 시작합니다.");
-            }
-            else
-            {
-                // 🌟 이미 주머니에 원본이 기록되어 있다면 = 연속 배틀 중인 상태입니다!
-                // 이때는 캐릭터의 피를 만지지 않고, 닳아있는 현재 HP 상태를 그대로 존중하여 유지합니다.
-                Debug.Log($"[연속 전투 확인] {character.characterName}의 HP 상태를 리셋하지 않고 그대로 유지합니다. (현재 HP: {character.hp})");
-            }
-        }
-    }
-    }
     
     
     
@@ -303,6 +298,7 @@ using UnityEngine.UI; // 🌟 슬라이더 및 UI 컴포넌트 제어용 필수 
     
     
     
+    
     public void OnClickBackToVillageFromInfinite()
     {
         // [기존 필수 1] 켜져 있던 무한모드 결과창 패널(GAMEOVER TXT)을 시원하게 꺼버립니다.
@@ -461,7 +457,8 @@ using UnityEngine.UI; // 🌟 슬라이더 및 UI 컴포넌트 제어용 필수 
         btn_StartTouchTrigger_Direct.SetActive(false);
         Debug.Log("🏁 [최적화 완공] GAMEOVER TXT는 ON, 트리거 버튼은 OFF 교차 편집 완료!");
     }
-    
+     }
+
     
  
  // 🔒 2. 가장 중요! OnTimerEnd() 함수 전체를 확실하게 닫아주는 최종 바깥 중괄호입니다!
@@ -496,6 +493,7 @@ using UnityEngine.UI; // 🌟 슬라이더 및 UI 컴포넌트 제어용 필수 
 
         Debug.Log("[NPC 순위판] 보이지 않는 장부에서 탑텐 데이터를 긁어와 새로고침 완료!");
     }
+    
     
     // ✨ [추가] 몬스터가 턴 종료 시 살아있는 우리 캐릭터 카드를 무작위로 때리는 핵심 공격 회로
     public void MonsterAttackRandomPartyCard(float monsterDamage)
@@ -575,5 +573,6 @@ using UnityEngine.UI; // 🌟 슬라이더 및 UI 컴포넌트 제어용 필수 
         }
     }
 }
+
      
     
