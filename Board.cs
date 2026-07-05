@@ -96,6 +96,8 @@ public class Board : MonoBehaviour
             }
         }
         Debug.Log("🎲 [성공] 자동 매칭이 방지된 6x6 보드가 배치되었습니다.");
+    }
+
     // InitializeNewBoard 함수의 바깥쪽 독립된 공간에 정확히 위치해야 합니다!
     private void SpawnBlockAt(int prefabIndex, int x, int y)
     {
@@ -115,41 +117,40 @@ public class Board : MonoBehaviour
     }
 
 
-    }
+    
 
     private IEnumerator DropExistingBlocksRoutine()
     {
-        float duration = 0.2f;
-        List<Coroutine> activeMoves = new List<Coroutine>();
-
         for (int x = 0; x < rows; x++)
         {
             for (int y = 0; y < cols; y++)
             {
-                if (allBlocks[x, y] == null) // 빈 자리를 찾으면
+                if (allBlocks[x, y] == null)
                 {
-                    // 위쪽 칸에 블록이 남아있는지 체크
-                    for (int ku = y + 1; ku < cols; ku++)
+                    for (int k = y + 1; k < cols; k++)
                     {
-                        if (allBlocks[x, ku] != null)
+                        if (allBlocks[x, k] != null)
                         {
-                            // 데이터 장부 위치 최신화
-                            allBlocks[x, y] = allBlocks[x, ku];
-                            allBlocks[x, ku] = null;
+                            allBlocks[x, y] = allBlocks[x, k];
+                            allBlocks[x, k] = null;
+                            
+                            Vector2 targetUIPos = new Vector2(x * cellSize, y * cellSize);
+                            StartCoroutine(SmoothMoveBlock(allBlocks[x, y], targetUIPos, 0.2f));
 
-                            // ✨ [오류 수정]: SmoothMoveBlock 매개변수 양식에 맞게 목표 UI 앵커 좌표 계산
-                            Vector2 targetMin = new Vector2((float)x / cols, (float)y / rows);
-                            Vector2 targetMax = new Vector2((float)(x + 1) / cols, (float)(y + 1) / rows);
-
-                            activeMoves.Add(StartCoroutine(SmoothMoveBlock(allBlocks[x, y], targetMin, targetMax, duration)));
+                            string originalName = allBlocks[x, y].name;
+                            int lastUnderscore = originalName.LastIndexOf('_');
+                            int secondLastUnderscore = originalName.Substring(0, lastUnderscore).LastIndexOf('_');
+                            string colorPrefix = originalName.Substring(0, secondLastUnderscore);
+                            allBlocks[x, y].name = colorPrefix + "_" + x + "_" + y;
                             break;
                         }
                     }
                 }
             }
         }
-        foreach (var move in activeMoves) yield return move;
+        yield return new WaitForSeconds(0.2f);
     }
+
 
 
     public void ClearAllBoardObjects()
@@ -291,18 +292,22 @@ private void HandleMouseInput()
 
     private void CalculateSwipeDirection(Vector2 delta)
     {
+        // 🎯 [버그 수정]: 드래그 방향을 분석하여 상,하,좌,우 중 한 방향으로 딱 1칸만 지정합니다.
         int targetX = startX;
         int targetY = startY;
 
         if (Mathf.Abs(delta.x) > Mathf.Abs(delta.y))
         {
+            // 좌우 드래그 처리
             targetX += delta.x > 0 ? 1 : -1;
         }
         else
         {
+            // 상하 드래그 처리
             targetY += delta.y > 0 ? 1 : -1;
         }
 
+        // 보드판 6x6 범위 안을 벗어나지 않았다면 부드러운 스와이프(교체) 작동
         if (targetX >= 0 && targetX < rows && targetY >= 0 && targetY < cols)
         {
             StartCoroutine(SwapBlocksRoutine(startX, startY, targetX, targetY));
