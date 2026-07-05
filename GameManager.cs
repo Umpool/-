@@ -103,25 +103,23 @@ public class GameManager : MonoBehaviour
         if (Instance == null) Instance = this;
         else Destroy(gameObject);
 
-        // 💡 [최우선 순위 격리 차단]: 게임이 켜지는 0.00초 마스터 타이밍에 인트로 외 다른 UI는 원천 셧다운합니다.
-        if (panel_Village != null) panel_Village.SetActive(false);
-        if (panel_CharacterSelect != null) panel_CharacterSelect.SetActive(false);
-        if (panel_PartyEditView != null) panel_PartyEditView.SetActive(false);
-
         RefreshAllCharacterMenuCards();
     }
 
     void Start()
     {
-                // 💡 [여기에 한 줄 추가!]: 캔버스 내부의 인트로 패널을 게임매니저가 시작하자마자 강제로 쾅 켜서 선점합니다!
-        GameObject introPanelObj = GameObject.Find("Canvas")?.transform.Find("Panel_Intro")?.gameObject;
-        if (introPanelObj != null) introPanelObj.SetActive(true);
-        if (popup_PartyAddConfirm != null) popup_PartyAddConfirm.SetActive(false);
-        // 🌟 [코드 제어] 게임 시작 시 알림창 팝업을 무조건 처음부터 OFF 상태로 초기화합니다.
-        if (popup_AlertWindow != null) popup_AlertWindow.SetActive(false);
-        if (txt_MainNoticeText != null) txt_MainNoticeText.gameObject.SetActive(false);
-        if (panel_PartyEditView != null) panel_PartyEditView.SetActive(false);
+    // 🏁 [1순위: 메인 화면 제어] 재생 즉시 인트로를 강제로 켜고, 나머지 대형 화면들은 원천 차단합니다.
+    GameObject introPanelObj = GameObject.Find("Canvas")?.transform.Find("Panel_Intro")?.gameObject;
+    if (introPanelObj != null) introPanelObj.SetActive(true);
 
+    if (panel_village != null) panel_village.SetActive(false);
+    if (panel_CharacterSelect != null) panel_CharacterSelect.SetActive(false);
+    if (panel_PartyEditView != null) panel_PartyEditView.SetActive(false);
+
+        // 🔔 [2순위: 팝업 및 알림창 초기화] 게임 시작 시 방해되는 팝업들을 일괄 정리합니다.
+    if (popup_PartyAddConfirm != null) popup_PartyAddConfirm.SetActive(false);
+    if (popup_AlertWindow != null) popup_AlertWindow.SetActive(false);
+    if (txt_MainNoticeText != null) txt_MainNoticeText.gameObject.SetActive(false);
         GameObject topMenuBar = GameObject.Find("Canvas")?.transform.Find("상단 단축바")?.gameObject;
         if (topMenuBar != null)
         {
