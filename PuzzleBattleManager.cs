@@ -156,33 +156,6 @@ public class PuzzleBattleManager : MonoBehaviour
         currentTurn = 0;
         UpdateTurnTextUI();
 
-        // 먼저 두 패널을 모두 깔끔하게 꺼줍니다.
-        if (panel_PuzzleBattle != null) panel_PuzzleBattle.SetActive(false);
-        if (panel_InfiniteBattle != null) panel_InfiniteBattle.SetActive(false);
-        GameObject realPartyList = GameObject.Find("Canvas")?.transform.Find("PartyListContainer")?.gameObject;
-        if (realPartyList != null)
-        {
-            realPartyList.SetActive(false);
-            Debug.Log("메인 Canvas에 있던 PartyListContainer를 완벽하게 전원 OFF 시켰습니다!");
-        }
-        if (panel_InfiniteBattle != null)
-        {
-            Transform triggerBtn = panel_InfiniteBattle.transform.Find("Btn_StartTouchTrigger");
-            if (triggerBtn != null)
-            {
-                // 🎯 자식 글자 상자들까지 몽땅 대동해서 인스펙터 맨 위 체크박스를 강제로 [V] 상태로 ON 시켜버립니다!
-                triggerBtn.gameObject.SetActive(true);
-                Debug.Log("🚀 [형님 명령] Btn_StartTouchTrigger와 자식 오브젝트들을 화면 정중앙에 강제 ON 완공!");
-            }
-        }
-
-        // 💡 111번째 줄 무한 모드 판정 구역입니다!
-        // 💡 1. 무한 모드 판정 및 시동 구역
-    public void StartPuzzleBattle(string gameMode)
-    {
-        currentTurn = 0;
-        UpdateTurnTextUI();
-
         // 1. [다이렉트 화면 전환]: 무한모드 패널은 무조건 켜고, 일반 패널은 무조건 끕니다.
         if (panel_PuzzleBattle != null) panel_PuzzleBattle.SetActive(false);
         if (panel_InfiniteBattle != null) panel_InfiniteBattle.SetActive(true);
@@ -206,13 +179,14 @@ public class PuzzleBattleManager : MonoBehaviour
         timerIsRunning = false;
 
         SetupBattleEntities();
+
+        // 🔒 [형님의 대원칙 반영 완공 2단계]: 이제 진짜 전투 시작이니 보드 스크립트 전원을 켭니다!
         if (puzzleBoardComponent != null)
         {
-            puzzleBoardComponent.SetupStage(6, 6);
-            puzzleBoardComponent.CreateBoard();
+            puzzleBoardComponent.enabled = true; // 1. 오직 전투 가동 시점에만 스크립트 전원 ON!
+            puzzleBoardComponent.CreateBoard();  // 2. 군더더기 없이 보드 스크립트 내부 정석대로 즉시 보드 생성!
         }
-    }
-    }
+    } 
     public void UpdateTurnTextUI()
     {
         if (turnTextUI != null)
@@ -413,6 +387,10 @@ private void SetupBattleEntities()
                 isTimeOver = true; // "장부에 시간 종료라고 체크만 해둔다!"
                 Debug.Log("⏳ [타임오버 원격 대기] 진행 중인 블록 연쇄 정산이 끝날 때까지 대기합니다...");
             }
+            if (PuzzleBattleManager.Instance != null && PuzzleBattleManager.Instance.isTimeOver)
+{
+    PuzzleBattleManager.Instance.OnTimerEnd(); // 👈 매니저의 정산소를 다이렉트로 강제 호출!
+}
         }
     }
 
@@ -493,13 +471,20 @@ private void SetupBattleEntities()
             puzzleBoardComponent.ForceStopAndClearBoard();
         }
 
-        // [기존 필수 4] GameManager 싱글톤을 깨워서 마을 화면 패널을 다시 켜라고 명령합니다!
-        if (GameManager.Instance != null)
-        {
-            GameManager.Instance.OnClickInfiniteStageBackButton();
-            Debug.Log("무한모드 정산 완료! 결과창과 순위판을 모두 안전하게 초기화하고 마을로 복귀했습니다.");
-        }
+    // 🌟 PuzzleBattleManager.cs 내부 OnClickBackToVillageFromInfinite() 함수 끝자락 교체 구역
+    if (GameManager.Instance != null)
+    {
+        // 1. 기존의 무한모드 화면 정돈 명령 가동
+        GameManager.Instance.OnClickInfiniteStageBackButton();
+        
+        // 2. 🔓 [형님이 검거하신 진짜 정답 치트키 작동!]
+        // 창고에 잠들어 있던 빠른 이동 버튼 부활 사령탑 함수를 원격으로 강력하게 깨웁니다!
+        GameManager.Instance.ExitBattleStage();
+        
+        Debug.Log("🎪 [대완공] ExitBattleStage 함수 원격 가동! 빠른 이동 버튼이 완벽하게 ON 복구되었습니다.");
     }
+
+}
 
     // 💡 [여기서부터 복사해서 맨 밑 괄호 직전에 그대로 붙여넣으세요]
 
@@ -632,6 +617,7 @@ public void OnTimerEnd()
 // // 2. 마을에서 NPC 순위보기 버튼을 누르면 1위부터 10위까지의 보이지 않는 장부를 긁어와 화면에 쾅 꽂아주는 함수
 public void RefreshNPCLeaderboardUI()
 {
+    
 
         System.Text.StringBuilder sb = new System.Text.StringBuilder();
         sb.AppendLine("무한모드 랭킹보드 (Top 10)\n");
@@ -812,8 +798,15 @@ public void RefreshNPCLeaderboardUI()
         // 1. 이미 정산 중이거나 매칭 중인 코루틴 흐름이 있다면 모두 강제 종료
         StopAllCoroutines();
 
+        // 🔒 [형님의 대원칙 반영 완공 1단계]: 3매치 게임이 종료되었으므로 보드 스크립트 전원을 완전히 뽑아버립니다!
+        if (puzzleBoardComponent != null)
+        {
+            puzzleBoardComponent.enabled = false; // 🔌 스크립트 비활성화 (마을에서 켜질 필요 없음)
+            Debug.Log("🔌 [보드 셧다운 완료] 3매치 엔진 스크립트를 비활성화하여 마우스 센서를 차단했습니다.");
+        }
     }
 }
+
 
 
     
