@@ -268,11 +268,8 @@ public void OnClickRealStartInfiniteTimer()
     // 🎯 [완전 융합] 최신 Update 마우스 엔진에 옛날 d-2 정품 드래그/대각선 차단 공식을 주입합니다.
     private void Update()
     {
-        // 블록이 움직이거나 계산 중일 때는 마우스 입력을 원천 차단합니다.
         // ---- [복붙 시작] 블록이 움직이거나 매칭 계산 중일 때 마우스 입력 철저히 차단 ----
         if (isProcessing || isSwappingNow || isSwapping || isMatching) return;
-        // ---- [복붙 끝] -----------------------------------------------------------
-
         // 1. 마우스 왼쪽 버튼을 누르는 순간
         if (Input.GetMouseButtonDown(0))
         {
@@ -289,9 +286,6 @@ public void OnClickRealStartInfiniteTimer()
                     FindBlockIndex(selectedBlock, out startX, out startY); // 격자 주소 분석
                     break;
                 }
-            }
-        }
-
         // 2. 마우스 왼쪽 버튼을 떼는 순간 (드래그 방향 분석)
         if (Input.GetMouseButtonUp(0) && selectedBlock != null)
         {
