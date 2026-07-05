@@ -148,6 +148,9 @@ public class Board : MonoBehaviour
     {
         if (isSwapping || isMatching || Camera.main == null) return;
 
+         // 💡 [여기에 추가]: 내 유니티 계층 구조상에 '시작 트리거 팝업창' 오브젝트가 활성화되어 있다면 즉시 함수를 취소시킵니다!
+        if (GameObject.Find("Btn_StartTouchTrigger") != null && GameObject.Find("Btn_StartTouchTrigger").activeSelf) return;
+
         PointerEventData eventData = new PointerEventData(EventSystem.current) { position = screenPos };
         List<RaycastResult> results = new List<RaycastResult>();
         EventSystem.current.RaycastAll(eventData, results);
@@ -167,6 +170,10 @@ public class Board : MonoBehaviour
     {
         if (selectedBlock == null || isSwapping || isMatching) return;
 
+        string[] nameParts = selectedBlock.name.Split('_');
+        int currentX = int.Parse(nameParts[nameParts.Length - 2]);
+        int currentY = int.Parse(nameParts[nameParts.Length - 1]);
+
         Vector2 startScreenPos = InputManager.Instance.GetStartPosition();
         Vector2 swipeDir = screenPos - startScreenPos;
 
@@ -175,10 +182,6 @@ public class Board : MonoBehaviour
             selectedBlock = null;
             return;
         }
-
-        string[] nameParts = selectedBlock.name.Split('_');
-        int currentX = int.Parse(nameParts[nameParts.Length - 2]);
-        int currentY = int.Parse(nameParts[nameParts.Length - 1]);
 
         int targetX = currentX;
         int targetY = currentY;
@@ -420,17 +423,21 @@ private IEnumerator SwapBlocksRoutine(int ax, int ay, int bx, int by)
             if (GameManager.Instance != null) GameManager.Instance.DamageEnemy(dmg);
 
             // 보드 데이터 맵에서 제거 및 오브젝트 파괴
-            foreach (GameObject b in matchesList)
+        foreach (GameObject b in matchesList)
+        {
+            if (b != null)
             {
-                if (b != null)
-                {
-                    string[] parts = b.name.Split('_');
-                    int bx = int.Parse(parts[parts.Length - 2]);
-                    int by = int.Parse(parts[parts.Length - 1]);
-                    allBlocks[bx, by] = null;
-                    Destroy(b);
-                }
+                // 👇 [블랙박스 장착] 터지는 블록들의 진짜 이름과 컴퓨터가 계산해낸 방 주소(bx, by)를 콘솔창에 찍어봅니다.
+                string[] parts = b.name.Split('_');
+                int bx = int.Parse(parts[parts.Length - 2]);
+                int by = int.Parse(parts[parts.Length - 1]);
+                
+                Debug.LogWarning($"🎯 [버그 추적] 지금 터지는 블록의 실물 이름: {b.name} ➡️ 추출된 주소 - X: {bx}, Y: {by}");
+                
+                allBlocks[bx, by] = null;
+                Destroy(b);
             }
+        }
 
             yield return new WaitForSeconds(0.15f);
         // 📄 Board.cs의 CheckAndDestroyMatchesRoutine() 함수 맨 끝자락 수정 구역
