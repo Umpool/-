@@ -96,44 +96,60 @@ public class Board : MonoBehaviour
             }
         }
         Debug.Log("🎲 [성공] 자동 매칭이 방지된 6x6 보드가 배치되었습니다.");
+    // InitializeNewBoard 함수의 바깥쪽 독립된 공간에 정확히 위치해야 합니다!
+    private void SpawnBlockAt(int prefabIndex, int x, int y)
+    {
+        GameObject newBlock = Instantiate(blockPrefabs[prefabIndex], transform);
+        RectTransform rt = newBlock.GetComponent<RectTransform>();
+        if (rt != null)
+        {
+            rt.anchorMin = new Vector2((float)x / cols, (float)y / rows);
+            rt.anchorMax = new Vector2((float)(x + 1) / cols, (float)(y + 1) / rows);
+            rt.offsetMin = new Vector2(5f, 5f);
+            rt.offsetMax = new Vector2(-5f, -5f);
+            rt.localScale = Vector3.one;
+        }
+        string rawColor = GetBlockColor(blockPrefabs[prefabIndex]);
+        newBlock.name = $"블록_{rawColor}_{Random.Range(10, 99)}";
+        allBlocks[x, y] = newBlock;
     }
 
-private IEnumerator DropExistingBlocksRoutine()
-{
-    float duration = 0.2f;
-    List<Coroutine> activeMoves = new List<Coroutine>();
 
-    // 왼쪽 줄부터 오른쪽 줄까지 하나씩 검사
-    for (int x = 0; x < rows; x++)
+    }
+
+    private IEnumerator DropExistingBlocksRoutine()
     {
-        // 아래서부터 위로 올라가며 빈칸이 있는지 스캔합니다.
-        for (int y = 0; y < cols; y++)
-        {
-            if (allBlocks[x, y] == null) // 내 자리가 비어있다면?
-            {
-                // 내 바로 위칸(y+1)부터 맨 꼭대기칸까지 뒤져서 살아있는 블록을 찾습니다.
-                for (int ku = y + 1; ku < cols; ku++)
-                {
-                    if (allBlocks[x, ku] != null)
-                    {
-                        // 찾았다! 위쪽 블록을 비어있는 아래쪽 칸 데이터 장부로 이사시킵니다.
-                        allBlocks[x, y] = allBlocks[x, ku];
-                        allBlocks[x, ku] = null;
+        float duration = 0.2f;
+        List<Coroutine> activeMoves = new List<Coroutine>();
 
-                        // 실제 화면상에서도 새 격자 좌표로 스르륵 떨어지도록 명령합니다.
-                        Vector2 targetPos = new Vector2(x * cellSize, y * cellSize);
-                        activeMoves.Add(StartCoroutine(SmoothMoveBlock(allBlocks[x, y], targetPos, duration)));
-                        
-                        break; // 한 칸 채웠으니 다음 칸 검사하러 탈출
+        for (int x = 0; x < rows; x++)
+        {
+            for (int y = 0; y < cols; y++)
+            {
+                if (allBlocks[x, y] == null) // 빈 자리를 찾으면
+                {
+                    // 위쪽 칸에 블록이 남아있는지 체크
+                    for (int ku = y + 1; ku < cols; ku++)
+                    {
+                        if (allBlocks[x, ku] != null)
+                        {
+                            // 데이터 장부 위치 최신화
+                            allBlocks[x, y] = allBlocks[x, ku];
+                            allBlocks[x, ku] = null;
+
+                            // ✨ [오류 수정]: SmoothMoveBlock 매개변수 양식에 맞게 목표 UI 앵커 좌표 계산
+                            Vector2 targetMin = new Vector2((float)x / cols, (float)y / rows);
+                            Vector2 targetMax = new Vector2((float)(x + 1) / cols, (float)(y + 1) / rows);
+
+                            activeMoves.Add(StartCoroutine(SmoothMoveBlock(allBlocks[x, y], targetMin, targetMax, duration)));
+                            break;
+                        }
                     }
                 }
             }
         }
+        foreach (var move in activeMoves) yield return move;
     }
-
-    // 모든 블록들이 부드럽게 아래로 다 내려앉을 때까지 안전하게 기다려줍니다.
-    foreach (var move in activeMoves) yield return move;
-}
 
 
     public void ClearAllBoardObjects()
@@ -484,35 +500,6 @@ private void HandleMouseInput()
         yield return StartCoroutine(CheckPostProcessAndDeadlock());
     }
 
-    private IEnumerator DropExistingBlocksRoutine()
-    {
-        float duration = 0.2f; 
-        List<Coroutine> activeMoves = new List<Coroutine>();
-
-        for (int x = 0; x < rows; x++)
-        {
-            for (int y = 0; y < cols; y++)
-            {
-                if (allBlocks[x, y] == null)
-                {
-                    for (int ku = y + 1; ku < cols; ku++)
-                    {
-                        if (allBlocks[x, ku] != null)
-                        {
-                            allBlocks[x, y] = allBlocks[x, ku];
-                            allBlocks[x, ku] = null;
-
-                            Vector2 targetPos = new Vector2(x * cellSize, y * cellSize);
-                            activeMoves.Add(StartCoroutine(SmoothMoveBlock(allBlocks[x, y], targetPos, duration)));
-                            break;
-                        }
-                    }
-                }
-            }
-        }
-        foreach (var move in activeMoves) yield return move;
-    }
-
     private IEnumerator RefillNewBlocksRoutine()
     {
         float duration = 0.25f;
@@ -521,68 +508,77 @@ private void HandleMouseInput()
         for (int x = 0; x < rows; x++)
         {
             int missingCount = 0;
-            
-            // 아래(0)에서부터 위(cols-1)로 올라가며 빈칸을 찾습니다.
+
+            // 아래(0)에서 위(cols-1)로 올라가며 빈칸 탐색
             for (int y = 0; y < cols; y++)
             {
                 if (allBlocks[x, y] == null)
                 {
                     missingCount++;
                     int randomIndex = Random.Range(0, blockPrefabs.Length);
-                    
-                    // 블록 생성
-                    GameObject newBlock = Instantiate(blockPrefabs[randomIndex], puzzleBoard);
+
+                    // 블록 생성 및 입주
+                    GameObject newBlock = Instantiate(blockPrefabs[randomIndex], transform);
                     RectTransform rt = newBlock.GetComponent<RectTransform>();
-                    
-                    // 위에서 정방향으로 차곡차곡 쌓이도록 시작 Y 위치 계산
-                    float startY = (cols + missingCount) * cellSize;
-                    rt.anchoredPosition = new Vector2(x * cellSize, startY);
-                    
+
+                    // ✨ [버그 수정]: 하늘 위(cols + missingCount)에서부터 정방향으로 앵커 위치 설정
+                    float startMinY = (float)(cols + missingCount - 1) / rows;
+                    float startMaxY = (float)(cols + missingCount) / rows;
+                    float currentMinX = (float)x / cols;
+                    float currentMaxX = (float)(x + 1) / cols;
+
+                    rt.anchorMin = new Vector2(currentMinX, startMinY);
+                    rt.anchorMax = new Vector2(currentMaxX, startMaxY);
+                    rt.offsetMin = new Vector2(5f, 5f);
+                    rt.offsetMax = new Vector2(-5f, -5f);
+                    rt.localScale = Vector3.one;
+
                     string rawColor = GetBlockColor(blockPrefabs[randomIndex]);
                     newBlock.name = $"블록_{rawColor}_{Random.Range(10, 99)}";
-                    
-                    // 데이터 배열에 저장
+
+                    // 데이터 저장
                     allBlocks[x, y] = newBlock;
-                    
-                    // 목표 위치로 부드럽게 떨어뜨리기
-                    Vector2 targetPos = new Vector2(x * cellSize, y * cellSize);
-                    activeMoves.Add(StartCoroutine(SmoothMoveBlock(newBlock, targetPos, duration)));
-                } // [if문 끝]
-            } // [y축 for문 끝]
-        } // [x축 for문 끝]
 
-        // ✨ 중요: 모든 블록 생성이 끝난 '후'에 움직임이 멈출 때까지 기다려줍니다.
-        foreach (var move in activeMoves) 
-        {
-            yield return move;
+                    // 스르륵 떨어질 목표 앵커 좌표 계산
+                    Vector2 targetMin = new Vector2(currentMinX, (float)y / rows);
+                    Vector2 targetMax = new Vector2(currentMaxX, (float)(y + 1) / rows);
+
+                    activeMoves.Add(StartCoroutine(SmoothMoveBlock(newBlock, targetMin, targetMax, duration)));
+                }
+            }
         }
-    } // [RefillNewBlocksRoutine 함수 최종 끝!]
 
-        private IEnumerator SmoothMoveBlock(GameObject target, Vector2 targetAnchoredPos, float time)
+        foreach (var move in activeMoves) yield return move;
+    }
+
+    private IEnumerator SmoothMoveBlock(GameObject target, Vector2 targetMin, Vector2 targetMax, float time)
     {
         if (target == null) yield break;
 
         RectTransform rt = target.GetComponent<RectTransform>();
         if (rt == null) yield break;
 
-        Vector2 startPos = rt.anchoredPosition;
+        Vector2 startMin = rt.anchorMin;
+        Vector2 startMax = rt.anchorMax;
         float elapsed = 0f;
 
-        // 지정된 시간(duration) 동안 부드럽게 목표 격자 좌표로 이동시키는 반복문
         while (elapsed < time)
         {
-            if (target == null) yield break; // 중간에 블록이 터지면 탈출
-            
+            if (target == null) yield break; // 이동 중 블록 터지면 안전 탈출
+
             elapsed += Time.deltaTime;
-            // ✨ [핵심 수정]: Lerp(선형 보간)를 이용해 화면 좌표를 오차 없이 정밀하게 이동시킵니다.
-            rt.anchoredPosition = Vector2.Lerp(startPos, targetAnchoredPos, elapsed / time);
+            float t = elapsed / time;
+
+            // ✨ [정렬 정상화 핵심]: Lerp를 사용하여 UI 앵커 좌표를 오차 없이 부드럽게 슬라이딩시킵니다.
+            rt.anchorMin = Vector2.Lerp(startMin, targetMin, t);
+            rt.anchorMax = Vector2.Lerp(startMax, targetMax, t);
             yield return null;
         }
 
-        // 최종 이동이 끝난 후 미세한 오차를 없애기 위해 확실하게 목표 좌표를 꽂아줍니다.
         if (target != null)
         {
-            rt.anchoredPosition = targetAnchoredPos;
+            rt.anchorMin = targetMin;
+            rt.anchorMax = targetMax;
         }
     }
 
