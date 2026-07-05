@@ -5,18 +5,7 @@ using UnityEngine;
 using UnityEngine.UI; // 🌟 슬라이더 및 UI 컴포넌트 제어용 필수 도구상자
 
 
-// 🌟 [개발자님 기획 최종 구현]: 3매치 퍼즐 전장의 모든 아군/적군 실시간 데이터를 총괄 지휘하는 전용 사령관
-public class PuzzleBattleManager : MonoBehaviour
-{
-    // ====== 1. [여기 추가] 다른 곳에서 호출할 수 있게 통로를 만듭니다 ======
-    public static PuzzleBattleManager Instance { get; private set; }
 
-    private void Awake()
-    {
-        // 내 자신을 Instance에 등록합니다.
-        if (Instance == null) Instance = this;
-        else Destroy(gameObject);
-    }
 
     [Header("--- 무한모드 최종 정산 시스템 ---")]
     public GameObject panel_InfiniteReward;  // 💡 형님이 만드신 결과창 패널(InfiniteRewardPanel 등)을 통째로 연결할 방
@@ -46,7 +35,18 @@ public class PuzzleBattleManager : MonoBehaviour
     public List<Slider> heroHPBars = new List<Slider>(); // 아군 영웅 5인 체력바 슬라이더 리스트
     public TextMeshProUGUI turnTextUI;
 
+    // 🌟 [개발자님 기획 최종 구현]: 3매치 퍼즐 전장의 모든 아군/적군 실시간 데이터를 총괄 지휘하는 전용 사령관
+    public class PuzzleBattleManager : MonoBehaviour
+    {
+    // ====== 1. [여기 추가] 다른 곳에서 호출할 수 있게 통로를 만듭니다 ======
+    public static PuzzleBattleManager Instance { get; private set; }
 
+    private void Awake()
+    {
+        // 내 자신을 Instance에 등록합니다.
+        if (Instance == null) Instance = this;
+        else Destroy(gameObject);
+    }
 
      // 🌟 [새로 추가] 던전 안에서 파티원들의 진짜 최대 체력 원본을 기억해 둘 딕셔너리 주머니
     private static Dictionary<int, int> partyMaxHpBackup = new Dictionary<int, int>();    private void Start()
@@ -260,6 +260,7 @@ public class PuzzleBattleManager : MonoBehaviour
                     heroHPBars.Add(hpSlider);
                 }
             }
+            
 
             }
             Debug.Log($"[아군 진형 연동 완공] 총 {heroHPBars.Count}명의 파티원이 실시간 생명력 게이지를 장착 완료했습니다!");
@@ -294,10 +295,9 @@ public class PuzzleBattleManager : MonoBehaviour
             heroHPBars.Add(heroSlider);
             Debug.Log($"[전투 전용 자동 연동] 영웅 HP 바 등록 완료! (현재 {heroHPBars.Count}개)");
         }
-
+    }
     
-
-
+    
     public void OnClickBackToVillageFromInfinite()
     {
         // [기존 필수 1] 켜져 있던 무한모드 결과창 패널(GAMEOVER TXT)을 시원하게 꺼버립니다.
@@ -329,9 +329,9 @@ public class PuzzleBattleManager : MonoBehaviour
         GameManager.Instance.ExitBattleStage();
         
         Debug.Log("🎪 [대완공] ExitBattleStage 함수 원격 가동! 빠른 이동 버튼이 완벽하게 ON 복구되었습니다.");
-     }
-    }
-    }
+       }
+      }
+    
 
 
 
@@ -339,44 +339,45 @@ public class PuzzleBattleManager : MonoBehaviour
 
      // 1. 3분 무한 모드가 끝났을 때 1위~10위까지 보이지 않는 장부를 계산해 저장하는 정산기
      // 🛠️ Board.cs에서 모든 연쇄가 끝났을 때 원격 호출하는 최종 정산 사령탑 단락
-public void OnTimerEnd()
-{
-    timerIsRunning = false;
+    public void OnTimerEnd()
+     {
+      timerIsRunning = false;
 
-    // 🛠 최종 대미지 및 턴수 연동 장부 개설
-    int finalScore = 0;
-    int finalTurns = currentTurn;
+     // 🛠 최종 대미지 및 턴수 연동 장부 개설
+     int finalScore = 0;
+     int finalTurns = currentTurn;
 
-    // 💡 하이어라키 세상을 뒤져 ScoreText(상단 텍스트판)의 컴포넌트를 조준 사격합니다.
-    TMPro.TextMeshProUGUI realScoreTMP = transform.Find("ScoreText")?.GetComponent<TMPro.TextMeshProUGUI>();
-    if (realScoreTMP == null) realScoreTMP = GameObject.Find("ScoreText")?.GetComponent<TMPro.TextMeshProUGUI>();
+     // 💡 하이어라키 세상을 뒤져 ScoreText(상단 텍스트판)의 컴포넌트를 조준 사격합니다.
+     TMPro.TextMeshProUGUI realScoreTMP = transform.Find("ScoreText")?.GetComponent<TMPro.TextMeshProUGUI>();
+     if (realScoreTMP == null) realScoreTMP = GameObject.Find("ScoreText")?.GetComponent<TMPro.TextMeshProUGUI>();
 
-    if (realScoreTMP != null)
-    {
+     if (realScoreTMP != null)
+     {
         // 🎯 [정규식 특수 안전망]: "대미지", "데미지", 공백(" "), 콜론(":") 등 글자는 몽땅 소멸시키고
         // 오직 순수한 숫자 알맹이(예: 800, 1040)만 정확하게 추출하여 finalScore에 주입합니다!
         string cleanNumbers = System.Text.RegularExpressions.Regex.Replace(realScoreTMP.text, @"[^\d]", "");
         int.TryParse(cleanNumbers, out finalScore);
-    }
-    else
-    {
+     }
+     else
+     {
         finalScore = currentScore;
-    }
+     }
 
-    // 🖥️ [인스펙터 연동 1단계]: 최종 대미지 결과창 텍스트 박스에 3자리 콤마(,N0)를 찍어 출력합니다.
-    if (textFinalScore != null)
-    {
+     // 🖥️ [인스펙터 연동 1단계]: 최종 대미지 결과창 텍스트 박스에 3자리 콤마(,N0)를 찍어 출력합니다.
+     if (textFinalScore != null)
+     {
         textFinalScore.text = $"최종 대미지 : {finalScore:N0}";
-    }
+     }
 
-    // 🖥️ [인스펙터 연동 2단계]: 묶여있던 최종 걸린 턴수 데이터를 글자로 주입하고 컴포넌트를 강제 ON 합니다!
-    if (textFinalTurns != null)
-    {
+     // 🖥️ [인스펙터 연동 2단계]: 묶여있던 최종 걸린 턴수 데이터를 글자로 주입하고 컴포넌트를 강제 ON 합니다!
+     if (textFinalTurns != null)
+     {
         textFinalTurns.text = $"걸린 턴수 : {finalTurns} 턴";
         textFinalTurns.gameObject.SetActive(true);
-    }
+     }
 
-    // (※ 이 바로 아래에 배치되어 있는 int[] highScores = new int[10]; 로직부터 명예의 전당 Top 10 밀어내기 및 GAMEOVER TXT 활성화 코드는 절대로 지우지 말고 그대로 매끄럽게 이어붙이시면 성공입니다!)
+    }
+      // (※ 이 바로 아래에 배치되어 있는 int[] highScores = new int[10]; 로직부터 명예의 전당 Top 10 밀어내기 및 GAMEOVER TXT 활성화 코드는 절대로 지우지 말고 그대로 매끄럽게 이어붙이시면 성공입니다!)
 
 
 
@@ -453,19 +454,20 @@ public void OnTimerEnd()
     if (btn_StartTouchTrigger_Direct != null)
     {
         btn_StartTouchTrigger_Direct.SetActive(false);
+        Debug.Log("🏁 [최적화 완공] GAMEOVER TXT는 ON, 트리거 버튼은 OFF 교차 편집 완료!");
     }
     
-    Debug.Log("🏁 [최적화 완공] GAMEOVER TXT는 ON, 트리거 버튼은 OFF 교차 편집 완료!");
-
-} // 🔒 2. 가장 중요! OnTimerEnd() 함수 전체를 확실하게 닫아주는 최종 바깥 중괄호입니다!
-
+    
+ 
+ // 🔒 2. 가장 중요! OnTimerEnd() 함수 전체를 확실하게 닫아주는 최종 바깥 중괄호입니다!
+    
  // =========================================================================
  // ⚔️ 여기서부터 상단 함수와 완전히 분리된 깨끗한 독립형 새 함수가 시작됩니다!
  // =========================================================================
 
-// // 2. 마을에서 NPC 순위보기 버튼을 누르면 1위부터 10위까지의 보이지 않는 장부를 긁어와 화면에 쾅 꽂아주는 함수
-public void RefreshNPCLeaderboardUI()
-{
+ // // 2. 마을에서 NPC 순위보기 버튼을 누르면 1위부터 10위까지의 보이지 않는 장부를 긁어와 화면에 쾅 꽂아주는 함수
+ public void RefreshNPCLeaderboardUI()
+ {
     
 
         System.Text.StringBuilder sb = new System.Text.StringBuilder();
@@ -492,7 +494,7 @@ public void RefreshNPCLeaderboardUI()
 
     // ✨ [추가] 몬스터가 턴 종료 시 살아있는 우리 캐릭터 카드를 무작위로 때리는 핵심 공격 회로
     public void MonsterAttackRandomPartyCard(float monsterDamage)
-    {
+    
         // 1. 화면에 생성되어 배치된 모든 캐릭터 카드(CharacterCard) 목록을 전수 조사하여 수거합니다.
         // 기존 FindObjectsOfType 코드는 아예 삭제합니다!
         CharacterCard[] activeCards = liveCards.ToArray(); // 👈 실시간 장부를 그대로 가져오므로 꼬일 일이 전혀 없습니다.
@@ -518,7 +520,7 @@ public void RefreshNPCLeaderboardUI()
         {
             Debug.Log("💀 화면에 살아있는 파티원 카드가 없어 몬스터가 공격할 대상을 찾지 못했습니다.");
         }
-    }
+    
     // ✨ [리모컨 스위치] 몬스터가 턴 종료 시 살아있는 파티원 카드를 무작위로 때리는 명령장치
     public void Remote_MonsterAttackRandomCard(float damage)
     {
@@ -548,6 +550,8 @@ public void RefreshNPCLeaderboardUI()
             Debug.Log("💀 [경고] 화면에 살아있는 파티원 카드가 없어 리모컨이 타겟을 찾지 못했습니다.");
         }
     }
+    
+
     public void ResetBattleSystemForNextEntry()
     {
         // 하이어라키에 실제 존재하는 대문자 이름의 오브젝트를 찾아서 안전하게 꺼버립니다.
@@ -561,11 +565,15 @@ public void RefreshNPCLeaderboardUI()
         if (btn_StartTouchTrigger_Direct != null) 
         {
             btn_StartTouchTrigger_Direct.SetActive(true); 
+            Debug.Log("🧹 [PuzzleBattleManager] 배틀 데이터 초기화 완수!");
         }
-
-        Debug.Log("🧹 [PuzzleBattleManager] 배틀 데이터 초기화 완수!");
     }
-}
+    
+    
+    
+    
+    
+
 
 
 
