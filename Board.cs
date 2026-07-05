@@ -626,7 +626,8 @@ public void OnClickRealStartInfiniteTimer()
         yield return new WaitForSeconds( 0.2f);
     }
     // ---- [복붙 끝] ----------------------------------------------------
-
+    }
+    
     public void UpdateComboTextUI()
     {
         if (comboText == null) return;
