@@ -25,6 +25,9 @@ public class Board : MonoBehaviour
     public int currentTurn = 0;
     public int comboCount = 0;
 
+    [SerializeField] private Transform puzzleBoard; // <-- 이 줄을 변수 모여있는 곳에 추가
+
+
     [Header("ㅡ 이사 온 부드러운 콤보 시스템 ㅡ")]
     public int currentCombo = 0;             
     public float comboDamageMultiplier = 0.1f; 
@@ -481,47 +484,69 @@ private void HandleMouseInput()
         for (int x = 0; x < rows; x++)
         {
             int missingCount = 0;
-            for (int y = cols - 1; y >= 0; y--)
+            
+            // 아래(0)에서부터 위(cols-1)로 올라가며 빈칸을 찾습니다.
+            for (int y = 0; y < cols; y++)
             {
                 if (allBlocks[x, y] == null)
                 {
                     missingCount++;
                     int randomIndex = Random.Range(0, blockPrefabs.Length);
                     
-                    GameObject newBlock = Instantiate(blockPrefabs[randomIndex], transform);
+                    // 블록 생성
+                    GameObject newBlock = Instantiate(blockPrefabs[randomIndex], puzzleBoard);
                     RectTransform rt = newBlock.GetComponent<RectTransform>();
                     
+                    // 위에서 정방향으로 차곡차곡 쌓이도록 시작 Y 위치 계산
                     float startY = (cols + missingCount) * cellSize;
                     rt.anchoredPosition = new Vector2(x * cellSize, startY);
-
+                    
                     string rawColor = GetBlockColor(blockPrefabs[randomIndex]);
                     newBlock.name = $"블록_{rawColor}_{Random.Range(10, 99)}";
-
+                    
+                    // 데이터 배열에 저장
                     allBlocks[x, y] = newBlock;
-
+                    
+                    // 목표 위치로 부드럽게 떨어뜨리기
                     Vector2 targetPos = new Vector2(x * cellSize, y * cellSize);
                     activeMoves.Add(StartCoroutine(SmoothMoveBlock(newBlock, targetPos, duration)));
-                }
-            }
-        }
-        foreach (var move in activeMoves) yield return move;
-    }
+                } // [if문 끝]
+            } // [y축 for문 끝]
+        } // [x축 for문 끝]
 
-    private IEnumerator SmoothMoveBlock(GameObject target, Vector2 targetAnchoredPos, float time)
+        // ✨ 중요: 모든 블록 생성이 끝난 '후'에 움직임이 멈출 때까지 기다려줍니다.
+        foreach (var move in activeMoves) 
+        {
+            yield return move;
+        }
+    } // [RefillNewBlocksRoutine 함수 최종 끝!]
+
+        private IEnumerator SmoothMoveBlock(GameObject target, Vector2 targetAnchoredPos, float time)
     {
         if (target == null) yield break;
+
         RectTransform rt = target.GetComponent<RectTransform>();
+        if (rt == null) yield break;
+
         Vector2 startPos = rt.anchoredPosition;
         float elapsed = 0f;
 
+        // 지정된 시간(duration) 동안 부드럽게 목표 격자 좌표로 이동시키는 반복문
         while (elapsed < time)
         {
-            if (target == null) yield break;
+            if (target == null) yield break; // 중간에 블록이 터지면 탈출
+            
             elapsed += Time.deltaTime;
+            // ✨ [핵심 수정]: Lerp(선형 보간)를 이용해 화면 좌표를 오차 없이 정밀하게 이동시킵니다.
             rt.anchoredPosition = Vector2.Lerp(startPos, targetAnchoredPos, elapsed / time);
             yield return null;
         }
-        if (rt != null) rt.anchoredPosition = targetAnchoredPos;
+
+        // 최종 이동이 끝난 후 미세한 오차를 없애기 위해 확실하게 목표 좌표를 꽂아줍니다.
+        if (target != null)
+        {
+            rt.anchoredPosition = targetAnchoredPos;
+        }
     }
 
     public void UpdateComboTextUI()
