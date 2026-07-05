@@ -209,6 +209,12 @@ private IEnumerator SwapBlocksRoutine(int ax, int ay, int bx, int by)
         RectTransform rectA = blockA.GetComponent<RectTransform>();
         RectTransform rectB = blockB.GetComponent<RectTransform>();
 
+                // 🌟 [디테일 추가]: 드래그하여 움직이는 블록 A를 하이어라키 맨 아래로 보내 화면상 가장 최상단(맨 앞)에 그려지게 만듭니다!
+        if (rectA != null)
+        {
+            rectA.SetAsLastSibling();
+        }
+
         Vector2 posA = GetUIAnchoredPosition(ax, ay);
         Vector2 posB = GetUIAnchoredPosition(bx, by);
 
@@ -247,7 +253,15 @@ private IEnumerator SwapBlocksRoutine(int ax, int ay, int bx, int by)
         isSwapping = false;
         StartCoroutine(CheckAndDestroyMatchesRoutine());
         }
-        else     ////여기부터
+        else
+        {
+                        // 🌟 [여기에 추가] 3매치 실패하여 복귀할 때 콤보를 0으로 리셋하고 UI를 지웁니다.
+            if (PuzzleBattleManager.Instance != null)
+            {
+                PuzzleBattleManager.Instance.currentCombo = 0;
+                PuzzleBattleManager.Instance.UpdateComboTextUI();
+            }
+            // 블록 위치 복구 및 배열 데이터 재설정 (0.2초)
             // 2. 0.2초 동안 반대 방향으로 직접 이동시켜서 원위치 (무한 루프 원인 제거)
             float returnElapsed = 0f;
             while (returnElapsed < 0.2f)
@@ -269,7 +283,8 @@ private IEnumerator SwapBlocksRoutine(int ax, int ay, int bx, int by)
 
             isSwapping = false;
             isUserTurn = false; 
-        }     ///////여기가끝 
+        }
+}
 
         bool CheckHasMatches()
     {
@@ -429,29 +444,34 @@ private IEnumerator SwapBlocksRoutine(int ax, int ay, int bx, int by)
         {
             yield return StartCoroutine(CheckAndDestroyMatchesRoutine());
         }
+    else
+    {
+        // 🔒 [시점 고정] 연쇄 폭발과 낙하 리필이 "완벽하게 끝난 진짜 최종 종착지"입니다.
+        isMatching = false;
+        isSwapping = false;
+
+        // ⏱️ [체크 1] 모든 블록이 보드를 다 채우고 멈춘 바로 지금, 제한시간이 끝났는지 확인합니다.
+        if (PuzzleBattleManager.Instance != null && PuzzleBattleManager.Instance.isTimeOver)
+        {
+            Debug.Log("🏆 [연쇄 및 낙하 종료 확인 완료] 완벽히 멈춘 상태에서 결과창 팝업을 활성화합니다!");
+            
+            // 1. 블록 배치가 완전히 끝난 깔끔한 상태에서 결과창을 오픈합니다.
+            PuzzleBattleManager.Instance.OnTimerEnd();
+            
+            // 2. 결과창이 떴으므로 보드의 모든 블록을 파괴하여 제거하고 3매치 조작 기능을 영구 정지시킵니다.
+            ForceStopAndClearBoard();
+        }
+        // 🧩 [체크 2] 아직 시간이 남아있다면 판이 완전히 막혔는지(데드락) 검사합니다.
+        else if (CheckIsDeadlock())
+        {
+            StartCoroutine(HandleDeadlockRoutine()); // 기획안 규칙대로 스르르 터지며 셔플 연출 실행
+        }
+        // 🎮 [체크 3] 시간도 남았고 데드락도 아니라면, 다음 플레이어 조작 턴으로 전원을 켭니다.
         else
         {
-            // 🔥 [흐름 보존형 완공]: 연속 콤보 연쇄와 블록 낙하 리필이 완전히 멈춘 진짜 최종 종착지입니다!
-            isMatching = false;
-            isSwapping = false;
-
-            // 🛠️ [개발자님 정석 기획 연동]: 모든 퍼즐이 조용해졌을 때 타임오버가 됐었는지 검사합니다.
-            if (PuzzleBattleManager.Instance != null && PuzzleBattleManager.Instance.isTimeOver)
-            {
-                Debug.Log("🏆 [모든 연쇄 종료 확인 완료] 이제 진짜 누적 대미지를 가지고 결과창 팝업을 활성화합니다!");
-
-                // 1. 모든 블록 착지가 끝난 뒤의 '진짜 최종 점수'를 바탕으로 랭킹 정산창을 켭니다!
-                PuzzleBattleManager.Instance.OnTimerEnd();
-
-                // 2. 결과창이 떴으므로 보드판 위에 놓여진 블록들을 깨끗하게 싹 청소하여 화면을 고정합니다.
-                ForceStopAndClearBoard();
-            }
-            else
-            {
-                // 아직 시간이 남아있다면 정상적으로 다음 드래그가 가능한 플레이어 턴으로 전원을 켭니다.
-                GameManager.Instance.currentGameState = GameState.PuzzleBattle;
-            }
+            GameManager.Instance.currentGameState = GameState.PuzzleBattle;
         }
+    }
 
     } // 🔍 CheckAndDestroyMatchesRoutine 함수가 완전히 끝나는 마감 중괄호
 
@@ -555,45 +575,51 @@ private IEnumerator SwapBlocksRoutine(int ax, int ay, int bx, int by)
         }
         rect.anchoredPosition = targetAnchoredPos;
     }
-
+//////////////////////////////////////////////
     // 기획안 데드락 (ㄱ) 규칙: 상, 하, 좌, 우 움직여서 3개가 터지는 조합이 한 군데라도 있는지 가상 연산 검사
     bool CheckIsDeadlock()
     {
+        // 1. 가로 방향 가상 스왑 및 매치 검사
         for (int y = 0; y < height; y++)
         {
             for (int x = 0; x < width - 1; x++)
             {
+                if (allBlocks[x, y] == null || allBlocks[x + 1, y] == null) continue;
+
                 GameObject temp = allBlocks[x, y];
                 allBlocks[x, y] = allBlocks[x + 1, y];
                 allBlocks[x + 1, y] = temp;
 
                 bool matchFound = CheckHasMatches();
 
-                temp = allBlocks[x, y];
                 allBlocks[x, y] = allBlocks[x + 1, y];
                 allBlocks[x + 1, y] = temp;
 
                 if (matchFound) return false; // 하나라도 움직여서 터질 가능성이 있다면 데드락 아님!
             }
         }
+
+        // 2. 세로 방향 가상 스왑 및 매치 검사
         for (int x = 0; x < width; x++)
         {
             for (int y = 0; y < height - 1; y++)
             {
+                if (allBlocks[x, y] == null || allBlocks[x, y + 1] == null) continue;
+
                 GameObject temp = allBlocks[x, y];
                 allBlocks[x, y] = allBlocks[x, y + 1];
                 allBlocks[x, y + 1] = temp;
 
                 bool matchFound = CheckHasMatches();
 
-                temp = allBlocks[x, y];
                 allBlocks[x, y] = allBlocks[x, y + 1];
                 allBlocks[x, y + 1] = temp;
 
                 if (matchFound) return false;
             }
         }
-        Debug.Log("[데드락 발동] 유저가 움직여서 터뜨릴 수 있는 조합이 단 한 개도 없습니다!");
+
+        Debug.LogWarning("🚨 [데드락 발동] 유저가 움직여서 터뜨릴 수 있는 조합이 단 한 개도 없습니다!");
         return true;
     }
 
@@ -642,10 +668,10 @@ private IEnumerator SwapBlocksRoutine(int ax, int ay, int bx, int by)
     // 🔥 [개발자님 기획 반영]: 3초 제한시간 종료 시 보드의 모든 블록을 투명하게 제거하고 마우스를 잠그는 함수
     public void ForceStopAndClearBoard()
     {
-        // 1. 현재 작동 중인 보드판의 모든 매칭/리필 코루틴을 강제 종료
+        // 1. 실행 중인 모든 낙하 / 리필 연출 코루틴을 강제로 찍어 누릅니다.
         StopAllCoroutines();
 
-        // 2. 6x6 보드판 위의 모든 블록 UI 오브젝트들을 싹 파괴하여 삭제합니다!
+        // 2. 6x6 격자 배열에 안전하게 등록된 블록 데이터 1차 청소
         if (allBlocks != null)
         {
             for (int x = 0; x < width; x++)
@@ -654,16 +680,37 @@ private IEnumerator SwapBlocksRoutine(int ax, int ay, int bx, int by)
                 {
                     if (allBlocks[x, y] != null)
                     {
-                        Destroy(allBlocks[x, y]);
+                        DestroyImmediate(allBlocks[x, y]);
                         allBlocks[x, y] = null;
                     }
                 }
             }
         }
 
-        // 3. 더 이상 마우스 클릭 입력을 받지 못하도록 보드 자체 방어벽 가동
+        // 3. 🌟 [핵심 물리 필터]: 배열에 미처 등록 안 되고 실시간 생성/이동 중이던 모든 오브젝트 2차 추적 소멸
+        // 이름 뒤에 '_X_Y' 좌표를 붙여 생성하는 규칙(예: Block_Red_0_0)을 활용해 UI 훼손 없이 블록만 골라냅니다.
+        System.Collections.Generic.List<Transform> zombieBlocks = new System.Collections.Generic.List<Transform>();
+        
+        foreach (Transform child in transform)
+        {
+            // 이름에 언더바(_)가 포함된 생성 블록들만 식별하여 타겟 리스트에 수집
+            if (child.gameObject.name.Contains("_"))
+            {
+                zombieBlocks.Add(child);
+            }
+        }
+
+        // 수집된 좀비 블록 오브젝트들을 프레임 대기 없이 물리적으로 즉시 소멸시킵니다.
+        for (int i = zombieBlocks.Count - 1; i >= 0; i--)
+        {
+            DestroyImmediate(zombieBlocks[i].gameObject);
+        }
+
+        // 4. 보드 입력 및 조작 권한 인터셉터 락(Lock) 가동
         isMatching = true;
         isSwapping = true;
+        
+        Debug.Log("🧹 [보드 철벽 클리어] 화면 상의 모든 예외 잔여 블록을 원천 차단 소멸했습니다!");
     }
 
 
