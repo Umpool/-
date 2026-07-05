@@ -50,8 +50,9 @@ using UnityEngine.UI; // 🌟 슬라이더 및 UI 컴포넌트 제어용 필수 
     
 
      // 🌟 [새로 추가] 던전 안에서 파티원들의 진짜 최대 체력 원본을 기억해 둘 딕셔너리 주머니
-    private static Dictionary<int, int> partyMaxHpBackup = new Dictionary<int, int>();    private void Start()
-    
+    private static Dictionary<int, int> partyMaxHpBackup = new Dictionary<int, int>();
+    private void Start()
+    {
         currentTurn = 0;
         UpdateTurnTextUI();
             if (GameManager.Instance != null && GameManager.Instance.partyMembers != null)
@@ -79,6 +80,8 @@ using UnityEngine.UI; // 🌟 슬라이더 및 UI 컴포넌트 제어용 필수 
             }
         }
     }
+    }
+    
     
     
 
@@ -378,7 +381,7 @@ using UnityEngine.UI; // 🌟 슬라이더 및 UI 컴포넌트 제어용 필수 
         textFinalTurns.gameObject.SetActive(true);
      }
 
-    }
+    
       // (※ 이 바로 아래에 배치되어 있는 int[] highScores = new int[10]; 로직부터 명예의 전당 Top 10 밀어내기 및 GAMEOVER TXT 활성화 코드는 절대로 지우지 말고 그대로 매끄럽게 이어붙이시면 성공입니다!)
 
 
@@ -571,4 +574,6 @@ using UnityEngine.UI; // 🌟 슬라이더 및 UI 컴포넌트 제어용 필수 
             Debug.Log("🧹 [PuzzleBattleManager] 배틀 데이터 초기화 완수!");
         }
     }
+}
+     
     
