@@ -51,7 +51,14 @@ public class InputManager : MonoBehaviour
 private void HandlePurePointerInput()
     {
         if (Pointer.current == null) return;
-        Vector2 currentPointerPos = Pointer.current.position.ReadValue();
+    // 🌟 [사진 속 54번 라인부터 61번 라인까지 드래그해서 이 내용으로 교체하세요!]
+    Vector2 currentPointerPos = Pointer.current.position.ReadValue();
+
+    // 🔒 [유령 드래그 원천 차단]: 진짜 무한모드 전장 방(Panel_INPuzzleBattle)이 화면에 켜져있을 때만 드래그를 허용합니다!
+    // 인트로 화면이나 타이틀 화면처럼 전장 방이 꺼져있을 때는 마우스를 아무리 움직여도 무조건 무시하고 도망갑니다.
+    GameObject inPuzzlePanel = GameObject.Find("Canvas")?.transform.Find("Panel_INPuzzleBattle")?.gameObject;
+    if (inPuzzlePanel == null || inPuzzlePanel.activeInHierarchy == false) return;
+
 
         // 1. 마우스를 꾹 누르는 순간 (기존 원본 로직 100% 유지)
         if (Pointer.current.press.wasPressedThisFrame)
