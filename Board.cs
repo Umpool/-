@@ -5,7 +5,10 @@ using UnityEngine.UI;
 using UnityEngine.EventSystems; // 🎯 [오류 해결]: PointerEventData를 컴퓨터가 인식할 수 있게 문을 열어줍니다!
 
 
+// 유니티에게 이 스크립트가 마우스 클릭, 드래그, 떼기 신호를 직접 수신하겠다고 선언합니다.
+// 이제 마우스 입력은 Update 리뉴얼 엔진이 전담하므로, 뒤에 붙은 인터페이스 단어들을 전부 떼어냅니다.
 public class Board : MonoBehaviour
+
 {
     [Header("ㅡ 보드 기본 설정 ㅡ")]
 public int width = 6; // 가로 6칸 고정
@@ -235,56 +238,62 @@ public void OnClickRealStartInfiniteTimer()
 
         TimeText.text = string.Format("{0:00}:{1:00}.{2:000}", minutes, seconds, milliseconds);
     }
-    [Header("ㅡ 마우스 및 드래그 제어 ㅡ")]
-    private GameObject selectedBlock = null; 
-    private Vector2 clickStartPos;           
-    private int startX, startY;              
-    private bool isSwappingNow = false;       
+    [Header("ㅡ 마우스 및 드래그 제어 (리뉴얼 엔진) ㅡ")]
+    private GameObject selectedBlock = null;
+    private Vector2 clickStartPos;
+    private int startX, startY;
+    private bool isSwappingNow = false;
 
+    // 🎯 [완전 구현] 인스펙터/프리팹 투명 가림막을 무력화하는 무적의 픽셀 좌표 추적 시스템
+    // 🎯 [옛날 정품 d-2 엔진 이식] 인스펙터나 프리팹 세팅에 간섭받지 않는 무적의 클릭&드래그 시스템
     private void Update()
     {
+        // 게임 중이 아니거나, 연산 중, 혹은 블록이 이미 스와이프 중이면 입력을 잠급니다.
         if (!isGameActive || isProcessing || isSwappingNow) return;
-        HandleMouseInput();
-    }
 
-private void HandleMouseInput()
-{
-    // 마우스 왼쪽 버튼을 딱 누르는 타이밍을 감지합니다.
-    if (Input.GetMouseButtonDown(0))
-    {
-        // 🎯 [UI 전용 레이캐스트]: 화면 맨 앞 투명 버튼을 통과하여 블록만 골라냅니다.
-        PointerEventData eventData = new PointerEventData(EventSystem.current) { position = Input.mousePosition };
-        List<RaycastResult> results = new List<RaycastResult>();
-        EventSystem.current.RaycastAll(eventData, results);
-
-        foreach (var result in results)
+        // 1. 마우스 왼쪽 버튼을 누르는 순간 (클릭 감지)
+        if (Input.GetMouseButtonDown(0))
         {
-            // 찾은 오브젝트 이름이 "블록_"으로 시작할 때만 낚아챕니다.
-            if (result.gameObject != null && result.gameObject.name.StartsWith("블록_"))
+            RectTransform boardRect = GetComponent<RectTransform>();
+            Vector2 localMousePos;
+
+            // 옛날 d-2 코드처럼 마우스의 화면 픽셀 좌표를 보드판 내부의 로컬 픽셀로 변환합니다.
+            if (RectTransformUtility.ScreenPointToLocalPointInRectangle(boardRect, Input.mousePosition, null, out localMousePos))
             {
-                selectedBlock = result.gameObject;
-                clickStartPos = Input.mousePosition;
-                FindBlockIndex(selectedBlock, out startX, out startY);
-                break;
+                float boardWidthPixels = boardRect.rect.width;
+                float boardHeightPixels = boardRect.rect.height;
+
+                // 마우스가 누른 픽셀이 6x6 보드 장부상 정확히 몇 번째 (x, y) 칸인지 숫자로 쪼갭니다.
+                // 옛날 width, height 고정 격자 해상도 방식을 100% 이식했습니다.
+                int x = Mathf.FloorToInt((localMousePos.x + (boardWidthPixels / 2f)) / (boardWidthPixels / width));
+                int y = Mathf.FloorToInt((localMousePos.y + (boardHeightPixels / 2f)) / (boardHeightPixels / height));
+
+                // 6x6 범위 내부이고 그 칸에 진짜 블록이 서 있다면 록온!
+                if (x >= 0 && x < width && y >= 0 && y < height && allBlocks[x, y] != null)
+                {
+                    selectedBlock = allBlocks[x, y];
+                    clickStartPos = Input.mousePosition; // 옛날 d-2 방식의 모니터 픽셀 기준점 저장
+                    startX = x;
+                    startY = y;
+                }
             }
         }
-    }
 
-    // 2-2: 마우스 버튼을 뗐을 때 드래그 거리를 계산하여 블록 이동 처리
-    if (Input.GetMouseButtonUp(0) && selectedBlock != null)
-    {
-        Vector2 clickEndPos = Input.mousePosition;
-        Vector2 swipeDelta = clickEndPos - clickStartPos;
-
-        // 드래그 거리(40픽셀)가 충분하면 스와이프 방향 계산
-        if (swipeDelta.magnitude > 40f)
+        // 2. 마우스 왼쪽 버튼을 떼는 순간 (드래그 종료 및 상하좌우 분석)
+        if (Input.GetMouseButtonUp(0) && selectedBlock != null)
         {
-            CalculateSwipeDirection(swipeDelta);
-        }
-        selectedBlock = null; // 선택 해제
-    }
-} // HandleMouseInput 함수 끝
+            Vector2 clickEndPos = Input.mousePosition;
+            Vector2 swipeDelta = clickEndPos - clickStartPos;
 
+            // 드래그 움직임 거리가 옛날 정품 세팅값(40픽셀) 이상으로 확실하게 밀었다면 인정!
+            if (swipeDelta.magnitude > 40f)
+            {
+                CalculateSwipeDirection(swipeDelta);
+            }
+
+            selectedBlock = null; // 선택 해제하여 다음 터치 대기
+        }
+    }
 
     private void FindBlockIndex(GameObject target, out int xPos, out int yPos)
     {
