@@ -2,21 +2,32 @@ using UnityEngine;
 using System;
 using UnityEngine.InputSystem;
 
+/// <summary>
+/// [마우스 및 키보드 입력 총괄 사령탑]
+/// 게임 내 모든 입력 신호를 수집하여 다른 시스템으로 전달하는 중앙 집중형 클래스입니다.
+/// </summary>
 public class InputManager : MonoBehaviour
 {
-    // 아무것도 가로막지 않고 클릭하는 순간 무조건 발사되는 순수 포인터 이벤트
-    public static event Action<Vector2> OnInputStart;
-    public static event Action<Vector2> OnInputEnd;
+    // =========================================================================
+    // 📢 [이벤트] 입력 신호 수신/발신 (Action)
+    // =========================================================================
+    public static event Action<Vector2> OnInputStart; // 클릭(시작) 좌표 쏘아보내기
+    public static event Action<Vector2> OnInputEnd;   // 클릭 해제(끝) 좌표 쏘아보내기
 
-    public static Vector2 MovementInput { get; private set; }
-    public static InputManager Instance { get; private set; }
+    // =========================================================================
+    // 💾 [데이터 변수] 현재 상태 보관
+    // =========================================================================
+    public static Vector2 MovementInput { get; private set; } // WASD 방향키 입력값
+    public static InputManager Instance { get; private set; } // 싱글톤 인스턴스
+    private Vector2 startPosition;                             // 드래그 시작 좌표 기억
+    private bool isDragging;                                   // 드래그 상태 체크 스위치
 
-    private Vector2 startPosition;
-    private bool isDragging;
-
-
+    // =========================================================================
+    // ⚙️ [시스템 초기화]
+    // =========================================================================
     void Awake()
     {
+        // 싱글톤 패턴: 인스턴스 고정 및 씬 전환 시 파괴 방지(DontDestroyOnLoad)
         if (Instance == null)
         {
             Instance = this;
@@ -24,28 +35,37 @@ public class InputManager : MonoBehaviour
         }
         else
         {
-            Destroy(gameObject);
+            Destroy(gameObject); // 중복 인스턴스 파괴
         }
     }
 
+    // =========================================================================
+    // 🔄 매 프레임마다 유저의 실시간 입력 신호를 감시하는 사령탑
+    // =========================================================================
     void Update()
     {
-        // 1. 키보드 WASD 감지 (순수 데이터 수집)
+        // 1. 키보드 방향키(WASD, 화살표) 입력 감지 및 데이터 수집
         Vector2 keyboardInput = Vector2.zero;
+
         if (Keyboard.current != null)
         {
+            // W 또는 ↑ 키를 누르면 위쪽(Y축 +1)으로 이동값 추가
             if (Keyboard.current.wKey.isPressed || Keyboard.current.upArrowKey.isPressed) keyboardInput.y += 1;
+            // S 또는 ↓ 키를 누르면 아래쪽(Y축 -1)으로 이동값 추가
             if (Keyboard.current.sKey.isPressed || Keyboard.current.downArrowKey.isPressed) keyboardInput.y -= 1;
+            // A 또는 ← 키를 누르면 왼쪽(X축 -1)으로 이동값 추가
             if (Keyboard.current.aKey.isPressed || Keyboard.current.leftArrowKey.isPressed) keyboardInput.x -= 1;
+            // D 또는 → 키를 누르면 오른쪽(X축 +1)으로 이동값 추가
             if (Keyboard.current.dKey.isPressed || Keyboard.current.rightArrowKey.isPressed) keyboardInput.x += 1;
         }
+
+        // 대각선 이동 시 속도가 빨라지지 않도록 입력값을 일정하게 규격화(정규화)하여 저장
         MovementInput = keyboardInput.normalized;
 
         // 2. 묻지도 따지지도 않고 모든 클릭 신호를 전송하는 엔진 가동
         HandlePurePointerInput();
     }
-    //여기서부터 드래그및 커서에 따라 움직이기 시작? 
-    // 💡 InputManager 클래스 내부에 기존 변수들과 함께 추가해주세요.
+
 
 
 private void HandlePurePointerInput()
@@ -96,21 +116,31 @@ private void HandlePurePointerInput()
         }
     }
 
-    // 💡 괄호 에러를 막기 위해 함수 내부에 안전하게 포함시킨 보조 방향 계산기입니다.
+    // =========================================================================
+    // 🧭 드래그 방향 계산기 (상하좌우 판단)
+    // =========================================================================
     private string CalculateSimpleDirection(Vector2 start, Vector2 end)
     {
+        // 마우스가 누른 시작점과 뗀 끝점의 실제 거리 차이를 구합니다.
         Vector2 diff = end - start;
+
+        // 가로(X축) 이동 거리가 세로(Y축) 이동 거리보다 더 크다면? -> 좌우 이동으로 판단
         if (Mathf.Abs(diff.x) > Mathf.Abs(diff.y))
         {
+            // 오른쪽으로 움직였으면 "RIGHT", 왼쪽이면 "LEFT" 글자를 뱉어냅니다.
             return diff.x > 0 ? "RIGHT" : "LEFT";
         }
+        // 세로 이동 거리가 더 크다면? -> 상하 이동으로 판단
         else
         {
+            // 위쪽으로 움직였으면 "UP", 아래쪽이면 "DOWN" 글자를 뱉어냅니다.
             return diff.y > 0 ? "UP" : "DOWN";
         }
     }
 
-    // 기존 원본에 있던 필수 함수입니다.
+    // =========================================================================
+    // 📍 처음 누른 마우스 좌표 보내주기 스위치
+    // =========================================================================
     public Vector2 GetStartPosition() => startPosition;
 
-}
+} // 🔒 InputManager 클래스 전체가 끝나는 최종 대문 괄호
