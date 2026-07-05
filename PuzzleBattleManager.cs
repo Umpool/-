@@ -4,6 +4,7 @@ using TMPro;
 using UnityEngine;
 using UnityEngine.UI; // 🌟 슬라이더 및 UI 컴포넌트 제어용 필수 도구상자
 
+
 // 🌟 [개발자님 기획 최종 구현]: 3매치 퍼즐 전장의 모든 아군/적군 실시간 데이터를 총괄 지휘하는 전용 사령관
 public class PuzzleBattleManager : MonoBehaviour
 {
@@ -490,6 +491,10 @@ private void SetupBattleEntities()
         {
             startTouchTriggerPanel.SetActive(true);
         }
+        if (btn_StartTouchTrigger_Direct != null)
+        {
+        btn_StartTouchTrigger_Direct.SetActive(true);
+        }
 
         Debug.Log("⏱ [타이머 및 안내창 초기화 완공] 두 번째 진입을 위해 startTouchTriggerPanel을 정상 복원했습니다.");
     }
@@ -601,6 +606,8 @@ public void OnTimerEnd()
         {
             if (textRecordNotice != null) textRecordNotice.gameObject.SetActive(false);
         }
+        
+        
 
 
 
@@ -629,6 +636,25 @@ public void OnTimerEnd()
                 Debug.Log("🎉 [코드로 완벽 제어] 3분 종료! GAMEOVER TXT 결과창 강제 ON 대완공!");
             }
         }
+            if (panel_InfiniteBattle != null)
+        {
+           Transform gameover = panel_InfiniteBattle.transform.Find("GAMEOVER TXT");
+            if (gameover != null)
+            {
+            gameover.gameObject.SetActive(true);
+            Debug.Log("🎉 [코드로 완벽 제어] 3분 종료! GAMEOVER TXT 결과창 강제 ON 대완공!");
+            }
+        }
+
+    // 🌟 [교체식 추가]: 게임오버 정산이 완전히 끝나 화면이 멈추더라도, 다음 판 재진입을 위해 미리 체크박스 트리거를 ON 상태로 복구해 둡니다.
+    if (btn_StartTouchTrigger_Direct != null)
+    {
+        btn_StartTouchTrigger_Direct.SetActive(true);
+    }
+}
+        
+
+
     }
 
     // 2. 마을에서 NPC 순위보기 버튼을 누르면 1위부터 10위까지의 보이지 않는 장부를 긁어와 화면에 쾅 꽂아주는 함수
@@ -812,5 +838,7 @@ public void OnTimerEnd()
         StopAllCoroutines();
 
     }
-}
+
+    
+
 
