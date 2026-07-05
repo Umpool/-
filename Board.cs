@@ -350,22 +350,27 @@ private IEnumerator SwapBlocksRoutine(int x1, int y1, int x2, int y2)
     Vector2 startMin2 = rt2.anchorMin; Vector2 startMax2 = rt2.anchorMax;
     Vector2 targetMin2 = new Vector2((float)x1 / width, (float)y1 / height);
     Vector2 targetMax2 = new Vector2((float)(x1 + 1) / width, (float)(y1 + 1) / height);    float duration = 0.25f, elapsed = 0f;
+    // 🎯 픽셀(pos) 대신, 생성할 때와 똑같은 안전한 앵커(Anchor) 방식으로 위치를 바꿉니다.
     while (elapsed < duration) {
         elapsed += Time.deltaTime;
         float t = elapsed / duration;
-        if (block1 != null) block1.GetComponent<RectTransform>().anchoredPosition = Vector2.Lerp(pos1, pos2, t);
-        if (block2 != null) block2.GetComponent<RectTransform>().anchoredPosition = Vector2.Lerp(pos2, pos1, t);
+        
+        if (rt1 != null) {
+            rt1.anchorMin = Vector2.Lerp(startMin1, targetMin1, t);
+            rt1.anchorMax = Vector2.Lerp(startMax1, targetMax1, t);
+        }
+        if (rt2 != null) {
+            rt2.anchorMin = Vector2.Lerp(startMin2, targetMin2, t);
+            rt2.anchorMax = Vector2.Lerp(startMax2, targetMax2, t);
+        }
         yield return null;
     }
+    
+    // 최종 목적지 오차 방지 강제 고정
+    if (rt1 != null) { rt1.anchorMin = targetMin1; rt1.anchorMax = targetMax1; }
+    if (rt2 != null) { rt2.anchorMin = targetMin2; rt2.anchorMax = targetMax2; }
 
-    // 데이터 갱신 및 원상 복구
-    allBlocks[x1, y1] = block2; allBlocks[x2, y2] = block1;
-    if (block1 != null) block1.transform.SetParent(transform);
-
-    // 판정 및 콤보, 채우기 연결
-    yield return StartCoroutine(JudgeMatchAndProcess(x1, y1, x2, y2));
 }
-
     private IEnumerator JudgeMatchAndProcess(int x1, int y1, int x2, int y2)
     {
         isProcessing = true;
@@ -686,40 +691,38 @@ foreach (GameObject block in matches)
     }
 
     // 🎯 [완전 보강] 옛날 코드(d-2)의 철통 안전 검사식을 width/height에 맞게 이식한 데드락 탐색 엔진
+    // 🎯 [중괄호 오류 완벽 수정] 안전하게 정돈된 데드락 탐색 엔진
     private bool CheckPossibleMatchesExist()
     {
-for (int x = 0; x < width; x++)
-{
-    for (int y = 0; y < height; y++)
+        for (int x = 0; x < width; x++)
+        {
+            for (int y = 0; y < height; y++)
             {
                 if (allBlocks[x, y] == null) continue;
 
-                // 1. 오른쪽 칸 탐색 (x + 1이 가로 크기인 width보다 작을 때만 안전하게 검사)
+                // 1. 오른쪽 칸 탐색
                 if (x + 1 < width)
                 {
                     if (allBlocks[x + 1, y] != null)
                     {
-                        // 가상으로 자리를 바꿔서 3매치가 성립되는지 체크
                         if (SimulateSwapAndCheckMatch(x, y, x + 1, y)) return true;
                     }
                 }
 
-                // 2. 위쪽 칸 탐색 (y + 1이 세로 크기인 height보다 작을 때만 안전하게 검사)
+                // 2. 위쪽 칸 탐색
                 if (y + 1 < height)
                 {
                     if (allBlocks[x, y + 1] != null)
                     {
-                        // 가상으로 자리를 바꿔서 3매치가 성립되는지 체크
                         if (SimulateSwapAndCheckMatch(x, y, x, y + 1)) return true;
                     }
                 }
             }
         }
-        
-        // 보드판 전체를 다 뒤졌는데도 단 한 군데도 움직여서 터트릴 곳이 없다면 false(데드락 상태)를 리턴합니다.
         return false;
     }
 
+    // 🎯 데드락 임시 스와이프 검사기
     private bool SimulateSwapAndCheckMatch(int x1, int y1, int x2, int y2)
     {
         GameObject temp = allBlocks[x1, y1];
@@ -734,6 +737,7 @@ for (int x = 0; x < width; x++)
 
         return hasMatch;
     }
+
 
 private IEnumerator ResolveDeadlockRoutine()
 {
