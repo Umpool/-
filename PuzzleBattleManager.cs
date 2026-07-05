@@ -24,12 +24,7 @@ public class PuzzleBattleManager : MonoBehaviour
     public TextMeshProUGUI textFinalTurns;   // Text_FinalTurns 연결
     public TextMeshProUGUI textRecordNotice; // Text_RecordNotice 연결
     public bool isTimeOver = false; // 💡 시간이 다 끝났음을 임시로 저장하는 안전핀
-
-    // 🎯 [왕초보 구원] 재생 전에 꺼져 있어도 직속으로 조종할 수 있게 해주는 리모컨 방입니다!
-    [Header("--- 재생전 OFF여도 강제 제어할 직속 회선 ---")]
-    public GameObject btn_StartTouchTrigger_Direct;
-
-
+    
     [Header("--- 배틀 핵심 UI 패널 록온 ---")]
     public GameObject panel_PuzzleBattle;    // 일반 스테이지 패널 (Panel_NMPuzzleBattle)
     public GameObject panel_InfiniteBattle;  // 💡 [추가] 무한모드 패널 (Panel_INPuzzleBattle)
@@ -37,22 +32,7 @@ public class PuzzleBattleManager : MonoBehaviour
 
     [Header("실시간 배틀 카드 장부")]
     public List<CharacterCard> liveCards = new List<CharacterCard>(); // 👈 여기에 실시간으로 담깁니다.
-
-    [Header("--- 3매치 퍼즐 보드 직속 회선 연결 ---")]
-    public Board puzzleBoardComponent;     // 보드.cs 스크립트 연결 방
-
-    [Header("--- 턴 시스템 시스템 ---")]
-    public int currentTurn = 0;        // 현재 누적된 턴 수
-    public bool isUserAction = false; // 유저가 직접 드래그한 상태인지 체크하는 스위치
-
-    [Header("콤보 시스템")]
-    public int currentCombo = 0; // 현재 연속 콤보 수
-    public float comboDamageMultiplier = 0.1f; // 1콤보당 추가될 데미지 배율 (0.1 = 10%)
-
-    [Header("콤보 UI 설정")]
-    // 유저님이 TextMeshPro를 사용 중이시므로 아래와 같이 선언합니다.
-    public TMPro.TMP_Text comboText;
-
+    
     [Header("--- NPC 전용 1~10위 순위판 UI ---")]
     public TextMeshProUGUI textNPCLeaderboard; // 💡 요 방이 상단에 있어야 맨 밑바닥 함수가 에러가 안 납니다!
     public GameObject panel_NPCLeaderboard_Popup; // 🎯 마을 순위판 팝업창 자체를 기억할 전원 제어 방!
@@ -88,32 +68,6 @@ public class PuzzleBattleManager : MonoBehaviour
         }
     }
 
-        // 🎯 1. [요청 사항] 재생 전에 꺼져(OFF) 있더라도 게임이 시작되면 무조건 가장 먼저 ON!
-        if (btn_StartTouchTrigger_Direct != null)
-        {
-            btn_StartTouchTrigger_Direct.SetActive(true); // 👈 직속 회선으로 강제 ON!
-            Debug.Log("🚀 [성공] 재생 전 OFF 상태였던 Btn_StartTouchTrigger를 Start에서 강제 ON 시켰습니다!");
-        }
-
-        // 🔒 2. [기존 안전장치] 게임 재생 버튼을 누르는 순간 GAMEOVER TXT는 무조건 강제로 OFF!
-        if (panel_InfiniteBattle != null)
-        {
-            Transform gameover = panel_InfiniteBattle.transform.Find("GAMEOVER TXT");
-            if (gameover != null)
-            {
-                gameover.gameObject.SetActive(false); // 👈 시작하자마자 OFF!
-                Debug.Log("🔒 [보안 성공] 게임 시작 시 GAMEOVER TXT를 선제적으로 OFF 제어했습니다.");
-            }
-        }
-    }
-    private void OnEnable()
-    {
-        if (btn_StartTouchTrigger_Direct != null)
-        {
-            btn_StartTouchTrigger_Direct.SetActive(true);
-            Debug.Log("🔒 [보안 가동] 화면 활성화 감지로 트리거 강제 ON!");
-        }
-    }
     public void OnUserDragBlock()
     {
         // 💡 [안전 장치 추가] 현재 이 배틀 매니저 스크립트가 붙어있는 오브젝트(배틀 화면)가 
@@ -141,15 +95,6 @@ public class PuzzleBattleManager : MonoBehaviour
     public List<Slider> heroHPBars = new List<Slider>(); // 아군 영웅 5인 체력바 슬라이더 리스트
     public TextMeshProUGUI turnTextUI;
 
-    public int currentScore = 0;       // 🎯 무한모드 최종 대미지 스코어를 기억할 진짜 장부방 개설!
-
-    [Header("--- 0.001초 초정밀 타이머 시스템 ---")] //타이머관련 코드
-    public TextMeshProUGUI timeText;     // 유니티에서 Text_Timer를 연결할 리모컨 방
-    public GameObject startTouchTriggerPanel;
-    private float timeRemaining = 3f;  // 180초 (3분) 출발점 //3초라도안보이면
-    private bool timerIsRunning = false; // 시계 ON/OFF 스위치
-    // 🌟 [전투 정식 개시 스위치]: 무한 모드 버튼을 누르는 순간 GameManager에 의해 원격 가동됩니다!
-
     // 💡 [StartPuzzleBattle 함수 전체를 아래 내용으로 덮어씌워 주세요]
     public void StartPuzzleBattle(string gameMode)
     {
@@ -170,34 +115,17 @@ public class PuzzleBattleManager : MonoBehaviour
             if (gameover != null) gameover.gameObject.SetActive(false); // 결과창은 칼같이 끔
         }
 
-        // 3. 🎯 [형님 기획 100% 다이렉트 반영]: 판정 없이 트리거 버튼과 패널을 무조건 True(ON)로 박아버립니다!
-        if (btn_StartTouchTrigger_Direct != null) btn_StartTouchTrigger_Direct.SetActive(true);
-        if (startTouchTriggerPanel != null) startTouchTriggerPanel.SetActive(true);
-
-        // 4. [타이머 리셋 및 보드 가동]
-        timeRemaining = 3f; // 테스트용 3초 유지
-        timerIsRunning = false;
-
-        SetupBattleEntities();
-
         // 🔒 [형님의 대원칙 반영 완공 2단계]: 이제 진짜 전투 시작이니 보드 스크립트 전원을 켭니다!
         if (puzzleBoardComponent != null)
         {
             puzzleBoardComponent.enabled = true; // 1. 오직 전투 가동 시점에만 스크립트 전원 ON!
-            puzzleBoardComponent.CreateBoard();  // 2. 군더더기 없이 보드 스크립트 내부 정석대로 즉시 보드 생성!
+            puzzleBoardComponent.InitializeNewBoard();   // 2. 군더더기 없이 보드 스크립트 내부 정석대로 즉시 보드 생성!
         }
     } 
-    public void UpdateTurnTextUI()
-    {
-        if (turnTextUI != null)
-        {
-            // 화면 텍스트 창에 현재 누적된 턴 숫자를 실시간으로 출력합니다.
-            turnTextUI.text = $"{currentTurn}턴";
-        }
-    }
+
     // 🌟 [개발자님 최신 계층구조 200% 정밀 반영]: 하단 아군 영웅 5명의 카드와 HP 바 주소를 1대1 유기적 연동시킵니다!
-private void SetupBattleEntities()
-{
+    private void SetupBattleEntities()
+    {
     Debug.Log("[배틀 연산 1단계] 내 정예 파티원 데이터 수거 및 HP 회선 연결 시작!");
     if (GameManager.Instance == null || GameManager.Instance.partyMembers == null) return;
 
@@ -363,93 +291,6 @@ private void SetupBattleEntities()
 
     }
 
-    // 💡 [PuzzleBattleManager.cs 맨 밑바닥 괄호 직전에 그대로 붙여넣으세요]
-
-    // 유니티가 매 프레임(초당 60~144번)마다 호출하여 0.001초 단위로 시간을 깎는 엔진입니다.
-    // 📄 PuzzleBattleManager.cs 내부의 374번 줄 부근 Update 단락 교체
-
-    private void Update()
-    {
-        if (timerIsRunning)
-        {
-            if (timeRemaining > 0)
-            {
-                timeRemaining -= Time.deltaTime;
-                DisplayTime(timeRemaining);
-            }
-            else
-            {
-                // 🛑 3초가 끝났지만 즉시 결과창을 켜지 않고, 보드판이 끝날 때까지 대기시킵니다!
-                timeRemaining = 0;
-                timerIsRunning = false;
-                DisplayTime(timeRemaining);
-
-                isTimeOver = true; // "장부에 시간 종료라고 체크만 해둔다!"
-                Debug.Log("⏳ [타임오버 원격 대기] 진행 중인 블록 연쇄 정산이 끝날 때까지 대기합니다...");
-            }
-            if (PuzzleBattleManager.Instance != null && PuzzleBattleManager.Instance.isTimeOver)
-{
-    PuzzleBattleManager.Instance.OnTimerEnd(); // 👈 매니저의 정산소를 다이렉트로 강제 호출!
-}
-        }
-    }
-
-
-
-    // 형님이 줏어오신 알고리즘을 0.001초(소수점 3자리) 폭풍 카운트다운으로 개조한 핵심 뷰어입니다.
-    private void DisplayTime(float timeToDisplay)
-    {
-        if (timeToDisplay < 0) timeToDisplay = 0;
-
-        // 분과 초를 정수로 쪼갭니다.
-        int minutes = Mathf.FloorToInt(timeToDisplay / 60);
-        int seconds = Mathf.FloorToInt(timeToDisplay % 60);
-
-        // 🔥 [소수점 3자리 추출 공식]: 전체 초에서 정수 초를 빼면 순수 소수점 잔량만 남습니다. (예: 0.543초)
-        // 여기에 1000을 곱해주면 0부터 999까지 초고속으로 달리는 밀리초(ms)가 완성됩니다!
-        int milliseconds = Mathf.FloorToInt((timeToDisplay - Mathf.FloorToInt(timeToDisplay)) * 1000);
-
-        if (timeText != null)
-        {
-            // {0:00}:{1:00}.{2:000} -> 분(2자리):초(2자리).밀리초(3자리) 형식으로 화면에 강제 출력!
-            timeText.text = string.Format("{0:00}:{1:00}.{2:000}", minutes, seconds, milliseconds);
-        }
-    }
-    // 유저가 "화면을 누르면 무한모드를 시작합니다"를 터치했을 때 실행될 최종 시동 함수입니다!
-    public void OnClickRealStartInfiniteTimer()
-    {
-        // 1. 안내 팝업창을 화면에서 깔끔하게 꺼서 치워버립니다.
-        if (startTouchTriggerPanel != null)
-        {
-            startTouchTriggerPanel.SetActive(false);
-        }
-
-        // 2. 🔥 이제 드디어 초정밀 타이머 시계 스위치를 ON 하고 가동합니다!
-        timerIsRunning = true;
-        Debug.Log("🏁 [무한 모드 스타트] 0.001초 카운트다운 폭풍 가동!");
-    }
-    public void ForceStopAndResetTimer() // 화면이동시 타이머 초기화
-    {
-        // 1. 🛑 타이머의 실시간 작동 스위치를 니다.
-        timerIsRunning = false;
-
-        // 2. ⏱ 시간을 무한모드 기본 시간으로 완전히 초기화(리셋) 합니다.
-        timeRemaining = 3f; // 임시 테스트용 3초 보존
-
-        // 3. 🖥 화면에 표시되는 타이머 텍스트 UI도 깔끔하게 새로고침 합니다.
-        DisplayTime(timeRemaining);
-
-        // 🔒 [재진입 버그 완파]: 다음 판을 위해 마을로 도망갈 때, 안내창 리모컨 방을 강제로 다시 ON [V] 복원해 둡니다!
-        if (startTouchTriggerPanel != null)
-        {
-            startTouchTriggerPanel.SetActive(true);
-        }
-        if (btn_StartTouchTrigger_Direct != null)
-        {
-        btn_StartTouchTrigger_Direct.SetActive(true);
-        }
-
-        Debug.Log("⏱ [타이머 및 안내창 초기화 완공] 두 번째 진입을 위해 startTouchTriggerPanel을 정상 복원했습니다.");
     }
     public void OnClickBackToVillageFromInfinite()
     {
@@ -641,96 +482,6 @@ public void RefreshNPCLeaderboardUI()
         Debug.Log("[NPC 순위판] 보이지 않는 장부에서 탑텐 데이터를 긁어와 새로고침 완료!");
     }
 
-    // ✨ [추가] 콤보 글씨를 실시간으로 새로고침하고 1초 뒤 사라지게 만드는 함수
-    // ✨ [속도감 업그레이드] 커지자마자 딜레이 없이 빠르게 스르륵 사라지는 고속 콤보 연출
-    private Coroutine comboFadeCoroutine;
-
-    public void UpdateComboTextUI()
-    {
-        if (comboText == null) return;
-
-        if (currentCombo > 0)
-        {
-            comboText.text = "Combo\n" + currentCombo;
-
-            Color textColor = comboText.color;
-            textColor.a = 1f;
-            comboText.color = textColor;
-
-            if (comboFadeCoroutine != null)
-            {
-                StopCoroutine(comboFadeCoroutine);
-            }
-            comboFadeCoroutine = StartCoroutine(AnimateFastComboTextRoutine());
-        }
-        else
-        {
-            comboText.text = "";
-        }
-    }
-
-    // 💥 쿵! 커진 직후 대기 없이 빠르게 녹아내리는 액션 연출 루틴
-    private System.Collections.IEnumerator AnimateFastComboTextRoutine()
-    {
-        RectTransform rect = comboText.GetComponent<RectTransform>();
-        Vector2 startPosition = rect != null ? rect.anchoredPosition : Vector2.zero;
-
-        // --- [STEP 1: 0.12초 동안 엄청 크고 역동적으로 쿵! 튕기기] ---
-        if (rect != null)
-        {
-            float bounceDuration = 0.12f; // 속도감을 위해 0.15초에서 더 단축
-            float time = 0f;
-            Vector3 targetScale = Vector3.one;
-            Vector3 startScale = Vector3.one * 1.8f; // 순간 폭발력을 위해 1.8배까지 대폭 확대!
-
-            while (time < bounceDuration)
-            {
-                time += UnityEngine.Time.deltaTime;
-                rect.localScale = Vector3.Lerp(startScale, targetScale, time / bounceDuration);
-                yield return null;
-            }
-            rect.localScale = targetScale;
-        }
-
-        // --- [STEP 2: 대기 시간(1초) 완전 삭제! 즉시 0.35초 동안 빠르게 스르륵 소멸] ---
-        float fadeDuration = 0.35f; // 빠르게 사라지도록 0.5초에서 0.35초로 컷!
-        float fadeTime = 0f;
-
-        // 🛠️ [치유 코드 1]: 캐릭터 카드 색상을 절대 침범하지 않는 독립된 안전한 컬러 방 개설
-        Color safeComboColor = (comboText != null) ? comboText.color : Color.white;
-
-        while (fadeTime < fadeDuration)
-        {
-            fadeTime += UnityEngine.Time.deltaTime;
-            float progress = fadeTime / fadeDuration;
-
-            // 1. 투명도 고속 다운 연산 (원래 부드럽게 사라지는 연출 기능 100% 보존!)
-            float alpha = UnityEngine.Mathf.Lerp(1f, 0f, progress);
-
-            // 🛠️ [치유 코드 2]: 다른 프리팹을 오염시키지 않고 오직 콤보 글씨의 투명도만 안전하게 조작!
-            if (comboText != null)
-            {
-                safeComboColor.a = alpha;
-                comboText.color = safeComboColor;
-            }
-
-            // 2. 위로 가볍게 살짝 슝 솟구치며 사라지는 에어본 효과 추가 (원래 애니메이션 기능 100% 보존!)
-            if (rect != null)
-            {
-                rect.anchoredPosition = new Vector2(startPosition.x, startPosition.y + (progress * 25f));
-            }
-            yield return null;
-        }
-
-
-        // --- [STEP 3: 완전히 끝나면 깔끔하게 청소 및 위치 리셋] ---
-        comboText.text = "";
-        if (rect != null)
-        {
-            rect.localScale = Vector3.one;
-            rect.anchoredPosition = startPosition;
-        }
-    }
     // ✨ [추가] 몬스터가 턴 종료 시 살아있는 우리 캐릭터 카드를 무작위로 때리는 핵심 공격 회로
     public void MonsterAttackRandomPartyCard(float monsterDamage)
     {
@@ -789,21 +540,22 @@ public void RefreshNPCLeaderboardUI()
             Debug.Log("💀 [경고] 화면에 살아있는 파티원 카드가 없어 리모컨이 타겟을 찾지 못했습니다.");
         }
     }
-
-    // 📄 Board.cs 맨 밑바닥에 추가할 타임오버 종결 단락 함수
-
-    // 🔥 [개발자님 기획 반영]: 타임오버 시 보드판을 리셋하고 마우스를 원천 차단하는 함수
-    public void ForceStopAndClearBoard()
+    public void ResetBattleSystemForNextEntry()
     {
-        // 1. 이미 정산 중이거나 매칭 중인 코루틴 흐름이 있다면 모두 강제 종료
-        StopAllCoroutines();
-
-        // 🔒 [형님의 대원칙 반영 완공 1단계]: 3매치 게임이 종료되었으므로 보드 스크립트 전원을 완전히 뽑아버립니다!
-        if (puzzleBoardComponent != null)
+        // 하이어라키에 실제 존재하는 대문자 이름의 오브젝트를 찾아서 안전하게 꺼버립니다.
+        GameObject goText = GameObject.Find("Canvas")?.transform.Find("Panel_INPuzzleBattle/GAMEOVER TXT")?.gameObject;
+        if (goText != null)
         {
-            puzzleBoardComponent.enabled = false; // 🔌 스크립트 비활성화 (마을에서 켜질 필요 없음)
-            Debug.Log("🔌 [보드 셧다운 완료] 3매치 엔진 스크립트를 비활성화하여 마우스 센서를 차단했습니다.");
+            goText.SetActive(false); 
         }
+        
+        // 트리거 시작 버튼은 기존에 쓰고 계시던 리모컨 이름 그대로 켜줍니다.
+        if (btn_StartTouchTrigger_Direct != null) 
+        {
+            btn_StartTouchTrigger_Direct.SetActive(true); 
+        }
+
+        Debug.Log("🧹 [PuzzleBattleManager] 배틀 데이터 초기화 완수!");
     }
 }
 
