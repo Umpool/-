@@ -12,30 +12,64 @@ public class IntroManager : MonoBehaviour, IPointerClickHandler
     public Slider loadingBar;
     public TextMeshProUGUI statusText; // Text 대신 TextMeshProUGUI로 변경
 
+[Header("화면 전환용 패널 등록")]
+public GameObject panel_Intro;  // 유니티 인스펙터에서 Panel_Intro를 연결할 칸
+public GameObject panel_Title;  // 유니티 인스펙터에서 Panel_Title을 연결할 칸
+
     [Header("타이틀 화면에서 보여줄 버튼들")]
     public GameObject[] visibleElements;
 
     private bool canProceed = false;
 
-    private void Awake()
+    void Awake()
     {
-        if (introPanel != null)
+        // 🏁 [게임시작시]: 무엇보다 가장 먼저 Panel_Intro와 그 자식들을 통째로 눈에 보이게 켭니다.
+        if (panel_Intro != null)
         {
-            introPanel.SetActive(true); // 에디터에서 꺼져있어도 강제로 ON 가동!
-        }
-        if (titlePanel != null)
-        {
-            titlePanel.SetActive(false);
+            panel_Intro.SetActive(true);
         }
     }
 
     // 💡 기존의 로딩 시퀀스 연산은 유니티가 온전히 준비된 Start 타이밍에 안전하게 바통을 이어받아 출발시킵니다.
-    private void Start()
+// 🌟 [교체 삽입]: 기존 void Start() 지운 자리에 이대로 붙여넣으세요.
+    void Start()
     {
-        if (loadingBar != null) loadingBar.value = 0f;
-        if (statusText != null) statusText.text = "";
+        introPanel.SetActive(true);
+        titlePanel.SetActive(false);
+        loadingBar.value = 0f;
+        statusText.text = "";
         StartCoroutine(LoadingSequence());
     }
+
+
+// 🌟 [최종 전환 스위치]: 기존 함수를 지운 자리에 이 코드를 그대로 붙여넣으세요.
+public void OnClickIntroScreenChange()
+{
+    GameObject targetIntro = null;
+    GameObject targetTitle = null;
+
+    // 🔎 [하이어라키 수색]: 꺼진 채로 시작해서 눈을 감고 숨어있는 패널들을 정밀 추적합니다.
+    GameObject[] allObjects = Resources.FindObjectsOfTypeAll<GameObject>();
+    foreach (GameObject obj in allObjects)
+    {
+        if (!obj.transform.parent) // 부모가 없는 최상위 독립 오브젝트들만 필터링합니다.
+        {
+            if (obj.name == "Panel_Intro") targetIntro = obj;
+            if (obj.name == "Panel_Title") targetTitle = obj;
+        }
+    }
+
+    // ❌ [인트로 끄기]: 찾아낸 인트로 화면을 비활성화하여 숨깁니다.
+    if (targetIntro != null) targetIntro.SetActive(false);
+    
+    // ⭕ [타이틀 켜기]: 숨어있던 메인 타이틀 패널을 강제로 화면 위로 호출하여 켭니다!
+    if (targetTitle != null) 
+    {
+        targetTitle.SetActive(true);
+        Debug.Log("🎬 [성공] 독립형 인트로 OFF -> 타이틀 ON 완공 완료!");
+    }
+}
+
 
 IEnumerator LoadingSequence()
 {
@@ -99,28 +133,30 @@ IEnumerator LoadingSequence()
     }
 
     // 💡 [클릭 연동 수선]: 인트로 화면 터치 즉시 타이틀 패널 가동 회선 확정!
-// ⭕ [IntroManager.cs - OnPointerClick 구역 정답 모양]
+
     public void OnPointerClick(PointerEventData eventData)
     {
         if (canProceed)
         {
-            // 1. 유저가 화면을 콕 클릭하는 바로 '이 순간'에 인트로를 끄고, 진짜 타이틀 패널을 최초 가동합니다!
-            if (introPanel != null) introPanel.SetActive(false);
-            if (titlePanel != null) titlePanel.SetActive(true);
+            // 1. 인트로/타이틀 전환
+            introPanel.SetActive(false);
+            titlePanel.SetActive(true);
 
-            // 2. 타이틀 화면과 함께 등장해야 할 주변 버튼 요소들도 연쇄 활성화합니다.
-            if (visibleElements != null)
+            // 2. Visible Elements에 등록된 항목들 ON
+            foreach (GameObject obj in visibleElements)
             {
-                foreach (GameObject obj in visibleElements)
-                {
-                    if (obj != null) obj.SetActive(true);
-                }
+                if (obj != null) obj.SetActive(true);
             }
 
-            Debug.Log("🎯 [인트로 게이트 통과 완료] 타이틀 화면으로 안전 이동 완수!");
+            // 3. 본인 기능 정지 (이후 제어권은 GameManagers가 가짐)
             this.enabled = false;
         }
     }
-
-
+    // 🔗 [인스펙터 버튼 연결용 징검다리 스위치]
+    public void OnClickIntroFreePass()
+    {
+        // 버튼을 누르면 밑에 있는 진짜 클릭 함수(OnPointerClick)를 강제로 격발시킵니다!
+        OnPointerClick(null);
+    }
 }
+
