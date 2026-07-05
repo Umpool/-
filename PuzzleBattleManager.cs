@@ -36,6 +36,17 @@ public class PuzzleBattleManager : MonoBehaviour
     [Header("--- NPC 전용 1~10위 순위판 UI ---")]
     public TextMeshProUGUI textNPCLeaderboard; // 💡 요 방이 상단에 있어야 맨 밑바닥 함수가 에러가 안 납니다!
     public GameObject panel_NPCLeaderboard_Popup; // 🎯 마을 순위판 팝업창 자체를 기억할 전원 제어 방!
+    
+    [Header("--- 현재 배틀 필드 상황 ---")]
+    // 중요! 어떤 모드의 몬스터든 이 주머니에 다 담을 수 있습니다.
+    public BaseMonster currentTargetMonster;
+
+    [Header("--- 아군 및 적군 HP 실시간 감시 주머니 ---")]
+    public Slider enemyHPBar;              // 몬스터 체력바 슬라이더
+    public List<Slider> heroHPBars = new List<Slider>(); // 아군 영웅 5인 체력바 슬라이더 리스트
+    public TextMeshProUGUI turnTextUI;
+
+
 
      // 🌟 [새로 추가] 던전 안에서 파티원들의 진짜 최대 체력 원본을 기억해 둘 딕셔너리 주머니
     private static Dictionary<int, int> partyMaxHpBackup = new Dictionary<int, int>();    private void Start()
@@ -67,6 +78,7 @@ public class PuzzleBattleManager : MonoBehaviour
             }
         }
     }
+    
 
     public void OnUserDragBlock()
     {
@@ -86,14 +98,7 @@ public class PuzzleBattleManager : MonoBehaviour
 
         // (나중에 여기에 매칭 검사하고 턴 누적하는 코드가 추가될 예정입니다)
     }
-    [Header("--- 현재 배틀 필드 상황 ---")]
-    // 중요! 어떤 모드의 몬스터든 이 주머니에 다 담을 수 있습니다.
-    public BaseMonster currentTargetMonster;
 
-    [Header("--- 아군 및 적군 HP 실시간 감시 주머니 ---")]
-    public Slider enemyHPBar;              // 몬스터 체력바 슬라이더
-    public List<Slider> heroHPBars = new List<Slider>(); // 아군 영웅 5인 체력바 슬라이더 리스트
-    public TextMeshProUGUI turnTextUI;
 
     // 💡 [StartPuzzleBattle 함수 전체를 아래 내용으로 덮어씌워 주세요]
     public void StartPuzzleBattle(string gameMode)
