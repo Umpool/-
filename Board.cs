@@ -2,643 +2,130 @@ using UnityEngine;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine.UI;
-using UnityEngine.EventSystems;
 
 public class Board : MonoBehaviour
 {
-    [Header("블록 원본(프리팹) 등록")]
-    public GameObject[] blockPrefabs; // Red, Yellow, Green, Blue, Purple, Black 순서 등록
-    public GameObject rewardPanel;
+    [Header("ㅡ 보드 기본 설정 ㅡ")]
+    public int rows = 6;      // 가로 6칸
+    public int cols = 6;      // 세로 6칸
+    public float cellSize = 100f; // UI 블록 한 칸의 크기
 
-    [Header("판 크기 설정")]
-    public int width = 6;  // 기획안 2번: 6x6 사이즈 고정
-    public int height = 6;
+    [Header("ㅡ 블록 원본 프리팩 (6색) ㅡ")]
+    public GameObject[] blockPrefabs; 
 
-    // 🌟 [해결]: 블록들이 서로 걸쳐서 엉뚱하게 클릭되는 현상을 막기 위해 격자 간격을 105로 시원하게 넓혔습니다!
-    private float blockSpacing = 105f;
+    [Header("ㅡ 게임 상태 장부 ㅡ")]
+    [System.NonSerialized] public GameObject[,] allBlocks; // 6x6 보드판 실제 배열 장부
+    public bool isProcessing = false; // 블록이 움직이거나 터지는 중인지 체크 (조작 잠금)
+    public Transform dragLayerParent; 
 
-    private GameObject[,] allBlocks;
-    private GameObject selectedBlock;
+    [Header("ㅡ 턴 및 콤보 데이터 ㅡ")]
+    public int currentTurn = 0;
+    public int comboCount = 0;
 
-    private bool isSwapping = false;
-    private bool isMatching = false;
-    private bool isUserTurn = false; // 기획안 3-1, 3-2: 유저 조작 여부 판별 스위치
+    [Header("ㅡ 이사 온 부드러운 콤보 시스템 ㅡ")]
+    public int currentCombo = 0;             
+    public float comboDamageMultiplier = 0.1f; 
+    public TMPro.TMP_Text comboText; 
+    private Coroutine comboFadeCoroutine;
 
-    public void SetupStage(int newWidth, int newHeight)
+    [Header("ㅡ 이사 온 초정밀 타이머 UI ㅡ")]
+    public TMPro.TextMeshProUGUI TimeText; 
+
+    [Header("ㅡ 이사 온 시작 팝업창 UI ㅡ")]
+    public GameObject startTouchTriggerPanel; 
+
+    [Header("ㅡ 진입 및 타이머 설정 ㅡ")]
+    public float limitTime = 180f; // 무한모드 3분(180초) 제한시간
+    private bool isGameActive = false;
+
+    private float[] comboDamageMultipliers = new float[] { 1.0f, 1.2f, 1.5f, 1.8f, 2.0f, 2.5f };
+
+    private void Awake()
     {
-        width = newWidth;
-        height = newHeight;
+        allBlocks = new GameObject[rows, cols];
     }
 
-    void OnEnable()
+    public string GetBlockColor(GameObject block)
     {
-        InputManager.OnInputStart += HandleInputStart;
-        InputManager.OnInputEnd += HandleInputEnd;  
+        if (block == null) return "None";
+        string blockName = block.name.ToLower();
+        if (blockName.Contains("red") || blockName.Contains("적")) return "Red";
+        if (blockName.Contains("yellow") || blockName.Contains("황")) return "Yellow";
+        if (blockName.Contains("green") || blockName.Contains("녹")) return "Green";
+        if (blockName.Contains("blue") || blockName.Contains("청")) return "Blue";
+        if (blockName.Contains("purple") || blockName.Contains("자")) return "Purple";
+        if (blockName.Contains("black") || blockName.Contains("흑")) return "Black";
+        return "Unknown";
     }
 
-    void OnDisable()
+    public float GetComboMultiplier()
     {
-        InputManager.OnInputStart -= HandleInputStart;
-        InputManager.OnInputEnd -= HandleInputEnd;
+        int index = Mathf.Clamp(comboCount, 0, comboDamageMultipliers.Length - 1);
+        return comboDamageMultipliers[index];
     }
-
-    // 최종 수정된 UI 전용 보드 소환 엔진
-    public void CreateBoard()
+    // 💡 [2단계 핵심]: 게임 시작 시 3매치가 미리 터지는 것을 방지하는 안전 생성 엔진
+    public void InitializeNewBoard()
     {
-        // 1. 기존 잔여 블록 UI 완전 청소
-        foreach (Transform child in transform) { Destroy(child.gameObject); }
+        ClearAllBoardObjects();
 
-        allBlocks = new GameObject[width, height];
-
-        // 2. 6x6 보드 배치 루프 시작
-        for (int x = 0; x < width; x++)
+        for (int x = 0; x < rows; x++)
         {
-            for (int y = 0; y < height; y++)
+            for (int y = 0; y < cols; y++)
             {
-                int randomIndex = GetValidBlockIndex(x, y);
-                GameObject prefabToSpawn = blockPrefabs[randomIndex];
-
-                if (prefabToSpawn != null)
-                {
-                    // 월드 인스턴스가 아닌 UI 복사 방식으로 뻥튀기 원천 차단
-                    GameObject block = Instantiate(prefabToSpawn);
-                    block.transform.SetParent(this.transform, false);
-
-                    RectTransform rect = block.GetComponent<RectTransform>();
-                    if (rect != null)
-                    {
-                        rect.localScale = Vector3.one;
-                        rect.localRotation = Quaternion.identity;
-                        rect.anchoredPosition = GetUIAnchoredPosition(x, y);
-                    }
-
-                    // 기획안 조건: 영문 이름 식별용 정렬 이름 부여
-                    block.name = prefabToSpawn.name + "_" + x + "_" + y;
-                    allBlocks[x, y] = block;
-                }
-            }
-        }
-
-        // 배치 완료 후 혹시 모를 데드락 검사
-        if (CheckIsDeadlock())
-        {
-            StartCoroutine(HandleDeadlockRoutine());
-        }
-    }
-
-    // UI 공간 전용 정밀 격자 좌표 계산식
-    private Vector2 GetUIAnchoredPosition(int x, int y)
-    {
-        float startX = -((width - 1) * blockSpacing) / 2f;
-        float startY = -((height - 1) * blockSpacing) / 2f;
-        return new Vector2(startX + (x * blockSpacing), startY + (y * blockSpacing));
-    } //파트111111111111111111111111111111111
-      // 시작 시 강제 3매치 버그 방지 공식
-    int GetValidBlockIndex(int x, int y)
-    {
-        List<int> validIndices = new List<int>();
-        for (int i = 0; i < blockPrefabs.Length; i++) validIndices.Add(i);
-
-        if (x >= 2)
-        {
-            GameObject l1 = allBlocks[x - 1, y];
-            GameObject l2 = allBlocks[x - 2, y];
-            if (l1 != null && l2 != null && GetBlockColorName(l1).Equals(GetBlockColorName(l2)))
-                validIndices.Remove(GetBlockTypeIndexByName(GetBlockColorName(l1)));
-        }
-        if (y >= 2)
-        {
-            GameObject d1 = allBlocks[x, y - 1];
-            GameObject d2 = allBlocks[x, y - 2];
-            if (d1 != null && d2 != null && GetBlockColorName(d1).Equals(GetBlockColorName(d2)))
-                validIndices.Remove(GetBlockTypeIndexByName(GetBlockColorName(d1)));
-        }
-
-        if (validIndices.Count == 0) return Random.Range(0, blockPrefabs.Length);
-        return validIndices[Random.Range(0, validIndices.Count)];
-    }
-
-    // 기획안 조건: 대소문자 무시 이름 기반 색상 구분 검사기
-    string GetBlockColorName(GameObject block)
-    {
-        if (block == null) return "none";
-        string bName = block.name.ToLower();
-        if (bName.Contains("red")) return "red";
-        if (bName.Contains("yellow")) return "yellow";
-        if (bName.Contains("green")) return "green";
-        if (bName.Contains("blue")) return "blue";
-        if (bName.Contains("purple")) return "purple";
-        if (bName.Contains("black")) return "black";
-        return "none";
-    }
-
-    int GetBlockTypeIndexByName(string colorName)
-    {
-        if (colorName.Equals("red")) return 0;
-        if (colorName.Equals("yellow")) return 1;
-        if (colorName.Equals("green")) return 2;
-        if (colorName.Equals("blue")) return 3;
-        if (colorName.Equals("purple")) return 4;
-        if (colorName.Equals("black")) return 5;
-        return 0;
-    }
-
-    // 🌟 [1번 버그 완벽 수정]: 클릭 판정을 더 넓고 관대하게 낚아채는 모던 포인터 센서 장착
-    public void HandleInputStart(Vector2 screenPos)
-    {
-        if (isSwapping || isMatching || Camera.main == null) return;
-
-         // 💡 [여기에 추가]: 내 유니티 계층 구조상에 '시작 트리거 팝업창' 오브젝트가 활성화되어 있다면 즉시 함수를 취소시킵니다!
-        if (GameObject.Find("Btn_StartTouchTrigger") != null && GameObject.Find("Btn_StartTouchTrigger").activeSelf) return;
-
-        PointerEventData eventData = new PointerEventData(EventSystem.current) { position = screenPos };
-        List<RaycastResult> results = new List<RaycastResult>();
-        EventSystem.current.RaycastAll(eventData, results);
-
-        foreach (var result in results)
-        {
-            // 이제 테두리나 겹친 구역에 상관없이 이름에 'Block'이 들어간 타겟을 부드럽게 실시간 선점합니다.
-            if (result.gameObject.name.Contains("Block"))
-            {
-                selectedBlock = result.gameObject;
-                return;
-            }
-        }
-    }
-
-    public void HandleInputEnd(Vector2 screenPos)
-    {
-        if (selectedBlock == null || isSwapping || isMatching) return;
-
-        string[] nameParts = selectedBlock.name.Split('_');
-        int currentX = int.Parse(nameParts[nameParts.Length - 2]);
-        int currentY = int.Parse(nameParts[nameParts.Length - 1]);
-
-        Vector2 startScreenPos = InputManager.Instance.GetStartPosition();
-        Vector2 swipeDir = screenPos - startScreenPos;
-
-        if (swipeDir.magnitude < 40f) // 해상도 안전 드래그 거리 판정식
-        {
-            selectedBlock = null;
-            return;
-        }
-
-        int targetX = currentX;
-        int targetY = currentY;
-
-        if (Mathf.Abs(swipeDir.x) > Mathf.Abs(swipeDir.y))
-            targetX += swipeDir.x > 0 ? 1 : -1;
-        else
-            targetY += swipeDir.y > 0 ? 1 : -1;
-
-        if (targetX >= 0 && targetX < width && targetY >= 0 && targetY < height)
-        {
-            GameObject targetBlock = allBlocks[targetX, targetY];
-            if (targetBlock != null)
-            {
-                isUserTurn = true; // 유저가 직접 조작했음을 기록
-                StartCoroutine(SwapBlocksRoutine(currentX, currentY, targetX, targetY));
-            }
-        }
-        selectedBlock = null;
-    }//파트2222222222222222222222222222222
-     // 기획안 5, 5-1번 충족: 매치 실패 시 부드럽게 원래 위치 원위치 복귀 연출 코루틴
-private IEnumerator SwapBlocksRoutine(int ax, int ay, int bx, int by)
-{
-    isSwapping = true;
-        GameObject blockA = allBlocks[ax, ay];
-        GameObject blockB = allBlocks[bx, by];
-
-        RectTransform rectA = blockA.GetComponent<RectTransform>();
-        RectTransform rectB = blockB.GetComponent<RectTransform>();
-
-                // 🌟 [디테일 추가]: 드래그하여 움직이는 블록 A를 하이어라키 맨 아래로 보내 화면상 가장 최상단(맨 앞)에 그려지게 만듭니다!
-        if (rectA != null)
-        {
-            rectA.SetAsLastSibling();
-        }
-
-        Vector2 posA = GetUIAnchoredPosition(ax, ay);
-        Vector2 posB = GetUIAnchoredPosition(bx, by);
-
-        // 자리가 바뀌는 애니메이션 (0.2초 동안 부드럽게 이동)
-        float elapsed = 0f;
-        while (elapsed < 0.2f)
-        {
-            elapsed += Time.deltaTime;
-            float t = elapsed / 0.2f;
-            rectA.anchoredPosition = Vector2.Lerp(posA, posB, t);
-            rectB.anchoredPosition = Vector2.Lerp(posB, posA, t);
-            yield return null;
-        }
-
-        rectA.anchoredPosition = posB;
-        rectB.anchoredPosition = posA;
-
-        // 배열 데이터 교체
-        allBlocks[ax, ay] = blockB;
-        allBlocks[bx, by] = blockA;
-
-        // 이름 뒤의 X, Y 좌표 텍스트 갱신
-        string namePrefixA = blockA.name.Substring(0, blockA.name.LastIndexOf('_'));
-        namePrefixA = namePrefixA.Substring(0, namePrefixA.LastIndexOf('_'));
-        string namePrefixB = blockB.name.Substring(0, blockB.name.LastIndexOf('_'));
-        namePrefixB = namePrefixB.Substring(0, namePrefixB.LastIndexOf('_'));
-
-        blockA.name = namePrefixA + "_" + bx + "_" + by;
-        blockB.name = namePrefixB + "_" + ax + "_" + ay;
-
-        // 기획안 6번: 교체 후 보드판 매치 점검 가동
-        bool hasMatches = CheckHasMatches();
-
-            if (hasMatches)
-        {
-        isSwapping = false;
-        StartCoroutine(CheckAndDestroyMatchesRoutine());
-        }
-        else
-        {
-                        // 🌟 [여기에 추가] 3매치 실패하여 복귀할 때 콤보를 0으로 리셋하고 UI를 지웁니다.
-            if (PuzzleBattleManager.Instance != null)
-            {
-                PuzzleBattleManager.Instance.currentCombo = 0;
-                PuzzleBattleManager.Instance.UpdateComboTextUI();
-            }
-            // 블록 위치 복구 및 배열 데이터 재설정 (0.2초)
-            // 2. 0.2초 동안 반대 방향으로 직접 이동시켜서 원위치 (무한 루프 원인 제거)
-            float returnElapsed = 0f;
-            while (returnElapsed < 0.2f)
-            {
-                returnElapsed += Time.deltaTime;
-                float t = returnElapsed / 0.2f;
-                rectA.anchoredPosition = Vector2.Lerp(posB, posA, t); // B -> A 복귀
-                rectB.anchoredPosition = Vector2.Lerp(posA, posB, t); // A -> B 복귀
-                yield return null;
-            }
-            rectA.anchoredPosition = posA;
-            rectB.anchoredPosition = posB;
-
-            // 3. 배열 데이터와 이름도 원래 상태로 완벽하게 복구
-            allBlocks[ax, ay] = blockA;
-            allBlocks[bx, by] = blockB;
-            blockA.name = namePrefixA + "_" + ax + "_" + ay;
-            blockB.name = namePrefixB + "_" + bx + "_" + by;
-
-            isSwapping = false;
-            isUserTurn = false; 
-        }
-}
-
-        bool CheckHasMatches()
-    {
-        // 가로 방향 3매치 검사
-        for (int y = 0; y < height; y++)
-        {
-            for (int x = 0; x < width - 2; x++)
-            {
-                GameObject b1 = allBlocks[x, y];
-                GameObject b2 = allBlocks[x + 1, y];
-                GameObject b3 = allBlocks[x + 2, y];
-                if (b1 != null && b2 != null && b3 != null)
-                {
-                    string c1 = GetBlockColorName(b1);
-                    string c2 = GetBlockColorName(b2);
-                    string c3 = GetBlockColorName(b3);
-                    if (!c1.Equals("none") && c1.Equals(c2) && c2.Equals(c3)) return true;
-                }
-            }
-        }
-        // 세로 방향 3매치 검사
-        for (int x = 0; x < width; x++)
-        {
-            for (int y = 0; y < height - 2; y++)
-            {
-                GameObject b1 = allBlocks[x, y];
-                GameObject b2 = allBlocks[x, y + 1];
-                GameObject b3 = allBlocks[x, y + 2];
-                if (b1 != null && b2 != null && b3 != null)
-                {
-                    string c1 = GetBlockColorName(b1);
-                    string c2 = GetBlockColorName(b2);
-                    string c3 = GetBlockColorName(b3);
-                    if (!c1.Equals("none") && c1.Equals(c2) && c2.Equals(c3)) return true;
-                }
-            }
-        }
-        return false;
-    }
-
-    // 기획안 4번, 6번: 3개 이상 연속 매치 블록 일괄 소멸 및 연쇄 수거
-    IEnumerator CheckAndDestroyMatchesRoutine()
-    {
-        isMatching = true;
-        List<GameObject> matchesList = new List<GameObject>();
-
-        // 가로 매치 리스트 수거
-        for (int y = 0; y < height; y++)
-        {
-            for (int x = 0; x < width - 2; x++)
-            {
-                GameObject b1 = allBlocks[x, y];
-                GameObject b2 = allBlocks[x + 1, y];
-                GameObject b3 = allBlocks[x + 2, y];
-                if (b1 != null && b2 != null && b3 != null)
-                {
-                    string c1 = GetBlockColorName(b1); string c2 = GetBlockColorName(b2); string c3 = GetBlockColorName(b3);
-                    if (!c1.Equals("none") && c1.Equals(c2) && c2.Equals(c3))
-                    {
-                        if (!matchesList.Contains(b1)) matchesList.Add(b1);
-                        if (!matchesList.Contains(b2)) matchesList.Add(b2);
-                        if (!matchesList.Contains(b3)) matchesList.Add(b3);
-                    }
-                }
-            }
-        }
-
-        // 세로 매치 리스트 수거
-        for (int x = 0; x < width; x++)
-        {
-            for (int y = 0; y < height - 2; y++)
-            {
-                GameObject b1 = allBlocks[x, y];
-                GameObject b2 = allBlocks[x, y + 1];
-                GameObject b3 = allBlocks[x, y + 2];
-                if (b1 != null && b2 != null && b3 != null)
-                {
-                    string c1 = GetBlockColorName(b1); string c2 = GetBlockColorName(b2); string c3 = GetBlockColorName(b3);
-                    if (!c1.Equals("none") && c1.Equals(c2) && c2.Equals(c3))
-                    {
-                        if (!matchesList.Contains(b1)) matchesList.Add(b1);
-                        if (!matchesList.Contains(b2)) matchesList.Add(b2);
-                        if (!matchesList.Contains(b3)) matchesList.Add(b3);
-                    }
-                }
-            }
-        }//파트33333333333333333
-            if (matchesList.Count > 0)
-            {
-                // 유저가 직접 움직여서 발생한 첫 매치일 때만 정직하게 1턴을 소모합니다.
-                if (isUserTurn)
-                {
-                    if (PuzzleBattleManager.Instance != null)
-                    {
-                        PuzzleBattleManager.Instance.currentTurn++;
-                        PuzzleBattleManager.Instance.UpdateTurnTextUI();
-                    }
-                    isUserTurn = false; // 첫 정산 완료 후 플래그를 꺼서 자동 연쇄는 턴을 안 씁니다.
-                }
-
-                // [유저 기획 반영] 블록이 파괴될 때마다 정직하게 1콤보씩 차곡차곡 누적합니다.
-                if (PuzzleBattleManager.Instance != null)
-                {
-                    PuzzleBattleManager.Instance.currentCombo++;
-                    PuzzleBattleManager.Instance.UpdateComboTextUI(); // 실시간 콤보 글씨 갱신
-                }
-
-                int comboCount = PuzzleBattleManager.Instance != null ? PuzzleBattleManager.Instance.currentCombo : 1;
-
-                // 1콤보부터 대미지 배율이 조금씩 상승하는 시스템 (1콤보=100%, 2콤보=110%, 3콤보=120%...)
-                float comboDamageMultiplier = PuzzleBattleManager.Instance != null ? PuzzleBattleManager.Instance.comboDamageMultiplier : 0.1f;
-                float finalMultiplier = 1f + ((comboCount - 1) * comboDamageMultiplier);
-
-                // 터진 블록 1개당 100 대미지 계산 후 최종 콤보 배율 곱하기!
-                float baseDamage = matchesList.Count * 100f;
-                float damageDealt = baseDamage * finalMultiplier;
-
-                Debug.Log($"🔥 {comboCount} 콤보 달성! (배율: {finalMultiplier * 100}%) -> 몬스터에게 {damageDealt} 대미지!");
-
-                // 계산된 최종 연쇄 대미지로 무한 몬스터를 때립니다.
-                if (InfiniteMonster.Instance != null)
-                {
-                    InfiniteMonster.Instance.TakeDamage(damageDealt);
-                }
-            }
-            else
-            {
-                Debug.Log("[기획 3-2번 성공] 자동 연쇄 낙하 폭발 발생! 턴 수 증가는 면제됩니다.");
-            }
-
-            // 외부 전투 시스템 타격 데미지 원격 통신 발송
-            int dmg = matchesList.Count * 10;
-            if (GameManager.Instance != null) GameManager.Instance.DamageEnemy(dmg);
-
-            // 보드 데이터 맵에서 제거 및 오브젝트 파괴
-        foreach (GameObject b in matchesList)
-        {
-            if (b != null)
-            {
-                // 👇 [블랙박스 장착] 터지는 블록들의 진짜 이름과 컴퓨터가 계산해낸 방 주소(bx, by)를 콘솔창에 찍어봅니다.
-                string[] parts = b.name.Split('_');
-                int bx = int.Parse(parts[parts.Length - 2]);
-                int by = int.Parse(parts[parts.Length - 1]);
+                List<int> allowedIndices = new List<int>();
                 
-                Debug.LogWarning($"🎯 [버그 추적] 지금 터지는 블록의 실물 이름: {b.name} ➡️ 추출된 주소 - X: {bx}, Y: {by}");
-                
-                allBlocks[bx, by] = null;
-                Destroy(b);
-            }
-        }
-
-            yield return new WaitForSeconds(0.15f);
-        // 📄 Board.cs의 CheckAndDestroyMatchesRoutine() 함수 맨 끝자락 수정 구역
-
-        // 📄 Board.cs의 CheckAndDestroyMatchesRoutine() 함수 맨 끝자락 수정 구역
-
-        yield return StartCoroutine(DropBlocksRoutine());
-        yield return StartCoroutine(RefillBoardRoutine());
-
-        if (CheckHasMatches())
-        {
-            yield return StartCoroutine(CheckAndDestroyMatchesRoutine());
-        }
-    else
-    {
-        // 🔒 [시점 고정] 연쇄 폭발과 낙하 리필이 "완벽하게 끝난 진짜 최종 종착지"입니다.
-        isMatching = false;
-        isSwapping = false;
-
-        // ⏱️ [체크 1] 모든 블록이 보드를 다 채우고 멈춘 바로 지금, 제한시간이 끝났는지 확인합니다.
-        if (PuzzleBattleManager.Instance != null && PuzzleBattleManager.Instance.isTimeOver)
-        {
-            Debug.Log("🏆 [연쇄 및 낙하 종료 확인 완료] 완벽히 멈춘 상태에서 결과창 팝업을 활성화합니다!");
-            
-            // 1. 블록 배치가 완전히 끝난 깔끔한 상태에서 결과창을 오픈합니다.
-            PuzzleBattleManager.Instance.OnTimerEnd();
-            
-            // 2. 결과창이 떴으므로 보드의 모든 블록을 파괴하여 제거하고 3매치 조작 기능을 영구 정지시킵니다.
-            ForceStopAndClearBoard();
-        }
-        // 🧩 [체크 2] 아직 시간이 남아있다면 판이 완전히 막혔는지(데드락) 검사합니다.
-        else if (CheckIsDeadlock())
-        {
-            StartCoroutine(HandleDeadlockRoutine()); // 기획안 규칙대로 스르르 터지며 셔플 연출 실행
-        }
-        // 🎮 [체크 3] 시간도 남았고 데드락도 아니라면, 다음 플레이어 조작 턴으로 전원을 켭니다.
-        else
-        {
-            GameManager.Instance.currentGameState = GameState.PuzzleBattle;
-        }
-    }
-
-    } // 🔍 CheckAndDestroyMatchesRoutine 함수가 완전히 끝나는 마감 중괄호
-
-
-
-
-
-
-
-
-
-    // 🌟 [2번 버그 수정 포인트]: 위에서 떨어질 때 보석 이름에서 색상 접두사 단어가 유실되는 현상 원천 차단
-    IEnumerator DropBlocksRoutine()
-    {
-        for (int x = 0; x < width; x++)
-        {
-            for (int y = 0; y < height; y++)
-            {
-                if (allBlocks[x, y] == null)
+                for (int i = 0; i < blockPrefabs.Length; i++)
                 {
-                    for (int k = y + 1; k < height; k++)
-                    {
-                        if (allBlocks[x, k] != null)
-                        {
-                            allBlocks[x, y] = allBlocks[x, k];
-                            allBlocks[x, k] = null;
-
-                            Vector2 targetUIPos = GetUIAnchoredPosition(x, y);
-                            StartCoroutine(MoveBlockSmoothlyUI(allBlocks[x, y], targetUIPos));
-
-                            // 원본 블록의 순수 이름(예: Block_Blue)을 칼같이 추적하여 결합합니다.
-                            string originalName = allBlocks[x, y].name;
-                            int lastUnderscore = originalName.LastIndexOf('_');
-                            int secondLastUnderscore = originalName.Substring(0, lastUnderscore).LastIndexOf('_');
-                            string colorPrefix = originalName.Substring(0, secondLastUnderscore);
-
-                            allBlocks[x, y].name = colorPrefix + "_" + x + "_" + y;
-                            break;
-                        }
-                    }
+                    if (x >= 2 && GetBlockColor(allBlocks[x - 1, y]) == GetBlockColor(blockPrefabs[i]) &&
+                                 GetBlockColor(allBlocks[x - 2, y]) == GetBlockColor(blockPrefabs[i])) continue;
+                    if (y >= 2 && GetBlockColor(allBlocks[x, y - 1]) == GetBlockColor(blockPrefabs[i]) &&
+                                 GetBlockColor(allBlocks[x, y - 2]) == GetBlockColor(blockPrefabs[i])) continue;
+                    
+                    allowedIndices.Add(i);
                 }
+
+                int randomIndex = allowedIndices[Random.Range(0, allowedIndices.Count)];
+                SpawnBlockAt(randomIndex, x, y);
             }
         }
-        yield return new WaitForSeconds(0.2f);
+        Debug.Log("🎲 [성공] 자동 매칭이 방지된 6x6 보드가 배치되었습니다.");
     }
 
-    // 🌟 [2번 버그 수정 포인트]: 새 블록이 리필될 때도 원본 프리팹 이름을 안전하게 보존
-    IEnumerator RefillBoardRoutine()
+    private void SpawnBlockAt(int prefabIndex, int x, int y)
     {
-        for (int x = 0; x < width; x++)
+        // 1. 블록을 생성하며 부모(PuzzleBoard)의 자식으로 입주시킵니다.
+        GameObject newBlock = Instantiate(blockPrefabs[prefabIndex], transform);
+        
+        RectTransform rt = newBlock.GetComponent<RectTransform>();
+        if (rt != null)
         {
-            for (int y = 0; y < height; y++)
-            {
-                if (allBlocks[x, y] == null)
-                {
-                    int randomBlockIndex = Random.Range(0, blockPrefabs.Length);
-                    GameObject prefabToSpawn = blockPrefabs[randomBlockIndex];
+            // ⭕ [비율 기반 자석 6x6 배치 대완공]
+            // 가로 6칸(cols), 세로 6칸(rows) 안에서 내 칸(x, y)이 차지해야 할 '시작 비율'과 '끝 비율'을 정밀 계산합니다.
+            float anchorMinX = (float)x / cols;
+            float anchorMaxX = (float)(x + 1) / cols;
+            float anchorMinY = (float)y / rows;
+            float anchorMaxY = (float)(y + 1) / rows;
 
-                    if (prefabToSpawn != null)
-                    {
-                        GameObject block = Instantiate(prefabToSpawn);
-                        block.transform.SetParent(this.transform, false);
-
-                        RectTransform rect = block.GetComponent<RectTransform>();
-                        if (rect != null)
-                        {
-                            rect.localScale = Vector3.one;
-                            rect.localRotation = Quaternion.identity;
-                            rect.anchoredPosition = GetUIAnchoredPosition(x, height);
-                        }
-
-                        Vector2 targetUIPos = GetUIAnchoredPosition(x, y);
-                        yield return StartCoroutine(MoveBlockSmoothlyUI(block, targetUIPos));
-
-                        // 원본 프리팹의 온전한 이름 단어 뒤에만 인덱스를 결합시킵니다.
-                        block.name = prefabToSpawn.name + "_" + x + "_" + y;
-                        allBlocks[x, y] = block;
-                    }
-                }
-            }
+            // 계산된 비율 칸막이 안에 자석처럼 쏙 들어가서 여백을 0으로 밀착시킵니다!
+            rt.anchorMin = new Vector2(anchorMinX, anchorMinY);
+            rt.anchorMax = new Vector2(anchorMaxX, anchorMaxY);
+            rt.offsetMin = Vector2.zero;
+            rt.offsetMax = Vector2.zero;
+            
+            rt.localScale = Vector3.one;
         }
-        yield return new WaitForSeconds(0.2f);
+
+        string rawColor = GetBlockColor(blockPrefabs[prefabIndex]);
+        newBlock.name = $"블록_{rawColor}_{Random.Range(10, 99)}";
+        allBlocks[x, y] = newBlock;
     }
 
-    // UI RectTransform 전용 초정밀 부드러운 스무스 이동 엔진 코루틴
-    IEnumerator MoveBlockSmoothlyUI(GameObject block, Vector2 targetAnchoredPos)
+
+    public void ClearAllBoardObjects()
     {
-        if (block == null) yield break;
-        RectTransform rect = block.GetComponent<RectTransform>();
-        if (rect == null) yield break;
-
-        float time = 0;
-        Vector2 startPos = rect.anchoredPosition;
-
-        while (time < 1f)
+        for (int x = 0; x < rows; x++)
         {
-            if (block == null) yield break;
-            time += Time.deltaTime * 6f;
-            rect.anchoredPosition = Vector2.Lerp(startPos, targetAnchoredPos, time);
-            yield return null;
-        }
-        rect.anchoredPosition = targetAnchoredPos;
-    }
-//////////////////////////////////////////////
-    // 기획안 데드락 (ㄱ) 규칙: 상, 하, 좌, 우 움직여서 3개가 터지는 조합이 한 군데라도 있는지 가상 연산 검사
-    bool CheckIsDeadlock()
-    {
-        // 1. 가로 방향 가상 스왑 및 매치 검사
-        for (int y = 0; y < height; y++)
-        {
-            for (int x = 0; x < width - 1; x++)
-            {
-                if (allBlocks[x, y] == null || allBlocks[x + 1, y] == null) continue;
-
-                GameObject temp = allBlocks[x, y];
-                allBlocks[x, y] = allBlocks[x + 1, y];
-                allBlocks[x + 1, y] = temp;
-
-                bool matchFound = CheckHasMatches();
-
-                allBlocks[x, y] = allBlocks[x + 1, y];
-                allBlocks[x + 1, y] = temp;
-
-                if (matchFound) return false; // 하나라도 움직여서 터질 가능성이 있다면 데드락 아님!
-            }
-        }
-
-        // 2. 세로 방향 가상 스왑 및 매치 검사
-        for (int x = 0; x < width; x++)
-        {
-            for (int y = 0; y < height - 1; y++)
-            {
-                if (allBlocks[x, y] == null || allBlocks[x, y + 1] == null) continue;
-
-                GameObject temp = allBlocks[x, y];
-                allBlocks[x, y] = allBlocks[x, y + 1];
-                allBlocks[x, y + 1] = temp;
-
-                bool matchFound = CheckHasMatches();
-
-                allBlocks[x, y] = allBlocks[x, y + 1];
-                allBlocks[x, y + 1] = temp;
-
-                if (matchFound) return false;
-            }
-        }
-
-        Debug.LogWarning("🚨 [데드락 발동] 유저가 움직여서 터뜨릴 수 있는 조합이 단 한 개도 없습니다!");
-        return true;
-    }
-
-    // 기획안 데드락 (ㄴ, ㄷ) 규칙: 12시에서 6시 아래 방향 시간차 그라데이션 소멸 후 무더기 리필 하단 안착
-    IEnumerator HandleDeadlockRoutine()
-    {
-        isSwapping = true;
-
-        // 기획안 (ㄴ): Y축 역순(12시 맨 윗줄부터 6시 맨 아랫줄까지) 돌며 시간차 파괴
-        for (int y = height - 1; y >= 0; y--)
-        {
-            for (int x = 0; x < width; x++)
+            for (int y = 0; y < cols; y++)
             {
                 if (allBlocks[x, y] != null)
                 {
@@ -646,79 +133,534 @@ private IEnumerator SwapBlocksRoutine(int ax, int ay, int bx, int by)
                     allBlocks[x, y] = null;
                 }
             }
-            yield return new WaitForSeconds(0.08f); // 위에서 아래로 쓸려내려가듯 소멸하는 그라데이션 연출 시간차
-        }
-
-        yield return new WaitForSeconds(0.3f);
-
-        // 기획안 (ㄷ): 12시 천장 위 방향에서 새로운 블록들을 대량 낙하시켜 가장 하단부터 36칸 재배치
-        yield return StartCoroutine(RefillBoardRoutine());
-
-        // 무한 폭발 루프 방지용 재점검 루프 가동
-        while (CheckHasMatches())
-        {
-            yield return StartCoroutine(CheckAndDestroyMatchesRoutine());
-            yield return StartCoroutine(DropBlocksRoutine());
-            yield return StartCoroutine(RefillBoardRoutine());
-        }
-        isSwapping = false;
-    }
-
-    public void OnClickRewardConfirmButton()
-    {
-        if (GameManager.Instance != null && GameManager.Instance.stageMode == 2)
-        {
-            GameManager.Instance.currentGameState = GameState.RewardSelect;
-            Debug.Log("[보드 판정] 무한 모드 단판 종료 확인! 판 OFF 선포.");
         }
     }
-    // 🔥 [개발자님 기획 반영]: 3초 제한시간 종료 시 보드의 모든 블록을 투명하게 제거하고 마우스를 잠그는 함수
-    public void ForceStopAndClearBoard()
-    {
-        // 1. 실행 중인 모든 낙하 / 리필 연출 코루틴을 강제로 찍어 누릅니다.
-        StopAllCoroutines();
 
-        // 2. 6x6 격자 배열에 안전하게 등록된 블록 데이터 1차 청소
-        if (allBlocks != null)
+    public void StartInfiniteMode()
+    {
+        InitializeNewBoard();
+        currentTurn = 0;
+        comboCount = 0;
+        isGameActive = true;
+        StartCoroutine(InfiniteTimerRoutine());
+    }
+
+    private IEnumerator InfiniteTimerRoutine()
+    {
+        float timer = limitTime;
+        while (timer > 0)
         {
-            for (int x = 0; x < width; x++)
+            if (!isGameActive) yield break;
+            timer -= Time.deltaTime;
+            
+            // 이사 온 0.001초 출력 뷰어 가동
+            DisplayTime(timer); 
+
+            yield return null;
+        }
+        isGameActive = false;
+        isProcessing = true;
+        Debug.Log("⏱️ [종료] 3분 제한시간 도달! 무한모드가 강제 종료됩니다.");
+    }
+
+    public void StartNormalMode()
+    {
+        InitializeNewBoard();
+        currentTurn = 0;
+        comboCount = 0;
+        isGameActive = true;
+        Debug.Log("⚔️ [시작] 일반모드가 가동되었습니다. 보스를 처치하세요!");
+    }
+
+    public void OnClickRealStartInfiniteTimer()
+    {
+        if (startTouchTriggerPanel != null)
+        {
+            startTouchTriggerPanel.SetActive(false);
+        }
+        StartInfiniteMode();
+        Debug.Log("🏁 [무한 모드 스타트 성공] 팝업창 차단 해제 및 엔진 가동 개시!");
+    }
+
+    private void DisplayTime(float timeToDisplay)
+    {
+        if (TimeText == null) return;
+        if (timeToDisplay < 0) timeToDisplay = 0;
+
+        int minutes = Mathf.FloorToInt(timeToDisplay / 60);
+        int seconds = Mathf.FloorToInt(timeToDisplay % 60);
+        int milliseconds = Mathf.FloorToInt((timeToDisplay - Mathf.FloorToInt(timeToDisplay)) * 1000);
+
+        TimeText.text = string.Format("{0:00}:{1:00}.{2:000}", minutes, seconds, milliseconds);
+    }
+    [Header("ㅡ 마우스 및 드래그 제어 ㅡ")]
+    private GameObject selectedBlock = null; 
+    private Vector2 clickStartPos;           
+    private int startX, startY;              
+    private bool isSwappingNow = false;       
+
+    private void Update()
+    {
+        if (!isGameActive || isProcessing || isSwappingNow) return;
+        HandleMouseInput();
+    }
+
+    private void HandleMouseInput()
+    {
+        if (Input.GetMouseButtonDown(0))
+        {
+            RaycastHit2D hit = Physics2D.Raycast(Camera.main.ScreenToWorldPoint(Input.mousePosition), Vector2.zero);
+            if (hit.collider != null && hit.collider.gameObject.name.StartsWith("블록_"))
             {
-                for (int y = 0; y < height; y++)
+                selectedBlock = hit.collider.gameObject;
+                clickStartPos = Input.mousePosition;
+                FindBlockIndex(selectedBlock, out startX, out startY);
+            }
+        }
+
+        if (Input.GetMouseButtonUp(0) && selectedBlock != null)
+        {
+            Vector2 clickEndPos = Input.mousePosition;
+            Vector2 swipeDelta = clickEndPos - clickStartPos;
+
+            if (swipeDelta.magnitude > 40f)
+            {
+                CalculateSwipeDirection(swipeDelta);
+            }
+            selectedBlock = null;
+        }
+    }
+
+    private void FindBlockIndex(GameObject target, out int xPos, out int yPos)
+    {
+        xPos = -1; yPos = -1;
+        for (int x = 0; x < rows; x++)
+        {
+            for (int y = 0; y < cols; y++)
+            {
+                if (allBlocks[x, y] == target)
                 {
-                    if (allBlocks[x, y] != null)
-                    {
-                        DestroyImmediate(allBlocks[x, y]);
-                        allBlocks[x, y] = null;
-                    }
+                    xPos = x; yPos = y;
+                    return;
+                }
+            }
+        }
+    }
+
+    private void CalculateSwipeDirection(Vector2 delta)
+    {
+        int targetX = startX;
+        int targetY = startY;
+
+        if (Mathf.Abs(delta.x) > Mathf.Abs(delta.y))
+        {
+            targetX += delta.x > 0 ? 1 : -1;
+        }
+        else
+        {
+            targetY += delta.y > 0 ? 1 : -1;
+        }
+
+        if (targetX >= 0 && targetX < rows && targetY >= 0 && targetY < cols)
+        {
+            StartCoroutine(SwapBlocksRoutine(startX, startY, targetX, targetY));
+        }
+    }
+
+    private IEnumerator SwapBlocksRoutine(int x1, int y1, int x2, int y2)
+    {
+        isSwappingNow = true;
+        currentTurn++; 
+
+        if (PuzzleBattleManager.Instance != null)
+        {
+            PuzzleBattleManager.Instance.UpdateTurnTextUI();
+        }
+
+        Debug.Log($"⏳ [턴 카운트] 유저 조작 감지! 현재 누적 턴수: {currentTurn}턴");
+
+        GameObject block1 = allBlocks[x1, y1];
+        GameObject block2 = allBlocks[x2, y2];
+
+        if (dragLayerParent != null) block1.transform.SetParent(dragLayerParent);
+        else block1.transform.SetAsLastSibling();
+
+        Vector2 pos1 = new Vector2(x1 * cellSize, y1 * cellSize);
+        Vector2 pos2 = new Vector2(x2 * cellSize, y2 * cellSize);
+
+        float duration = 0.25f; 
+        float elapsed = 0f;
+
+        while (elapsed < duration)
+        {
+            elapsed += Time.deltaTime;
+            float t = elapsed / duration;
+
+            if (block1 != null) block1.GetComponent<RectTransform>().anchoredPosition = Vector2.Lerp(pos1, pos2, t);
+            if (block2 != null) block2.GetComponent<RectTransform>().anchoredPosition = Vector2.Lerp(pos2, pos1, t);
+            yield return null;
+        }
+
+        allBlocks[x1, y1] = block2;
+        allBlocks[x2, y2] = block1;
+
+        if (block1 != null) block1.transform.SetParent(transform);
+
+        yield return StartCoroutine(JudgeMatchAndProcess(x1, y1, x2, y2));
+    }
+
+    private IEnumerator JudgeMatchAndProcess(int x1, int y1, int x2, int y2)
+    {
+        isProcessing = true;
+        List<GameObject> matchedBlocks = FindAllMatches();
+
+        if (matchedBlocks.Count > 0)
+        {
+            yield return StartCoroutine(DestroyAndRefillRoutine(matchedBlocks));
+        }
+        else
+        {
+            comboCount = 0; 
+            UpdateComboTextUI();
+            Debug.Log($"❌ 매치 실패! 콤보 카운트 리셋. 원위치로 복귀합니다.");
+
+            GameObject block1 = allBlocks[x2, y2]; 
+            GameObject block2 = allBlocks[x1, y1];
+
+            block1.transform.SetAsLastSibling();
+
+            Vector2 posCurrent1 = new Vector2(x2 * cellSize, y2 * cellSize);
+            Vector2 posCurrent2 = new Vector2(x1 * cellSize, y1 * cellSize);
+
+            float duration = 0.2f; 
+            float elapsed = 0f;
+
+            while (elapsed < duration)
+            {
+                elapsed += Time.deltaTime;
+                float t = elapsed / duration;
+
+                if (block1 != null) block1.GetComponent<RectTransform>().anchoredPosition = Vector2.Lerp(posCurrent1, posCurrent2, t);
+                if (block2 != null) block2.GetComponent<RectTransform>().anchoredPosition = Vector2.Lerp(posCurrent2, posCurrent1, t);
+                yield return null;
+            }
+
+            allBlocks[x1, y1] = block1;
+            allBlocks[x2, y2] = block2;
+        }
+
+        isSwappingNow = false;
+        isProcessing = false;
+    }
+
+    private List<GameObject> FindAllMatches()
+    {
+        List<GameObject> matches = new List<GameObject>();
+
+        for (int y = 0; y < cols; y++)
+        {
+            for (int x = 0; x < rows - 2; x++)
+            {
+                GameObject b1 = allBlocks[x, y];
+                GameObject b2 = allBlocks[x + 1, y];
+                GameObject b3 = allBlocks[x + 2, y];
+
+                if (b1 == null || b2 == null || b3 == null) continue;
+
+                if (GetBlockColor(b1) == GetBlockColor(b2) && GetBlockColor(b2) == GetBlockColor(b3))
+                {
+                    if (!matches.Contains(b1)) matches.Add(b1);
+                    if (!matches.Contains(b2)) matches.Add(b2);
+                    if (!matches.Contains(b3)) matches.Add(b3);
                 }
             }
         }
 
-        // 3. 🌟 [핵심 물리 필터]: 배열에 미처 등록 안 되고 실시간 생성/이동 중이던 모든 오브젝트 2차 추적 소멸
-        // 이름 뒤에 '_X_Y' 좌표를 붙여 생성하는 규칙(예: Block_Red_0_0)을 활용해 UI 훼손 없이 블록만 골라냅니다.
-        System.Collections.Generic.List<Transform> zombieBlocks = new System.Collections.Generic.List<Transform>();
-        
-        foreach (Transform child in transform)
+        for (int x = 0; x < rows; x++)
         {
-            // 이름에 언더바(_)가 포함된 생성 블록들만 식별하여 타겟 리스트에 수집
-            if (child.gameObject.name.Contains("_"))
+            for (int y = 0; y < cols - 2; y++)
             {
-                zombieBlocks.Add(child);
+                GameObject b1 = allBlocks[x, y];
+                GameObject b2 = allBlocks[x, y + 1];
+                GameObject b3 = allBlocks[x, y + 2];
+
+                if (b1 == null || b2 == null || b3 == null) continue;
+
+                if (GetBlockColor(b1) == GetBlockColor(b2) && GetBlockColor(b2) == GetBlockColor(b3))
+                {
+                    if (!matches.Contains(b1)) matches.Add(b1);
+                    if (!matches.Contains(b2)) matches.Add(b2);
+                    if (!matches.Contains(b3)) matches.Add(b3);
+                }
             }
         }
 
-        // 수집된 좀비 블록 오브젝트들을 프레임 대기 없이 물리적으로 즉시 소멸시킵니다.
-        for (int i = zombieBlocks.Count - 1; i >= 0; i--)
+        return matches;
+    }
+    private IEnumerator DestroyAndRefillRoutine(List<GameObject> matches)
+    {
+        while (matches.Count > 0)
         {
-            DestroyImmediate(zombieBlocks[i].gameObject);
+            comboCount++; 
+            UpdateComboTextUI(); // 이사 온 콤보 UI 실시간 격발
+            
+            float currentMultiplier = GetComboMultiplier();
+            Debug.Log($"💥 [폭발] {matches.Count}개 파괴! 현재 {comboCount}콤보 (배율: {currentMultiplier}배)");
+
+            foreach (GameObject block in matches)
+            {
+                if (block != null)
+                {
+                    FindBlockIndex(block, out int x, out int y);
+                    if (x != -1 && y != -1) allBlocks[x, y] = null;
+                    Destroy(block);
+                }
+            }
+
+            yield return new WaitForSeconds(0.15f);
+
+            yield return StartCoroutine(DropExistingBlocksRoutine());
+            yield return StartCoroutine(RefillNewBlocksRoutine());
+
+            matches = FindAllMatches();
         }
 
-        // 4. 보드 입력 및 조작 권한 인터셉터 락(Lock) 가동
-        isMatching = true;
-        isSwapping = true;
-        
-        Debug.Log("🧹 [보드 철벽 클리어] 화면 상의 모든 예외 잔여 블록을 원천 차단 소멸했습니다!");
+        // 하늘에서 다 떨어지고 안정화되었을 때 데드락(판막힘) 최종 전수 조사 기동
+        yield return StartCoroutine(CheckPostProcessAndDeadlock());
     }
 
+    private IEnumerator DropExistingBlocksRoutine()
+    {
+        float duration = 0.2f; 
+        List<Coroutine> activeMoves = new List<Coroutine>();
 
-}
+        for (int x = 0; x < rows; x++)
+        {
+            for (int y = 0; y < cols; y++)
+            {
+                if (allBlocks[x, y] == null)
+                {
+                    for (int ku = y + 1; ku < cols; ku++)
+                    {
+                        if (allBlocks[x, ku] != null)
+                        {
+                            allBlocks[x, y] = allBlocks[x, ku];
+                            allBlocks[x, ku] = null;
+
+                            Vector2 targetPos = new Vector2(x * cellSize, y * cellSize);
+                            activeMoves.Add(StartCoroutine(SmoothMoveBlock(allBlocks[x, y], targetPos, duration)));
+                            break;
+                        }
+                    }
+                }
+            }
+        }
+        foreach (var move in activeMoves) yield return move;
+    }
+
+    private IEnumerator RefillNewBlocksRoutine()
+    {
+        float duration = 0.25f;
+        List<Coroutine> activeMoves = new List<Coroutine>();
+
+        for (int x = 0; x < rows; x++)
+        {
+            int missingCount = 0;
+            for (int y = cols - 1; y >= 0; y--)
+            {
+                if (allBlocks[x, y] == null)
+                {
+                    missingCount++;
+                    int randomIndex = Random.Range(0, blockPrefabs.Length);
+                    
+                    GameObject newBlock = Instantiate(blockPrefabs[randomIndex], transform);
+                    RectTransform rt = newBlock.GetComponent<RectTransform>();
+                    
+                    float startY = (cols + missingCount) * cellSize;
+                    rt.anchoredPosition = new Vector2(x * cellSize, startY);
+
+                    string rawColor = GetBlockColor(blockPrefabs[randomIndex]);
+                    newBlock.name = $"블록_{rawColor}_{Random.Range(10, 99)}";
+
+                    allBlocks[x, y] = newBlock;
+
+                    Vector2 targetPos = new Vector2(x * cellSize, y * cellSize);
+                    activeMoves.Add(StartCoroutine(SmoothMoveBlock(newBlock, targetPos, duration)));
+                }
+            }
+        }
+        foreach (var move in activeMoves) yield return move;
+    }
+
+    private IEnumerator SmoothMoveBlock(GameObject target, Vector2 targetAnchoredPos, float time)
+    {
+        if (target == null) yield break;
+        RectTransform rt = target.GetComponent<RectTransform>();
+        Vector2 startPos = rt.anchoredPosition;
+        float elapsed = 0f;
+
+        while (elapsed < time)
+        {
+            if (target == null) yield break;
+            elapsed += Time.deltaTime;
+            rt.anchoredPosition = Vector2.Lerp(startPos, targetAnchoredPos, elapsed / time);
+            yield return null;
+        }
+        if (rt != null) rt.anchoredPosition = targetAnchoredPos;
+    }
+
+    public void UpdateComboTextUI()
+    {
+        if (comboText == null) return;
+
+        if (comboCount > 0)
+        {
+            comboText.text = "Combo\n" + comboCount;
+            Color textColor = comboText.color;
+            textColor.a = 1f; 
+            comboText.color = textColor;
+
+            if (comboFadeCoroutine != null) StopCoroutine(comboFadeCoroutine);
+            comboFadeCoroutine = StartCoroutine(AnimateFastComboTextRoutine());
+        }
+        else
+        {
+            comboText.text = "";
+        }
+    }
+
+    private IEnumerator AnimateFastComboTextRoutine()
+    {
+        if (comboText == null) yield break;
+
+        RectTransform rect = comboText.GetComponent<RectTransform>();
+        Vector2 startPosition = rect != null ? rect.anchoredPosition : Vector2.zero;
+
+        if (rect != null)
+        {
+            float bounceDuration = 0.12f; 
+            float time = 0f;
+            Vector3 targetScale = Vector3.one;
+            Vector3 startScale = Vector3.one * 1.8f; 
+
+            while (time < bounceDuration)
+            {
+                time += Time.deltaTime;
+                rect.localScale = Vector3.Lerp(startScale, targetScale, time / bounceDuration);
+                yield return null;
+            }
+            rect.localScale = targetScale;
+        }
+
+        float fadeDuration = 0.35f; 
+        float fadeTime = 0f;
+        Color safeComboColor = comboText.color;
+
+        while (fadeTime < fadeDuration)
+        {
+            fadeTime += Time.deltaTime;
+            float progress = fadeTime / fadeDuration;
+
+            float alpha = Mathf.Lerp(1f, 0f, progress);
+            safeComboColor.a = alpha;
+            comboText.color = safeComboColor;
+
+            if (rect != null)
+            {
+                rect.anchoredPosition = new Vector2(startPosition.x, startPosition.y + (progress * 25f));
+            }
+            yield return null;
+        }
+
+        comboText.text = "";
+        if (rect != null)
+        {
+            rect.localScale = Vector3.one;
+            rect.anchoredPosition = startPosition;
+        }
+    }
+
+    private bool CheckPossibleMatchesExist()
+    {
+        for (int x = 0; x < rows; x++)
+        {
+            for (int y = 0; y < cols; y++)
+            {
+                if (allBlocks[x, y] == null) continue;
+
+                if (x < rows - 1 && allBlocks[x + 1, y] != null)
+                {
+                    if (SimulateSwapAndCheckMatch(x, y, x + 1, y)) return true;
+                }
+                if (y < cols - 1 && allBlocks[x, y + 1] != null)
+                {
+                    if (SimulateSwapAndCheckMatch(x, y, x, y + 1)) return true;
+                }
+            }
+        }
+        return false; 
+    }
+
+    private bool SimulateSwapAndCheckMatch(int x1, int y1, int x2, int y2)
+    {
+        GameObject temp = allBlocks[x1, y1];
+        allBlocks[x1, y1] = allBlocks[x2, y2];
+        allBlocks[x2, y2] = temp;
+
+        List<GameObject> testMatches = FindAllMatches();
+        bool hasMatch = testMatches.Count > 0;
+
+        allBlocks[x2, y2] = allBlocks[x1, y1];
+        allBlocks[x1, y1] = temp;
+
+        return hasMatch;
+    }
+
+    private IEnumerator ResolveDeadlockRoutine()
+    {
+        isProcessing = true;
+        Debug.LogWarning("🚨 [데드락 감지] 움직일 조합이 없습니다! 판을 비우고 하늘에서 새로 떨어집니다.");
+
+        ClearAllBoardObjects();
+        yield return new WaitForSeconds(0.2f);
+        yield return StartCoroutine(RefillNewBlocksRoutine());
+
+        isProcessing = false;
+        yield return StartCoroutine(CheckPostProcessAndDeadlock());
+    }
+
+    private IEnumerator CheckPostProcessAndDeadlock()
+    {
+        if (!CheckPossibleMatchesExist())
+        {
+            yield return StartCoroutine(ResolveDeadlockRoutine());
+        }
+    }
+
+    public void ShutdownAndCleanupBoard()
+    {
+        isGameActive = false;
+        isProcessing = true;
+
+        ClearAllBoardObjects();
+
+        List<GameObject> leakObjects = new List<GameObject>();
+        foreach (Transform child in transform)
+        {
+            if (child != null && child.gameObject.name.StartsWith("블록_"))
+            {
+                leakObjects.Add(child.gameObject);
+            }
+        }
+
+        for (int i = 0; i < leakObjects.Count; i++)
+        {
+            Destroy(leakObjects[i]);
+        }
+        leakObjects.Clear();
+
+        comboCount = 0;
+        UpdateComboTextUI();
+        Debug.Log("✨ [성공] 보드판 2차 유령 찌꺼기 추적 소멸 완수.");
+    }
+} // ⭕ 클래스를 안전하게 닫아주는 영광의 웅장한 닫는 중괄호!!
