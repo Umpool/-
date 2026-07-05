@@ -478,13 +478,8 @@ private void FindBlockIndex(GameObject block, out int x, out int y)
     private IEnumerator SwapBlocksRoutine(int x1, int y1, int x2, int y2)
     {
         isSwappingNow = true;
-        
-        // 🎯 [기획서 반영]: 유저가 블록을 움직였다면 3매치 성공/실패 여부와 관계없이 1턴을 먼저 소모합니다.
-        currentTurn++; 
-        if (PuzzleBattleManager.Instance != null)
-        {
-            PuzzleBattleManager.Instance.UpdateTurnTextUI();
-        }
+        currentTurn++; // 1턴 소모
+        if (PuzzleBattleManager.Instance != null) PuzzleBattleManager.Instance.UpdateTurnTextUI();
 
         GameObject block1 = allBlocks[x1, y1];
         GameObject block2 = allBlocks[x2, y2];
@@ -494,109 +489,94 @@ private void FindBlockIndex(GameObject block, out int x, out int y)
             RectTransform rt1 = block1.GetComponent<RectTransform>();
             RectTransform rt2 = block2.GetComponent<RectTransform>();
 
-            // [기획서 반영]: 출발한 블록이 다른 블록보다 가장 최상위 레이어(맨 위)에 표시되게 만듭니다.
-            if (rt1 != null) rt1.SetAsLastSibling();
+            if (rt1 != null) rt1.SetAsLastSibling(); // 출발 블록 최상위 레이어
 
-            // 교체 완료될 정밀 격자 비율 기반 앵커 목적지 설정
+            // 목표 앵커 좌표 계산
             Vector2 targetMin1 = new Vector2((float)x2 / width, (float)y2 / height);
             Vector2 targetMax1 = new Vector2((float)(x2 + 1) / width, (float)(y2 + 1) / height);
             Vector2 targetMin2 = new Vector2((float)x1 / width, (float)y1 / height);
             Vector2 targetMax2 = new Vector2((float)(x1 + 1) / width, (float)(y1 + 1) / height);
 
-            // 두 블록이 서로 크로스하며 부드럽게 이동하는 애니메이션
-            float duration = 0.2f, elapsed = 0f;
-            while (elapsed < duration)
+            Vector2 startMin1 = rt1.anchorMin; Vector2 startMax1 = rt1.anchorMax;
+            Vector2 startMin2 = rt2.anchorMin; Vector2 startMax2 = rt2.anchorMax;
+
+            // 🎯 [옛날 d-2 가속도 속도 이식]: 획일적인 0.2초 분할 계산 대신, 초당 6배속 프레임 연산 가동
+            float time = 0f;
+            while (time < 1f)
             {
-                elapsed += Time.deltaTime;
-                float t = elapsed / duration;
-                if (rt1 != null) { rt1.anchorMin = Vector2.Lerp(rt1.anchorMin, targetMin1, t); rt1.anchorMax = Vector2.Lerp(rt1.anchorMax, targetMax1, t); }
-                if (rt2 != null) { rt2.anchorMin = Vector2.Lerp(rt2.anchorMin, targetMin2, t); rt2.anchorMax = Vector2.Lerp(rt2.anchorMax, targetMax2, t); }
+                time += Time.deltaTime * 6f; // 옛날 코드(d-2) 정품 속도 계수 적용!
+                if (rt1 != null) { rt1.anchorMin = Vector2.Lerp(startMin1, targetMin1, time); rt1.anchorMax = Vector2.Lerp(startMax1, targetMax1, time); }
+                if (rt2 != null) { rt2.anchorMin = Vector2.Lerp(startMin2, targetMin2, time); rt2.anchorMax = Vector2.Lerp(startMax2, targetMax2, time); }
                 yield return null;
             }
 
-            // 오차 방지 목적지 좌표 강제 고정
             if (rt1 != null) { rt1.anchorMin = targetMin1; rt1.anchorMax = targetMax1; }
             if (rt2 != null) { rt2.anchorMin = targetMin2; rt2.anchorMax = targetMax2; }
         }
 
-        // 실제 보드판 장부(배열 데이터)의 위치도 상호 교환합니다.
         allBlocks[x1, y1] = block2;
         allBlocks[x2, y2] = block1;
 
-        // 자리가 바뀌었으니, 기획 규칙에 따른 색상 매칭 및 복귀 판정 함수를 연달아 호출합니다!
         yield return StartCoroutine(JudgeMatchAndProcess(x1, y1, x2, y2));
     }
 
+
     // 🎯 [완전 융합] 현재 코드의 콤보 배율/연쇄 폭발 장치를 100% 보존하면서 옛날 점수 연동을 이식한 엔진
-    private IEnumerator DestroyAndRefillRoutine(List<GameObject> matches)
+    private IEnumerator JudgeMatchAndProcess(int x1, int y1, int x2, int y2)
     {
-        while (matches.Count > 0)
+        isProcessing = true;
+
+        // 🌟 옛날 d-2 방식 복구: 교체 직후 전체 판의 3매치를 탐색합니다.
+        List<GameObject> matchedBlocks = FindAllMatches();
+
+        if (matchedBlocks.Count > 0)
         {
-            // 콤보 상승 및 콤보 UI 갱신
-            comboCount++;
-            if (PuzzleBattleManager.Instance != null)
+            Debug.Log($"🔥 [판정 성공] {matchedBlocks.Count}개의 블록 파괴 루틴 가동.");
+            yield return StartCoroutine(DestroyAndRefillRoutine(matchedBlocks));
+        }
+        else
+        {
+            // ❌ [옛날 d-2 원위치 복귀 코드 개편 이식]
+            Debug.LogWarning("[매치 불가] 성립 조건을 만족하지 못하여 블록이 원위치로 리턴됩니다.");
+
+            GameObject block1 = allBlocks[x1, y1]; 
+            GameObject block2 = allBlocks[x2, y2];
+
+            if (block1 != null && block2 != null)
             {
-                PuzzleBattleManager.Instance.UpdateTurnTextUI(); // 혹은 매니저 측 콤보 UI가 있다면 호출
-            }
+                RectTransform rt1 = block1.GetComponent<RectTransform>();
+                RectTransform rt2 = block2.GetComponent<RectTransform>();
 
-            // 🌟 [현재 기능 보존]: 기획서의 콤보 배율에 따른 멀티플라이어 대미지 계산
-            float currentMultiplier = GetComboMultiplier();
-            Debug.Log($"💥 [폭발] {matches.Count}개 파괴! 현재 {comboCount}콤보 (배율: {currentMultiplier}배)");
+                Vector2 startMin1 = new Vector2((float)x1 / width, (float)y1 / height);
+                Vector2 startMax1 = new Vector2((float)(x1 + 1) / width, (float)(y1 + 1) / height);
+                Vector2 startMin2 = new Vector2((float)x2 / width, (float)y2 / height);
+                Vector2 startMax2 = new Vector2((float)(x2 + 1) / width, (float)(y2 + 1) / height);
 
-            // 🎯 [옛날 d-2 정품 연결]: 터진 블록 개수와 현재 콤보 배율을 배틀 매니저에게 실시간으로 전달하여 보스 피를 깎습니다!
-            // 🎯 [에러 완벽 박멸]: color1 대신 현재 터지는 첫 번째 블록에서 진짜 색상을 실시간 추출합니다.
-            // 🎯 [에러 원천 차단]: 터지고 있는 첫 번째 블록에서 진짜 색상 명부를 실시간 추출합니다.
-            if (matches != null && matches.Count > 0 && matches[0] != null)
-            {
-                string realTargetColor = GetBlockColor(matches[0]);
+                Vector2 currentMin1 = rt1.anchorMin; Vector2 currentMax1 = rt1.anchorMax;
+                Vector2 currentMin2 = rt2.anchorMin; Vector2 currentMax2 = rt2.anchorMax;
 
-                if (PuzzleBattleManager.Instance != null)
+                // 🎯 [옛날 d-2 가속도 속도 이식]: 복귀할 때도 딜레이 없이 6배속 가속도로 스르륵 복귀합니다.
+                float time = 0f;
+                while (time < 1f)
                 {
-                    // 🔄 [리플렉션 안전망]: 배틀 매니저 내부 함수 이름이 OnMatchBlock, OnBlockMatched, MatchBlock 등 
-                    // 어떤 이름으로 개명되어 있든 컴퓨터가 꼬이지 않고 실시간으로 장부를 찾아 격발시킵니다!
-                    var managerType = PuzzleBattleManager.Instance.GetType();
-                    var method = managerType.GetMethod("MatchBlock") ?? 
-                                 managerType.GetMethod("OnMatchBlock") ?? 
-                                 managerType.GetMethod("OnBlockMatched") ??
-                                 managerType.GetMethod("MatchBlocks");
-
-                    if (method != null)
-                    {
-                        method.Invoke(PuzzleBattleManager.Instance, new object[] { realTargetColor, matches.Count });
-                    }
-                    else
-                    {
-                        // 만약 배틀 매니저에 함수가 아예 없다면 튕기지 않고 안전하게 콘솔 로그에 점수만 기록하고 통과합니다.
-                        Debug.LogWarning($"📊 [전투 정산] {realTargetColor} 블록 {matches.Count}개 폭발! (PuzzleBattleManager 정산 함수 누락 상태)");
-                    }
+                    time += Time.deltaTime * 6f; // 옛날 코드(d-2) 정품 복귀 속도 계수 적용!
+                    if (rt1 != null) { rt1.anchorMin = Vector2.Lerp(currentMin1, startMin1, time); rt1.anchorMax = Vector2.Lerp(currentMax1, startMax1, time); }
+                    if (rt2 != null) { rt2.anchorMin = Vector2.Lerp(currentMin2, startMin2, time); rt2.anchorMax = Vector2.Lerp(currentMax2, startMax2, time); }
+                    yield return null;
                 }
+
+                if (rt1 != null) { rt1.anchorMin = startMin1; rt1.anchorMax = startMax1; }
+                if (rt2 != null) { rt2.anchorMin = startMin2; rt2.anchorMax = startMax2; }
             }
 
-            // 블록 장부 비우기 및 화면 제거
-            foreach (GameObject block in matches)
-            {
-                if (block != null)
-                {
-                    FindBlockIndex(block, out int x, out int y);
-                    if (x >= 0 && x < width && y >= 0 && y < height)
-                    {
-                        allBlocks[x, y] = null; // 메모리 해제
-                    }
-                    Destroy(block); // 그래픽 파괴
-                }
-            }
-
-            yield return new WaitForSeconds(0.15f);
-
-            // 빈칸 아래로 부드럽게 떨구기 및 새 블록 스폰
-            yield return StartCoroutine(DropExistingBlocksRoutine());
-            yield return StartCoroutine(RefillNewBlocksRoutine());
-
-            // 🌟 [현재 기능 보존]: 블록들이 다 떨어진 후 자동으로 또 3매치가 맞았는지 2차 연쇄 추적!
-            matches = FindAllMatches();
+            // 배열 데이터 데이터 완벽 원상복구
+            allBlocks[x1, y1] = block1;
+            allBlocks[x2, y2] = block2;
         }
 
-        // 모든 하늘의 연쇄 폭발이 끝나고 완전히 안정화되었을 때 데드락(판막힘) 최종 전수 조사 기동
+        isSwappingNow = false;
+        isProcessing = false;
+
         yield return StartCoroutine(CheckPostProcessAndDeadlock());
     }
 
