@@ -98,34 +98,42 @@ public class Board : MonoBehaviour
         Debug.Log("🎲 [성공] 자동 매칭이 방지된 6x6 보드가 배치되었습니다.");
     }
 
-    private void SpawnBlockAt(int prefabIndex, int x, int y)
+private IEnumerator DropExistingBlocksRoutine()
+{
+    float duration = 0.2f;
+    List<Coroutine> activeMoves = new List<Coroutine>();
+
+    // 왼쪽 줄부터 오른쪽 줄까지 하나씩 검사
+    for (int x = 0; x < rows; x++)
     {
-        // 1. 블록을 생성하며 부모(PuzzleBoard)의 자식으로 입주시킵니다.
-        GameObject newBlock = Instantiate(blockPrefabs[prefabIndex], transform);
-        
-        RectTransform rt = newBlock.GetComponent<RectTransform>();
-        if (rt != null)
+        // 아래서부터 위로 올라가며 빈칸이 있는지 스캔합니다.
+        for (int y = 0; y < cols; y++)
         {
-            // ⭕ [36칸 보드에 블록들의 간격]
-    float anchorMinX = (float)x / cols;
-    float anchorMaxX = (float)(x + 1) / cols;
-    float anchorMinY = (float)y / rows;
-    float anchorMaxY = (float)(y + 1) / rows;
+            if (allBlocks[x, y] == null) // 내 자리가 비어있다면?
+            {
+                // 내 바로 위칸(y+1)부터 맨 꼭대기칸까지 뒤져서 살아있는 블록을 찾습니다.
+                for (int ku = y + 1; ku < cols; ku++)
+                {
+                    if (allBlocks[x, ku] != null)
+                    {
+                        // 찾았다! 위쪽 블록을 비어있는 아래쪽 칸 데이터 장부로 이사시킵니다.
+                        allBlocks[x, y] = allBlocks[x, ku];
+                        allBlocks[x, ku] = null;
 
-    rt.anchorMin = new Vector2(anchorMinX, anchorMinY);
-    rt.anchorMax = new Vector2(anchorMaxX, anchorMaxY);
-
-    rt.offsetMin = new Vector2(5f, 5f);
-    rt.offsetMax = new Vector2(-5f, -5f);
-    rt.localScale = Vector3.one;
-}
-
-
-
-        string rawColor = GetBlockColor(blockPrefabs[prefabIndex]);
-        newBlock.name = $"블록_{rawColor}_{Random.Range(10, 99)}";
-        allBlocks[x, y] = newBlock;
+                        // 실제 화면상에서도 새 격자 좌표로 스르륵 떨어지도록 명령합니다.
+                        Vector2 targetPos = new Vector2(x * cellSize, y * cellSize);
+                        activeMoves.Add(StartCoroutine(SmoothMoveBlock(allBlocks[x, y], targetPos, duration)));
+                        
+                        break; // 한 칸 채웠으니 다음 칸 검사하러 탈출
+                    }
+                }
+            }
+        }
     }
+
+    // 모든 블록들이 부드럽게 아래로 다 내려앉을 때까지 안전하게 기다려줍니다.
+    foreach (var move in activeMoves) yield return move;
+}
 
 
     public void ClearAllBoardObjects()
@@ -338,31 +346,60 @@ private void HandleMouseInput()
         }
         else
         {
-            comboCount = 0; 
+            // ❌ 매치 실패 처리
+            comboCount = 0;
             UpdateComboTextUI();
             Debug.Log($"❌ 매치 실패! 콤보 카운트 리셋. 원위치로 복귀합니다.");
 
-            GameObject block1 = allBlocks[x2, y2]; 
+            // 되돌아갈 블록들을 가져옵니다.
+            GameObject block1 = allBlocks[x2, y2];
             GameObject block2 = allBlocks[x1, y1];
 
-            block1.transform.SetAsLastSibling();
-
-            Vector2 posCurrent1 = new Vector2(x2 * cellSize, y2 * cellSize);
-            Vector2 posCurrent2 = new Vector2(x1 * cellSize, y1 * cellSize);
-
-            float duration = 0.2f; 
-            float elapsed = 0f;
-
-            while (elapsed < duration)
+            if (block1 != null && block2 != null)
             {
-                elapsed += Time.deltaTime;
-                float t = elapsed / duration;
+                RectTransform rt1 = block1.GetComponent<RectTransform>();
+                RectTransform rt2 = block2.GetComponent<RectTransform>();
 
-                if (block1 != null) block1.GetComponent<RectTransform>().anchoredPosition = Vector2.Lerp(posCurrent1, posCurrent2, t);
-                if (block2 != null) block2.GetComponent<RectTransform>().anchoredPosition = Vector2.Lerp(posCurrent2, posCurrent1, t);
-                yield return null;
+                if (rt1 != null && rt2 != null)
+                {
+                    // ✨ [핵심 수정]: 픽셀 좌표가 아닌, 프리팹 생성 규칙과 동일한 앵커(Anchor) 좌표를 역산합니다.
+                    Vector2 startMin1 = rt1.anchorMin;
+                    Vector2 startMax1 = rt1.anchorMax;
+
+                    Vector2 targetMin1 = new Vector2((float)x1 / cols, (float)y1 / rows);
+                    Vector2 targetMax1 = new Vector2((float)(x1 + 1) / cols, (float)(y1 + 1) / rows);
+
+                    Vector2 startMin2 = rt2.anchorMin;
+                    Vector2 startMax2 = rt2.anchorMax;
+
+                    Vector2 targetMin2 = new Vector2((float)x2 / cols, (float)y2 / rows);
+                    Vector2 targetMax2 = new Vector2((float)(x2 + 1) / cols, (float)(y2 + 1) / rows);
+
+                    float duration = 0.2f;
+                    float elapsed = 0f;
+
+                    // 앵커 좌표를 기반으로 부드럽게 원위치 이동
+                    while (elapsed < duration)
+                    {
+                        elapsed += Time.deltaTime;
+                        float t = elapsed / duration;
+
+                        rt1.anchorMin = Vector2.Lerp(startMin1, targetMin1, t);
+                        rt1.anchorMax = Vector2.Lerp(startMax1, targetMax1, t);
+
+                        rt2.anchorMin = Vector2.Lerp(startMin2, targetMin2, t);
+                        rt2.anchorMax = Vector2.Lerp(startMax2, targetMax2, t);
+
+                        yield return null;
+                    }
+
+                    // 오차 방지를 위해 최종 목적지 고정
+                    rt1.anchorMin = targetMin1; rt1.anchorMax = targetMax1;
+                    rt2.anchorMin = targetMin2; rt2.anchorMax = targetMax2;
+                }
             }
 
+            // 실제 배열 데이터 장부도 원래대로 원상복구 시킵니다.
             allBlocks[x1, y1] = block1;
             allBlocks[x2, y2] = block2;
         }
