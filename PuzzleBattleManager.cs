@@ -35,11 +35,10 @@ using UnityEngine.UI; // 🌟 슬라이더 및 UI 컴포넌트 제어용 필수 
     public List<Slider> heroHPBars = new List<Slider>(); // 아군 영웅 5인 체력바 슬라이더 리스트
     public TextMeshProUGUI turnTextUI;
 
-    // 🌟 [개발자님 기획 최종 구현]: 3매치 퍼즐 전장의 모든 아군/적군 실시간 데이터를 총괄 지휘하는 전용 사령관
+
     public class PuzzleBattleManager : MonoBehaviour
     {
-    // ====== 1. [여기 추가] 다른 곳에서 호출할 수 있게 통로를 만듭니다 ======
-    public static PuzzleBattleManager Instance { get; private set; }
+     public static PuzzleBattleManager Instance { get; private set; }
 
     private void Awake()
     {
@@ -47,10 +46,12 @@ using UnityEngine.UI; // 🌟 슬라이더 및 UI 컴포넌트 제어용 필수 
         if (Instance == null) Instance = this;
         else Destroy(gameObject);
     }
+    
+    
 
      // 🌟 [새로 추가] 던전 안에서 파티원들의 진짜 최대 체력 원본을 기억해 둘 딕셔너리 주머니
     private static Dictionary<int, int> partyMaxHpBackup = new Dictionary<int, int>();    private void Start()
-    {
+    
         currentTurn = 0;
         UpdateTurnTextUI();
             if (GameManager.Instance != null && GameManager.Instance.partyMembers != null)
@@ -78,7 +79,7 @@ using UnityEngine.UI; // 🌟 슬라이더 및 UI 컴포넌트 제어용 필수 
             }
         }
     }
-    }
+    
     
 
     public void OnUserDragBlock()
@@ -296,7 +297,7 @@ using UnityEngine.UI; // 🌟 슬라이더 및 UI 컴포넌트 제어용 필수 
             Debug.Log($"[전투 전용 자동 연동] 영웅 HP 바 등록 완료! (현재 {heroHPBars.Count}개)");
         }
     }
-    }
+    
     
     
     public void OnClickBackToVillageFromInfinite()
@@ -492,10 +493,10 @@ using UnityEngine.UI; // 🌟 슬라이더 및 UI 컴포넌트 제어용 필수 
 
         Debug.Log("[NPC 순위판] 보이지 않는 장부에서 탑텐 데이터를 긁어와 새로고침 완료!");
     }
-
+    
     // ✨ [추가] 몬스터가 턴 종료 시 살아있는 우리 캐릭터 카드를 무작위로 때리는 핵심 공격 회로
     public void MonsterAttackRandomPartyCard(float monsterDamage)
-    
+    {
         // 1. 화면에 생성되어 배치된 모든 캐릭터 카드(CharacterCard) 목록을 전수 조사하여 수거합니다.
         // 기존 FindObjectsOfType 코드는 아예 삭제합니다!
         CharacterCard[] activeCards = liveCards.ToArray(); // 👈 실시간 장부를 그대로 가져오므로 꼬일 일이 전혀 없습니다.
@@ -521,6 +522,7 @@ using UnityEngine.UI; // 🌟 슬라이더 및 UI 컴포넌트 제어용 필수 
         {
             Debug.Log("💀 화면에 살아있는 파티원 카드가 없어 몬스터가 공격할 대상을 찾지 못했습니다.");
         }
+    }
     
     // ✨ [리모컨 스위치] 몬스터가 턴 종료 시 살아있는 파티원 카드를 무작위로 때리는 명령장치
     public void Remote_MonsterAttackRandomCard(float damage)
@@ -569,3 +571,4 @@ using UnityEngine.UI; // 🌟 슬라이더 및 UI 컴포넌트 제어용 필수 
             Debug.Log("🧹 [PuzzleBattleManager] 배틀 데이터 초기화 완수!");
         }
     }
+    
