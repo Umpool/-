@@ -135,7 +135,11 @@ public class Board : MonoBehaviour
                             allBlocks[x, k] = null;
                             
                             Vector2 targetUIPos = new Vector2(x * cellSize, y * cellSize);
-                            StartCoroutine(SmoothMoveBlock(allBlocks[x, y], targetUIPos, 0.2f));
+// 앵커 이동 방식에 맞게 목표 최소/최대 앵커 좌표와 시간(duration)을 모두 채워서 보냅니다.
+Vector2 targetMin = new Vector2((float)x / cols, (float)y / rows);
+Vector2 targetMax = new Vector2((float)(x + 1) / cols, (float)(y + 1) / rows);
+
+StartCoroutine(SmoothMoveBlock(allBlocks[x, y], targetMin, targetMax, 0.2f));
 
                             string originalName = allBlocks[x, y].name;
                             int lastUnderscore = originalName.LastIndexOf('_');
@@ -433,9 +437,9 @@ private void HandleMouseInput()
     {
         List<GameObject> matches = new List<GameObject>();
 
-        for (int y = 0; y < cols; y++)
-        {
-            for (int x = 0; x < rows - 2; x++)
+for (int y = 0; y < cols; y++)
+{
+    for (int x = 0; x < rows - 2; x++)
             {
                 GameObject b1 = allBlocks[x, y];
                 GameObject b2 = allBlocks[x + 1, y];
@@ -483,15 +487,25 @@ private void HandleMouseInput()
             float currentMultiplier = GetComboMultiplier();
             Debug.Log($"💥 [폭발] {matches.Count}개 파괴! 현재 {comboCount}콤보 (배율: {currentMultiplier}배)");
 
-            foreach (GameObject block in matches)
-            {
-                if (block != null)
-                {
-                    FindBlockIndex(block, out int x, out int y);
-                    if (x != -1 && y != -1) allBlocks[x, y] = null;
-                    Destroy(block);
-                }
-            }
+foreach (GameObject block in matches)
+{
+    if (block != null)
+    {
+        // 1. 터진 블록이 퍼즐판의 몇 번째(x, y) 칸에 있었는지 주소를 알아냅니다.
+        FindBlockIndex(block, out int x, out int y);
+        
+        // 2. 알아낸 주소가 정상적인 판 안쪽 범위(0 ~ rows-1, 0 ~ cols-1)인지 엄격하게 체크합니다.
+        if (x >= 0 && x < rows && y >= 0 && y < cols) 
+        {
+            // [핵심] 컴퓨터 기억장치(allBlocks 배열)에서 이 자리를 확실하게 빈칸(null)으로 만듭니다.
+            allBlocks[x, y] = null; 
+        }
+        
+        // 3. 컴퓨터 데이터 정리가 끝났으니, 화면에서 블록 그래픽 오브젝트를 제거합니다.
+        Destroy(block);
+    }
+}
+
 
             yield return new WaitForSeconds(0.15f);
 
@@ -666,14 +680,16 @@ private void HandleMouseInput()
             {
                 if (allBlocks[x, y] == null) continue;
 
-                if (x < rows - 1 && allBlocks[x + 1, y] != null)
-                {
-                    if (SimulateSwapAndCheckMatch(x, y, x + 1, y)) return true;
-                }
-                if (y < cols - 1 && allBlocks[x, y + 1] != null)
-                {
-                    if (SimulateSwapAndCheckMatch(x, y, x, y + 1)) return true;
-                }
+// 1. 오른쪽 탐색 (x+1이 rows 범위 내인지 확인)
+if (x + 1 < rows && allBlocks[x, y] != null && allBlocks[x + 1, y] != null)
+{
+    if (SimulateSwapAndCheckMatch(x, y, x + 1, y)) return true;
+}
+// 2. 위쪽 탐색 (y+1이 cols 범위 내인지 확인)
+if (y + 1 < cols && allBlocks[x, y] != null && allBlocks[x, y + 1] != null)
+{
+    if (SimulateSwapAndCheckMatch(x, y, x, y + 1)) return true;
+}
             }
         }
         return false; 
