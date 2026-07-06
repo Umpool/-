@@ -57,11 +57,17 @@ public class PuzzleBattleManager : MonoBehaviour
     public GameObject panel_StageRewardPopup;// 3라운드마다 뜨는 보상 팝업창
     public GameObject panel_StageClearResult;// 보스 처치 후 뜨는 최종 결과창
     [Header("ㅡ 일반 스테이지용 텍스트 UI ㅡ")]
+        [Header("ㅡ 일반 스테이지용 파티 컨테이너 ㅡ")]
+    public Transform nmPartyContainerBattle;
     public TMPro.TextMeshProUGUI textStageRoundUI;
     // 🎯 [오늘의 미션]: 유니티 에디터에서 EnemyPrefab을 등록할 수 있는 주머니입니다!
     [Header("ㅡ 일반 스테이지용 적 프리팹 ㅡ")]
     public GameObject normalEnemyPrefab; // 일반 스테이지용 일반 적 프리팹
     public GameObject bossEnemyPrefab;   // 일반 스테이지용 보스 적 프리팹
+    [Header("ㅡ 일반 스테이지 전용 전투 UI 전광판 ㅡ")]
+public TMPro.TextMeshProUGUI textNormalSynergyDisplay; // Text_SynergyDisplay 연결용
+public TMPro.TextMeshProUGUI textNormalComboUI;       // Combo 연결용
+
 
 
     public static PuzzleBattleManager Instance { get; private set; }
@@ -141,6 +147,21 @@ public class PuzzleBattleManager : MonoBehaviour
             }
             return; // 🛑 밑에 있는 무한모드 전용 UI 세팅 코드로 가지 못하게 철저히 차단!
         }
+
+            // 일반모드 시너지 텍스트 출력
+    if (textNormalSynergyDisplay != null) 
+    {
+        // (예시: 기존 시너지 매니저에서 텍스트를 받아와 출력합니다)
+        textNormalSynergyDisplay.text = "현재 활성화된 시너지 효과 표시 구역"; 
+    }
+    
+    // 일반모드 콤보 텍스트 출력
+    if (textNormalComboUI != null)
+    {
+        // 콤보 변수 이름을 넣어 화면에 실시간 출력합니다.
+        textNormalComboUI.text = $"COMBO!"; 
+    }
+
         // 🛡️ [질문자님 제보 특제 안전핀 장착]
         // 오직 인스펙터 버튼 매개변수 칸에 'infinite'라고 적혀있을 때만 무한모드 세탁기를 돌립니다!
         if (gameMode == "infinite")
@@ -216,16 +237,28 @@ public class PuzzleBattleManager : MonoBehaviour
         GameObject activeBattlePanel = null;
         if (panel_InfiniteBattle != null && panel_InfiniteBattle.activeSelf) activeBattlePanel = panel_InfiniteBattle;
         else if (panel_PuzzleBattle != null && panel_PuzzleBattle.activeSelf) activeBattlePanel = panel_PuzzleBattle;
-
+else if (panel_NMPuzzleBattle != null && panel_NMPuzzleBattle.activeSelf) activeBattlePanel = panel_NMPuzzleBattle;
         if (activeBattlePanel != null)
         {
             // 🌟 이제 현재 켜져 있는 전장 패널 밑에서 'PartyContainer_Battle' 상자를 정확하게 조준 타격합니다!
-            Transform battlePartyListTrans = activeBattlePanel.transform.Find("PartyContainer_Battle");
-            if (battlePartyListTrans == null)
-            {
-                Debug.LogWarning($"[구조 점검] {activeBattlePanel.name} 아래에서 'PartyContainer_Battle' 상자를 찾지 못했습니다.");
-                return;
-            }
+        // 🎯 [244번째 줄부터 249번째 줄까지 드래그해서 이 코드로 교체합니다]
+        Transform battlePartyListTrans = null;
+        if (activeBattlePanel != null)
+        {
+            battlePartyListTrans = activeBattlePanel.transform.Find("PartyContainer_Battle");
+        }
+
+        // 🌟 [안전 장치]: 위에서 상자를 못 찾았더라도 인스펙터에 직접 등록했다면 그 상자를 사용합니다!
+        if (battlePartyListTrans == null && nmPartyContainerBattle != null)
+        {
+            battlePartyListTrans = nmPartyContainerBattle;
+        }
+
+        if (battlePartyListTrans == null)
+        {
+            Debug.LogWarning("[구조 점검] PartyContainer_Battle 상자를 찾지 못했습니다.");
+            return;
+        }
 
             // ====== 🚀 이 아래의 자식 슬롯 수집 및 슬라이더 퍼센트 계산(While/Offset) 코드는 방금 수정한 그대로 완벽히 유지해 줍니다! ======
             List<Transform> heroCardSlots = new List<Transform>();
@@ -258,6 +291,7 @@ public class PuzzleBattleManager : MonoBehaviour
                 {
                     partyIconScript.Setup(currentHeroData);
                 }
+                
 
                 // 🌟 [HP 바 연동]: 자식 밑에 매달려 대기 중인 슬라이더 'HP_Bar'를 추적해 캐릭터 고유 체력 영점을 강제 동기화시킵니다!
                 // 📄 211번 라인 부근 기존 Slider 연결 코드 구역을 찾아 아래 코드로 완전히 교체합니다!
@@ -656,6 +690,9 @@ public class PuzzleBattleManager : MonoBehaviour
         if (panel_StageSelect != null) panel_StageSelect.SetActive(false);
         if (panel_NMPuzzleBattle != null) panel_NMPuzzleBattle.SetActive(true);
 
+        // 🎯 [오늘의 미션]: 배틀창이 켜질 때 화면을 가리고 있는 마을 패널을 강제로 꺼줍니다!
+        GameObject village = GameObject.Find("Panel_Village");
+        if (village != null) village.SetActive(false);
         // 첫 라운드 몬스터 생성 시작!
         SpawnStageRoundMonsters();
     }
@@ -685,7 +722,9 @@ public class PuzzleBattleManager : MonoBehaviour
         // 화면 전환: 선택창 끄고 일반 배틀창 켜기
         if (panel_StageSelect != null) panel_StageSelect.SetActive(false);
         if (panel_NMPuzzleBattle != null) panel_NMPuzzleBattle.SetActive(true);
-
+        // 🎯 [오늘의 미션]: 배틀창이 켜질 때 화면을 가리고 있는 마을 패널을 강제로 꺼줍니다!
+        GameObject village = GameObject.Find("Panel_Village");
+        if (village != null) village.SetActive(false);
         // 첫 라운드 몬스터 생성 시작!
         SpawnStageRoundMonsters();
     }
@@ -718,7 +757,7 @@ public class PuzzleBattleManager : MonoBehaviour
 
             if (prefabToSpawn != null)
             {
-                CreateEnemyCard(prefabToSpawn); // 기존 만능 소환 함수로 보스 배치!
+                StartPuzzleBattle("infinite"); // 기존 만능 소환 함수로 보스 배치!
             }
         }
         // 👾 2. 일반 라운드: n라운드 숫자에 맞춰 n마리 등장 및 자동 정렬 규칙!
@@ -732,18 +771,17 @@ public class PuzzleBattleManager : MonoBehaviour
                 // 현재 라운드 숫자(monsterCount)만큼 반복해서 소환합니다 (1라운드엔 1마리, 2라운드엔 2마리...)
                 for (int i = 0; i < monsterCount; i++)
                 {
-                    CreateEnemyCard(normalEnemyPrefab); // 기존 만능 소환 함수로 일반 적 배치!
+                    StartPuzzleBattle("infinite"); // 기존 만능 소환 함수로 일반 적 배치!
                 }
             }
         }
 
-        // 🎯 3. 소환된 적 카드들을 화면에 예쁘게 정렬해 주는 기존 시스템 가동!
-        RefreshDynamicBattleEnemyUI();
 
-        // 🎯 4. 공간이 다 만들어진 후에 안전하게 보드판 내부 오브젝트들을 리셋합니다.
-        if (Board.Instance != null)
-        {
-            Board.Instance.InitializeNewBoard();
+            // 🎯 3. 소환된 적 카드들을 화면에 예쁘게 정렬해 주는 기존 시스템 가동!
+            SetupBattleEntities();
+
+            // 🎯 4. 공간이 다 만들어진 후에 안전하게 보드판 내부 오브젝트들을 리셋합니다.
+            if (Board.Instance != null) Board.Instance.InitializeNewBoard();
         }
 
 
@@ -809,7 +847,8 @@ public class PuzzleBattleManager : MonoBehaviour
 }
 
 
-}
+
+
 
 
 
