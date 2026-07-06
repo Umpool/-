@@ -112,6 +112,12 @@ public class PuzzleBattleManager : MonoBehaviour
     // ✅ 괄호 밸런스를 완벽하게 맞춘 수정된 코드입니다.
     public void StartPuzzleBattle(string gameMode)
     {
+        // 👾 무한모드 화면이 새로 켜졌으므로 몬스터의 누적 대미지 장부도 즉시 0점으로 세탁합니다!
+        if (InfiniteMonster.Instance != null)
+        {
+            InfiniteMonster.Instance.ResetMonsterForNewGame();
+        }
+
         currentTurn = 0;
         UpdateTurnTextUI();
 
@@ -383,9 +389,11 @@ public class PuzzleBattleManager : MonoBehaviour
             puzzleBoardComponent.StopAllCoroutines();
         }
 
-        // 2. 최종 점수 및 턴수 추출 (UI 텍스트 및 현재 변수 활용)
+        // 2. 최종 점수 및 턴수 계산 및 UI 반영
         int finalScore = currentScore;
         int finalTurns = currentTurn;
+
+        // TMP 컴포넌트에서 숫자만 추출하여 갱신
         TMPro.TextMeshProUGUI realScoreTMP = transform.Find("ScoreText")?.GetComponent<TMPro.TextMeshProUGUI>();
         if (realScoreTMP != null)
         {
@@ -393,15 +401,14 @@ public class PuzzleBattleManager : MonoBehaviour
             int.TryParse(cleanNumbers, out finalScore);
         }
 
-        // 3. 결과 팝업 UI 업데이트
-        if (textFinalScore != null) textFinalScore.text = $"최종 대미지 : {finalScore:N0}";
+        if (textFinalScore != null) textFinalScore.text = $"최종 점수 : {finalScore:N0}";
         if (textFinalTurns != null)
         {
             textFinalTurns.text = $"걸린 턴수 : {finalTurns} 턴";
             textFinalTurns.gameObject.SetActive(true);
         }
 
-        // 4. 랭킹 데이터 정산 (Top 10) 및 PlayerPrefs 저장
+        // 3. 랭킹 데이터 정산 (Top 10) 및 PlayerPrefs 저장
         int[] highScores = new int[10];
         for (int i = 0; i < 10; i++) highScores[i] = PlayerPrefs.GetInt($"INF_RANK_{i + 1}", 0);
 
@@ -411,14 +418,13 @@ public class PuzzleBattleManager : MonoBehaviour
             if (finalScore > highScores[i])
             {
                 currentRank = i + 1;
-                // 하위 기록 밀어내기
                 for (int j = 9; j > i; j--) highScores[j] = highScores[j - 1];
                 highScores[i] = finalScore;
                 break;
             }
         }
 
-        // 5. 랭킹 UI 갱신 (1~3위 텍스트)
+        // 4. 랭킹 UI 갱신 (1~3위 텍스트) 및 팝업창 활성화
         if (currentRank >= 1 && currentRank <= 3 && textRecordNotice != null)
         {
             textRecordNotice.gameObject.SetActive(true);
@@ -426,7 +432,6 @@ public class PuzzleBattleManager : MonoBehaviour
         }
         else if (textRecordNotice != null) textRecordNotice.gameObject.SetActive(false);
 
-        // 6. 데이터 저장 및 게임오버 연출
         for (int i = 0; i < 10; i++) PlayerPrefs.SetInt($"INF_RANK_{i + 1}", highScores[i]);
         PlayerPrefs.Save();
 
@@ -437,17 +442,7 @@ public class PuzzleBattleManager : MonoBehaviour
         }
         if (btn_StartTouchTrigger_Direct != null) btn_StartTouchTrigger_Direct.SetActive(false);
 
-        // 7. 자동 리셋 기능 (다음 판 준비)
-        currentTurn = 0;
-        currentScore = 0;
-        isTimeOver = false;
-        UpdateTurnTextUI();
-        if (puzzleBoardComponent != null)
-        {
-            puzzleBoardComponent.InitializeNewBoard();
-            puzzleBoardComponent.enabled = true;
-        }
-        Debug.Log("🎯 [대완공] OnTimerEnd() 통합 및 리셋 완료!");
+        Debug.Log("🔒 [정산 완료] OnTimerEnd에서는 리셋을 건너뛰고 기록 보존형 팝업창만 활성화 완료!");
     }
 
 
