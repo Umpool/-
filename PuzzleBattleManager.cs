@@ -332,9 +332,6 @@ public class PuzzleBattleManager : MonoBehaviour
         }
     }
 
-
-
-
     public void OnClickBackToVillageFromInfinite()
     {
         // 1. 무한모드 패널 강제 OFF (숨기기)
@@ -356,41 +353,9 @@ public class PuzzleBattleManager : MonoBehaviour
             GameManager.Instance.OnClickInfiniteStageBackButton();
             GameManager.Instance.ExitBattleStage();
 
-            Debug.Log("★ [마을 복귀] 패널 안전하게 OFF 완료.");
+            Debug.Log("★ [마을 복귀] 패널 안전하게 OFF 완료 및 단축바 부활 완료!");
         }
     }
-
-
-
-    // 1. 무한모드 패널 강제 OFF
-    GameObject infinitePanel = GameObject.Find("Canvas")?.transform.Find("Panel_INPuzzleBattle")?.gameObject;
-        if (infinitePanel != null)
-        {
-            infinitePanel.SetActive(false);
-        }
-
-        // 2. 무한모드 결과창 패널 강제 OFF
-        if (panel_InfiniteReward != null)
-        {
-            panel_InfiniteReward.SetActive(false);
-        }
-
-        // 3. 대장 컴퓨터에게 마을 이동 및 단축바 부활 명령 전송
-        if (GameManager.Instance != null)
-        {
-            GameManager.Instance.OnClickInfiniteStageBackButton();
-            GameManager.Instance.ExitBattleStage();
-
-            Debug.Log("★ [대완공] 기존 청소 함수를 활용하여 완벽하게 리셋 완료!");
-        }
-    }
-
-
-
-
-
-
-
 
     public void OnTimerEnd()
     {
