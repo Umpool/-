@@ -893,78 +893,68 @@ public void OnClickEnterNormalStage()
         GameObject panelInfinite = GameObject.Find("Canvas")?.transform.Find("Panel_InfiniteStage")?.gameObject;
         if (panelInfinite != null) panelInfinite.SetActive(true);
 
-        // 🌟 [오류 해결 핵심]: 리모컨 스위치 상자(battleMgrComponent)를 맨 위에 정직하게 먼저 선언합니다!
         PuzzleBattleManager battleMgrComponent = GameObject.Find("Canvas")?.transform.Find("Panel_INPuzzleBattle")?.GetComponent<PuzzleBattleManager>();
 
         if (battleMgrComponent != null)
         {
-            // 1. 인스펙터가 방금 활성화된 '가장 완벽한 준비 타이밍'에 터치 트리거를 먼저 ON 합니다.
+            // 🚀 1단계: 하이어라키 이름 그대로 'PuzzleBoard' 오브젝트를 머리채 잡고 먼저 살려냅니다!
+            Transform boardTransform = battleMgrComponent.transform.Find("PuzzleBoard");
+            if (boardTransform != null)
+            {
+                boardTransform.gameObject.SetActive(true); // 비활성화되어 잠들었던 오브젝트 부활!
+                Board boardScript = boardTransform.GetComponent<Board>();
+                if (boardScript != null)
+                {
+                    // 마우스 좌표 영점 조준 및 드래그 센서 복구!
+                    boardScript.transform.localPosition = Vector3.zero;
+                    boardScript.transform.localRotation = Quaternion.identity;
+                    boardScript.transform.localScale = Vector3.one;
+                    boardScript.enabled = true; // 꺼져있던 드래그 수신기 ON!
+                    boardScript.InitializeNewBoard(); // 퍼즐판 블록 새로 장착 완공!
+                }
+            }
+
+            // 🚀 2단계: 터치 트리거 켜기
             if (battleMgrComponent.btn_StartTouchTrigger_Direct != null)
             {
                 battleMgrComponent.btn_StartTouchTrigger_Direct.SetActive(true);
             }
 
-            // 🚀 [인스펙터 오픈형 올인원 0점 세탁기 가동]
-            // 2. 내부 수학 데이터 및 내부 턴수/점수 기억 소거
+            // 🚀 3단계: 매니저 내부 수학 데이터 백업 리셋
             battleMgrComponent.currentTurn = 0;
             battleMgrComponent.currentScore = 0;
             battleMgrComponent.isTimeOver = false;
+            battleMgrComponent.UpdateTurnTextUI();
 
-            // 3. 마우스 좌표 락온 및 보드판 새 출발 엔진 정화
-            if (battleMgrComponent.puzzleBoardComponent != null)
+            // 🚀 4단계: [하이어라키 1대1 칼조준 장착] 눈에 보이는 전광판 글씨 세탁기 가동!
+            // ① TurnText를 찾아서 "0 턴"으로 초기화합니다.
+            TMPro.TextMeshProUGUI turnTextComp = battleMgrComponent.transform.Find("TurnText")?.GetComponent<TMPro.TextMeshProUGUI>();
+            if (turnTextComp != null)
             {
-                battleMgrComponent.puzzleBoardComponent.transform.localPosition = Vector3.zero;
-                battleMgrComponent.puzzleBoardComponent.transform.localRotation = Quaternion.identity;
-                battleMgrComponent.puzzleBoardComponent.transform.localScale = Vector3.one;
-                battleMgrComponent.puzzleBoardComponent.enabled = true; // 마우스 클릭 신호 장치 ON!
-                battleMgrComponent.puzzleBoardComponent.InitializeNewBoard(); // 퍼즐판 블록들 완전 새로고침 배치!
+                turnTextComp.text = "0 턴";
             }
 
-            // 4. 살아난 인스펙터 안에서 화면 상단 대미지 판독 전광판 "0"으로 완벽 지우기
-            TMPro.TextMeshProUGUI scoreTextComponent = battleMgrComponent.transform.Find("ScoreText")?.GetComponent<TMPro.TextMeshProUGUI>();
-            if (scoreTextComponent == null)
+            // ② ScoreText를 찾아서 "누적 대미지: 0"으로 초기화합니다.
+            TMPro.TextMeshProUGUI scoreTextComp = battleMgrComponent.transform.Find("ScoreText")?.GetComponent<TMPro.TextMeshProUGUI>();
+            if (scoreTextComp != null)
             {
-                scoreTextComponent = GameObject.Find("ScoreText")?.GetComponent<TMPro.TextMeshProUGUI>();
-            }
-            if (scoreTextComponent != null)
-            {
-                scoreTextComponent.text = "누적 대미지: 0";
+                scoreTextComp.text = "누적 대미지: 0";
             }
 
-            // 5. 타이머 시간판 새것으로 리셋 충전
-            TMPro.TextMeshProUGUI timerTextComponent = battleMgrComponent.transform.Find("Text Timer")?.GetComponent<TMPro.TextMeshProUGUI>();
-            if (timerTextComponent == null)
+            // ③ Text Timer를 찾아서 "01:00.000"으로 초기화합니다.
+            TMPro.TextMeshProUGUI timerTextComp = battleMgrComponent.transform.Find("Text Timer")?.GetComponent<TMPro.TextMeshProUGUI>();
+            if (timerTextComp != null)
             {
-                timerTextComponent = GameObject.Find("Text Timer")?.GetComponent<TMPro.TextMeshProUGUI>();
-            }
-            if (timerTextComponent != null)
-            {
-                timerTextComponent.text = "01:00.000";
+                timerTextComp.text = "01:00.000";
             }
 
-            Debug.Log("🎯 [대완공] 인스펙터가 켜진 완벽한 타이밍에 모든 리셋 완료!");
-
-            // 🧼 [왕초보 특제: 눈에 보이는 턴수 및 점수판 글씨 강제 세탁]
-            // 하이어라키 창에 매달려 있는 TurnText와 ScoreText를 직접 조준 사격하여 문질러 닦습니다.
-            TMPro.TextMeshProUGUI realTurnText = battleMgrComponent.transform.Find("TurnText")?.GetComponent<TMPro.TextMeshProUGUI>();
-            if (realTurnText == null) realTurnText = GameObject.Find("TurnText")?.GetComponent<TMPro.TextMeshProUGUI>();
-            if (realTurnText != null)
-            {
-                realTurnText.text = "0 턴";
-            }
-
-            TMPro.TextMeshProUGUI realScoreText = battleMgrComponent.transform.Find("ScoreText")?.GetComponent<TMPro.TextMeshProUGUI>();
-            if (realScoreText == null) realScoreText = GameObject.Find("ScoreText")?.GetComponent<TMPro.TextMeshProUGUI>();
-            if (realScoreText != null)
-            {
-                realScoreText.text = "누적 대미지: 0";
-                Debug.Log("🧹 [대성공] 진입 준비과정에서 턴수(0턴)와 점수판(0점)을 눈에 보이게 완벽 세탁했습니다!");
-            }
-
+            Debug.Log("🎯 [대완공] 눈앞에 보이는 TurnText, ScoreText, Text Timer 100% 매칭 세탁 성공!");
         }
     }
 
-    public void OnClickInfiniteStageBackButton()
+
+
+public void OnClickInfiniteStageBackButton()
     {
         Debug.Log("[무한목록] 뒤로가기 클릭 -> 마을로 이동 및 Panel_InfiniteStage OFF");
         GameObject panelInfinite = GameObject.Find("Canvas")?.transform.Find("Panel_InfiniteStage")?.gameObject;
