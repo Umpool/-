@@ -119,6 +119,26 @@ public class PuzzleBattleManager : MonoBehaviour
         if (panel_PuzzleBattle != null) panel_PuzzleBattle.SetActive(false);
         if (panel_InfiniteBattle != null) panel_InfiniteBattle.SetActive(true);
 
+        // =================================================================
+        // 🧼 [왕초보 특제: 인스펙터가 켜진 직후 확실한 전광판 리셋 시스템]
+        // 패널이 확실하게 켜진 상태이므로, 이제 대미지판과 타이머를 찾아 0으로 세탁합니다!
+        // =================================================================
+        currentTurn = 0;
+        currentScore = 0;
+        isTimeOver = false;
+        UpdateTurnTextUI();
+
+        // 1. 점수판 글씨 리셋
+        TMPro.TextMeshProUGUI scoreTextComponent = transform.Find("ScoreText")?.GetComponent<TMPro.TextMeshProUGUI>();
+        if (scoreTextComponent == null) scoreTextComponent = GameObject.Find("ScoreText")?.GetComponent<TMPro.TextMeshProUGUI>();
+        if (scoreTextComponent != null) scoreTextComponent.text = "누적 대미지: 0";
+
+        // 2. 타이머 전광판 글씨 리셋 (원하는 기본 제한시간으로 설정)
+        TMPro.TextMeshProUGUI timerTextComponent = transform.Find("Text Timer")?.GetComponent<TMPro.TextMeshProUGUI>();
+        if (timerTextComponent == null) timerTextComponent = GameObject.Find("Text Timer")?.GetComponent<TMPro.TextMeshProUGUI>();
+        if (timerTextComponent != null) timerTextComponent.text = "01:00.000";
+
+
         GameObject realPartyList = GameObject.Find("Canvas")?.transform.Find("PartyListContainer")?.gameObject;
         if (realPartyList != null) realPartyList.SetActive(false);
 
@@ -317,37 +337,56 @@ public class PuzzleBattleManager : MonoBehaviour
 
     public void OnClickBackToVillageFromInfinite()
     {
-        // [기획 흐름 적용] BACK 버튼 클릭 시 무한모드 패널... (방금 새로 붙여넣은 부분)
+        // 1. 무한모드 패널 강제 OFF (숨기기)
         GameObject infinitePanel = GameObject.Find("Canvas")?.transform.Find("Panel_INPuzzleBattle")?.gameObject;
         if (infinitePanel != null)
         {
             infinitePanel.SetActive(false);
         }
 
-        // [기존 필수 1] 켜져 있던 무한모드 결과창 패널... (여기서부터 원래 있던 코드 시작)
+        // 2. 무한모드 결과창 패널 강제 OFF
         if (panel_InfiniteReward != null)
         {
             panel_InfiniteReward.SetActive(false);
         }
 
+        // 3. 대장 컴퓨터에게 마을 이동 및 단축바 부활 명령 전송
         if (GameManager.Instance != null)
         {
-            // 1. 기존의 무한모드 화면 정돈 명령 가동
             GameManager.Instance.OnClickInfiniteStageBackButton();
+            GameManager.Instance.ExitBattleStage();
 
-            // 🌟 PuzzleBattleManager.cs 내부 OnClickBackToVillageFromInfinite() 함수 끝자락 교체 구역
-            if (GameManager.Instance != null)
-            {
-                // 1. 기존의 무한모드 화면 정돈 명령 가동
-                GameManager.Instance.OnClickInfiniteStageBackButton();
+            Debug.Log("★ [마을 복귀] 패널 안전하게 OFF 완료.");
+        }
+    }
 
-                // 2. 🏰 [형님이 검격하신 진짜 정답 치트키 작동!]
-                // // 창고에 잠들어 있던 빠른 이동 버튼 부활 사령탑 함수를 원격으로 강력하게 깨웁니다!
-                GameManager.Instance.exitBattleStage();
 
-                Debug.Log("★ [대완공] ExitBattleStage 함수 원격 가동! 빠른 이동 버튼이 완벽하게 ON 복구되었습니다.");
-            }
-        } // ◀ OnClickBackToVillageFromInfinite() 함수가 완전히 끝나는 347번째 줄의 중괄호입니다.
+
+    // 1. 무한모드 패널 강제 OFF
+    GameObject infinitePanel = GameObject.Find("Canvas")?.transform.Find("Panel_INPuzzleBattle")?.gameObject;
+        if (infinitePanel != null)
+        {
+            infinitePanel.SetActive(false);
+        }
+
+        // 2. 무한모드 결과창 패널 강제 OFF
+        if (panel_InfiniteReward != null)
+        {
+            panel_InfiniteReward.SetActive(false);
+        }
+
+        // 3. 대장 컴퓨터에게 마을 이동 및 단축바 부활 명령 전송
+        if (GameManager.Instance != null)
+        {
+            GameManager.Instance.OnClickInfiniteStageBackButton();
+            GameManager.Instance.ExitBattleStage();
+
+            Debug.Log("★ [대완공] 기존 청소 함수를 활용하여 완벽하게 리셋 완료!");
+        }
+    }
+
+
+
 
 
 
@@ -355,6 +394,17 @@ public class PuzzleBattleManager : MonoBehaviour
 
     public void OnTimerEnd()
     {
+        // 🏁 [제한시간 종료: 무한모드 완전 셧다운 시스템]
+        isTimeOver = true; // 시간이 끝났음을 시스템에 전파합니다.
+
+        // 보드판이 존재한다면 드래그 신호 감지기 및 블록 드래그 연산을 물리적으로 차단하여 종료합니다.
+        if (puzzleBoardComponent != null)
+        {
+            puzzleBoardComponent.enabled = false; // 마우스 클릭 신호 차단!
+            // 혹시 Board.cs 내부에 보드판을 청소하고 초기화하는 함수가 있다면 여기서 원격 가동합니다.
+            puzzleBoardComponent.gameObject.SetActive(false);
+        }
+
 
         // 🛠 최종 대미지 및 턴수 연동 장부 개설
         int finalScore = 0;
@@ -606,6 +656,7 @@ public class PuzzleBattleManager : MonoBehaviour
             }
         }
     }
+}
 
 
 
