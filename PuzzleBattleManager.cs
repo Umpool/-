@@ -334,6 +334,13 @@ public class PuzzleBattleManager : MonoBehaviour
 
     public void OnClickBackToVillageFromInfinite()
     {
+        // 🔓 [합치기 완료] 마우스 드래그 센서 원상복구 안전핀 가동!
+        if (puzzleBoardComponent != null)
+        {
+            puzzleBoardComponent.gameObject.SetActive(true);
+            puzzleBoardComponent.enabled = true;
+        }
+
         // 1. 무한모드 패널 강제 OFF (숨기기)
         GameObject infinitePanel = GameObject.Find("Canvas")?.transform.Find("Panel_INPuzzleBattle")?.gameObject;
         if (infinitePanel != null)
@@ -357,60 +364,26 @@ public class PuzzleBattleManager : MonoBehaviour
         }
     }
 
-    public void OnTimerEnd()
+    public void OnTimerEnd() // // 무한모드 종료시점 무한모드 종료시점 무한모드 종료시점
     {
         // 🏁 [제한시간 종료: 무한모드 완전 셧다운 시스템]
-        isTimeOver = true; // 시간이 끝났음을 시스템에 전파합니다.
+        isTimeOver = true;
+        // =================================================================
+        // 🧼 [왕초보 특제: 기록 세우기 완료 즉시 완벽 세탁기 가동]
+        // =================================================================
+        currentTurn = 0;       // 1. 내부 턴수 즉시 0으로 초기화
+        currentScore = 0;      // 2. 내부 점수 즉시 0으로 초기화
+        isTimeOver = false;    // 3. 마우스를 가로막던 제한시간 종료 안전핀 즉시 해제 (False)
+        UpdateTurnTextUI();    // 4. 화면에 보이는 인게임 턴수 글자도 즉시 "0 턴"으로 초기화
 
-        // 보드판이 존재한다면 드래그 신호 감지기 및 블록 드래그 연산을 물리적으로 차단하여 종료합니다.
+        // 5. 기존 정품 보드판에 블록들을 완전히 새로고침 배치하고 마우스 드래그 장치 사전 개방!
         if (puzzleBoardComponent != null)
         {
-            puzzleBoardComponent.enabled = false; // 마우스 클릭 신호 차단!
-            // 혹시 Board.cs 내부에 보드판을 청소하고 초기화하는 함수가 있다면 여기서 원격 가동합니다.
-            puzzleBoardComponent.gameObject.SetActive(false);
+            puzzleBoardComponent.InitializeNewBoard();
+            puzzleBoardComponent.enabled = true;
         }
 
-
-        // 🛠 최종 대미지 및 턴수 연동 장부 개설
-        int finalScore = 0;
-        int finalTurns = currentTurn;
-
-        // 💡 하이어라키 세상을 뒤져 ScoreText(상단 텍스트판)의 컴포넌트를 조준 사격합니다.
-        TMPro.TextMeshProUGUI realScoreTMP = transform.Find("ScoreText")?.GetComponent<TMPro.TextMeshProUGUI>();
-        if (realScoreTMP == null) realScoreTMP = GameObject.Find("ScoreText")?.GetComponent<TMPro.TextMeshProUGUI>();
-
-        if (realScoreTMP != null)
-        {
-            // 🎯 [정규식 특수 안전망]: "대미지", "데미지", 공백(" "), 콜론(":") 등 글자는 몽땅 소멸시키고
-            // 오직 순수한 숫자 알맹이(예: 800, 1040)만 정확하게 추출하여 finalScore에 주입합니다!
-            string cleanNumbers = System.Text.RegularExpressions.Regex.Replace(realScoreTMP.text, @"[^\d]", "");
-            int.TryParse(cleanNumbers, out finalScore);
-        }
-        else
-        {
-            finalScore = currentScore;
-        }
-
-        // 🖥️ [인스펙터 연동 1단계]: 최종 대미지 결과창 텍스트 박스에 3자리 콤마(,N0)를 찍어 출력합니다.
-        if (textFinalScore != null)
-        {
-            textFinalScore.text = $"최종 대미지 : {finalScore:N0}";
-        }
-
-        // 🖥️ [인스펙터 연동 2단계]: 묶여있던 최종 걸린 턴수 데이터를 글자로 주입하고 컴포넌트를 강제 ON 합니다!
-        if (textFinalTurns != null)
-        {
-            textFinalTurns.text = $"걸린 턴수 : {finalTurns} 턴";
-            textFinalTurns.gameObject.SetActive(true);
-        }
-
-
-        // (※ 이 바로 아래에 배치되어 있는 int[] highScores = new int[10]; 로직부터 명예의 전당 Top 10 밀어내기 및 GAMEOVER TXT 활성화 코드는 절대로 지우지 말고 그대로 매끄럽게 이어붙이시면 성공입니다!)
-
-
-
-
-
+        Debug.Log("🧹 [즉시 리셋 완료] 결과창에 기록을 세운 즉시 턴, 점수, 타임오버가 완벽하게 새것으로 복구되었습니다!");
         // // 내부 저장소에서 1등부터 10등까지의 점수를 배열로 싹 긁어옵니다. (기존 랭킹 기능 100% 보존)
         int[] highScores = new int[10];
         for (int i = 0; i < 10; i++)
@@ -444,12 +417,6 @@ public class PuzzleBattleManager : MonoBehaviour
         {
             if (textRecordNotice != null) textRecordNotice.gameObject.SetActive(false);
         }
-
-
-
-
-
-
         // 💾 [탑 10 데이터 밀어내기 정산] 내 아래 등수들의 기록을 한 칸씩 밑으로 밀어냅니다.
         if (currentRank >= 1 && currentRank <= 10)
         {
