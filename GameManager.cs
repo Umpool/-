@@ -875,7 +875,7 @@ public void OnClickEnterNormalStage()
             infiniteCanvasTrans.Find("GAMEOVER TXT")?.gameObject.SetActive(false);
             infiniteCanvasTrans.Find("Btn_StartTouchTrigger")?.gameObject.SetActive(true);
         }
-    } // ◀ 원래 있던 OnClickEnterInfiniteStage 함수가 완전히 끝나는 중괄호입니다.
+    } 
 
 
     public void OnClickNormalStageBackButton()
@@ -921,10 +921,18 @@ public void OnClickEnterNormalStage()
             }
 
             // 🚀 3단계: 매니저 내부 수학 데이터 백업 리셋
+            // 🚀 3단계: 매니저 내부 수학 데이터 백업 리셋
             battleMgrComponent.currentTurn = 0;
             battleMgrComponent.currentScore = 0;
             battleMgrComponent.isTimeOver = false;
-            battleMgrComponent.UpdateTurnTextUI();
+
+            if (InputManager.Instance != null)
+            {
+                InputManager.Instance.enabled = true; // ◀ 내부 변수 오타 걱정 없는 무적 코드 장착!
+            }
+
+            battleMgrComponent.UpdateTurnTextUI(); // ◀ 턴수 UI 갱신으로 부드럽게 연결
+
 
             // 🚀 4단계: [하이어라키 1대1 칼조준 장착] 눈에 보이는 전광판 글씨 세탁기 가동!
             // ① TurnText를 찾아서 "0 턴"으로 초기화합니다.
