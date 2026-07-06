@@ -41,10 +41,23 @@ public class PuzzleBattleManager : MonoBehaviour
     public Board puzzleBoardComponent;
 
     // 🔓 [보호 수준 완전 개방] 외부(PuzzleBattleManager)에서 액세스하여 리셋할 수 있도록 public으로 변경합니다!
-    public bool isProcessing = false;
-    public bool isSwappingNow = false;
     public bool isSwapping = false;
-    public bool isMatching = false; // ◀ 이 주머니가 개방되면서 에러가 완치됩니다!
+    public bool isMatching = false;
+    public bool isSwappingNow = false;
+
+    [Header("ㅡ 일반 스테이지 기획 데이터 ㅡ")]
+    public bool isNormalStageMode = false;   // 현재 일반 스테이지 모드인지 체크하는 스위치
+    public string currentStageType = "";     // "Stage_A" 또는 "Stage_B" 기록용
+    public int currentRound = 1;             // 현재 진행 중인 라운드 (1라운드부터 시작)
+    public int maxRound = 5;                // 해당 스테이지의 총 라운드 수
+
+    [Header("ㅡ 일반 스테이지 연결 UI ㅡ")]
+    public GameObject panel_StageSelect;     // 스테이지 선택 창 (Panel_StageSelect)
+    public GameObject panel_NMPuzzleBattle;  // 일반 스테이지 배틀 창 (Panel_NMPuzzleBattle)
+    public GameObject panel_StageRewardPopup;// 3라운드마다 뜨는 보상 팝업창
+    public GameObject panel_StageClearResult;// 보스 처치 후 뜨는 최종 결과창
+
+
 
     public static PuzzleBattleManager Instance { get; private set; }
 
@@ -316,6 +329,35 @@ public class PuzzleBattleManager : MonoBehaviour
             Debug.Log($"[아군 진형 연동 완공] 총 {heroHPBars.Count}명의 파티원이 실시간 생명력 게이지를 장착 완료했습니다!");
         }
     }
+    private void SpawnStageRoundMonsters()
+{
+    Debug.Log($"⚔ 일반 스테이지 {currentStageType} : {currentRound} 라운드 시작!");
+
+    // 마지막 라운드인지 체크
+    if (currentRound == maxRound)
+    {
+        Debug.Log("👹 [경고] 마지막 라운드입니다! 보스 몬스터가 출현합니다!");
+        
+        // 🎯 [수정]: 기존 소환 함수를 실행합니다. (여기에 보스 체력 보너스 등을 나중에 얹을 수 있습니다)
+        SpawnMonsters(); 
+    }
+    else
+    {
+        // n라운드마다 n마리 소환 규칙 (1-n)
+        int monsterCount = currentRound; 
+        Debug.Log($"👾 일반 몬스터가 {monsterCount}마리 등장합니다. (n:1 비율)");
+        
+        // 🎯 [수정]: 기존 소환 함수를 실행하여 현재 라운드 수만큼 몬스터를 채웁니다.
+        SpawnMonsters();
+    }
+
+    // 턴수 초기화 및 보드판 새 생성 연동
+    if (Board.Instance != null)
+    {
+        Board.Instance.InitializeNewBoard();
+    }
+}
+
     // 🔔 [여기 추가] 인게임 중 스폰된 캐릭터들이 스스로의 HP바를 등록하러 오는 입구입니다.
     public void RegisterHeroHPBar(Slider heroSlider)
     {
@@ -394,7 +436,6 @@ public class PuzzleBattleManager : MonoBehaviour
             // 🛑 [질문자님 특제 차단벽 붕괴 스위치]: 백그라운드에서 아직도 무언가를 기다리며 마우스를 잠그고 있던 
             // 모든 연쇄 폭발, 스왑, 데드락 판정용 스위치 주머니를 강제로 완전히 열어버립니다(false)!
             puzzleBoardComponent.StopAllCoroutines(); // 1. 유령 코루틴 완전 사형
-            puzzleBoardComponent.isProcessing = false; // 2. 퍼즐판 조작 잠금 원천 해제
             puzzleBoardComponent.isGameActive = false; // 3. 인게임 활성화 플래그 완전 초기화
 
             // 🔎 만약 Board 스크립트 내부에 swap이나 match 플래그가 매개변수로 존재한다면 
@@ -431,6 +472,20 @@ public class PuzzleBattleManager : MonoBehaviour
                 int.TryParse(cleanNumbers, out finalScore);
             }
         }
+
+        if (currentMonsters.Count == 0)
+{
+    Debug.Log("모든 몬스터 처치! 다음 웨이브 준비");
+
+    // 🎯 [오늘의 미션]: 만약 지금이 '일반 스테이지 모드'라면, 무한모드 코드를 건너뛰고 이쪽으로 보냅니다!
+    if (isNormalStageMode)
+    {
+        OnClearCurrentRound(); // 우리가 만든 라운드 승리 판정 함수 실행!
+        return;                // 밑에 있는 무한모드용 코드가 실행되지 않도록 여기서 함수를 즉시 종료(리턴)합니다.
+    }
+    
+    // 이 밑으로는 기존 무한모드용 코드들이 그대로 유지됩니다 (손대지 않음)
+
 
         // 3. UI 갱신 및 랭킹 정산 (기존 기능 보존)
         if (textFinalScore != null) textFinalScore.text = $"최종 점수 : {finalScore:N0}";
@@ -599,7 +654,127 @@ public class PuzzleBattleManager : MonoBehaviour
                 mainBoard.OnClickRealStartInfiniteTimer();
             }
         }
+
     }
+    // 🎯 1. Stage_A 버튼을 눌렀을 때 실행될 함수 (1-1 ~ 1-5)
+    public void OnClickStartStageA()
+    {
+        isNormalStageMode = true;
+        currentStageType = "Stage_A";
+        currentRound = 1;
+        maxRound = 5;
+
+        // 화면 전환: 선택창 끄고 일반 배틀창 켜기
+        if (panel_StageSelect != null) panel_StageSelect.SetActive(false);
+        if (panel_NMPuzzleBattle != null) panel_NMPuzzleBattle.SetActive(true);
+
+        // 첫 라운드 몬스터 생성 시작!
+        SpawnStageRoundMonsters();
+    }
+
+    // 🎯 2. Stage_B 버튼을 눌렀을 때 실행될 함수 (1-1 ~ 1-7)
+    public void OnClickStartStageB()
+    {
+        isNormalStageMode = true;
+        currentStageType = "Stage_B";
+        currentRound = 1;
+        maxRound = 7;
+
+        // 화면 전환: 선택창 끄고 일반 배틀창 켜기
+        if (panel_StageSelect != null) panel_StageSelect.SetActive(false);
+        if (panel_NMPuzzleBattle != null) panel_NMPuzzleBattle.SetActive(true);
+
+        // 첫 라운드 몬스터 생성 시작!
+        SpawnStageRoundMonsters();
+    }
+
+    // 🎯 3. 라운드별 몬스터 배치 및 기획 규칙 계산 함수
+
+    //일반 스테이지 모드
+    private void SpawnStageRoundMonsters()
+    {
+        Debug.Log($"⚔ 일반 스테이지 {currentStageType} : {currentRound} 라운드 시작!");
+
+        // 마지막 라운드인지 체크
+        if (currentRound == maxRound)
+        {
+            Debug.Log("👹 [경고] 마지막 라운드입니다! 보스 몬스터가 출현합니다!");
+
+            // 🎯 [수정]: 기존 소환 함수를 실행합니다. (여기에 보스 체력 보너스 등을 나중에 얹을 수 있습니다)
+            SpawnMonsters();
+        }
+        else
+        {
+            // n라운드마다 n마리 소환 규칙 (1-n)
+            int monsterCount = currentRound;
+            Debug.Log($"👾 일반 몬스터가 {monsterCount}마리 등장합니다. (n:1 비율)");
+            // TODO: 일반 몬스터 monsterCount만큼 소환 로직 연동 자리
+
+            // 🎯 [수정]: 기존 소환 함수를 실행하여 현재 라운드 수만큼 몬스터를 채웁니다.
+            SpawnMonsters();
+        }
+
+        // 턴수 초기화 및 보드판 새 생성 연동
+        if (Board.Instance != null)
+        {
+            Board.Instance.InitializeNewBoard();
+        }
+        
+    }
+    
+// 🎯 4. 몬스터를 모두 처치했을 때 검사하는 함수
+    public void OnClearCurrentRound()
+    {
+        // 마지막 라운드(보스)를 깼다면 최종 결과창 출력!
+        if (currentRound == maxRound)
+        {
+            Debug.Log("🏆 보스를 처치했습니다! 스테이지 클리어!");
+            if (panel_StageClearResult != null) panel_StageClearResult.SetActive(true);
+            return;
+        }
+
+        // 3라운드마다 보상 팝업창 띄우기 규칙 (3, 6...)
+        if (currentRound % 3 == 0)
+        {
+            Debug.Log($"🎁 {currentRound}라운드 돌파 보상 팝업 가동!");
+            if (panel_StageRewardPopup != null) panel_StageRewardPopup.SetActive(true);
+        }
+        else
+        {
+            // 보상 라운드가 아니라면 자동으로 다음 라운드 진행
+            ProceedToNextRound();
+        }
+    }
+
+// 🎯 5. [계속진행] 버튼 및 다음 라운드 이동 전담 함수
+public void OnClickContinueStage()
+{
+    // 보상 팝업창을 끄고 다음 라운드로!
+    if (panel_StageRewardPopup != null) panel_StageRewardPopup.SetActive(false);
+    ProceedToNextRound();
+}
+
+private void ProceedToNextRound()
+{
+    currentRound++;
+    SpawnStageRoundMonsters();
+}
+
+// 🎯 6. 결과창의 [마을로이동] 버튼용 함수
+public void OnClickGoToVillage()
+{
+    isNormalStageMode = false;
+    
+    // 최종 결과창 끄고, 일반 배틀창도 끄고, 마을 화면 켜기
+    if (panel_StageClearResult != null) panel_StageClearResult.SetActive(false);
+    if (panel_NMPuzzleBattle != null) panel_NMPuzzleBattle.SetActive(false);
+    
+    // 유니티 계층구조(Hierarchy)에 있는 Panel_Village 오브젝트를 찾아서 켜줍니다.
+    GameObject village = GameObject.Find("Panel_Village");
+    if (village != null) village.SetActive(true);
+}
+
+
 }
 
 
