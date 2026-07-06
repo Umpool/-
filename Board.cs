@@ -275,6 +275,11 @@ public void OnClickRealStartInfiniteTimer()
         // 1. 마우스 왼쪽 버튼을 누르는 순간 (클릭)
         if (Input.GetMouseButtonDown(0))
         {
+            // 📡 [마우스 클릭 감지 스파이 로그 장착]
+            Vector3 mouseWorldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
+            Debug.Log($"[클릭 감지 신호 수신] 🖱️ 화면 마우스 위치: {Input.mousePosition} | 🌍 유니티 월드 변환 좌표: {mouseWorldPos}");
+
+
             UnityEngine.EventSystems.PointerEventData eventData = new UnityEngine.EventSystems.PointerEventData(UnityEngine.EventSystems.EventSystem.current) { position = Input.mousePosition };
             List<UnityEngine.EventSystems.RaycastResult> results = new List<UnityEngine.EventSystems.RaycastResult>();
             UnityEngine.EventSystems.EventSystem.current.RaycastAll(eventData, results);
