@@ -12,7 +12,7 @@ public class PuzzleBattleManager : MonoBehaviour
     public TextMeshProUGUI textFinalTurns;   // Text_FinalTurns 연결
     public TextMeshProUGUI textRecordNotice; // Text_RecordNotice 연결
     public bool isTimeOver = false; // 💡 시간이 다 끝났음을 임시로 저장하는 안전핀
-    
+
     [Header("--- 배틀 핵심 UI 패널 록온 ---")]
     public GameObject panel_PuzzleBattle;    // 일반 스테이지 패널 (Panel_NMPuzzleBattle)
     public GameObject panel_InfiniteBattle;  // 💡 [추가] 무한모드 패널 (Panel_INPuzzleBattle)
@@ -20,11 +20,11 @@ public class PuzzleBattleManager : MonoBehaviour
 
     [Header("실시간 배틀 카드 장부")]
     public List<CharacterCard> liveCards = new List<CharacterCard>(); // 👈 여기에 실시간으로 담깁니다.
-    
+
     [Header("--- NPC 전용 1~10위 순위판 UI ---")]
     public TextMeshProUGUI textNPCLeaderboard; // 💡 요 방이 상단에 있어야 맨 밑바닥 함수가 에러가 안 납니다!
     public GameObject panel_NPCLeaderboard_Popup; // 🎯 마을 순위판 팝업창 자체를 기억할 전원 제어 방!
-    
+
     [Header("--- 현재 배틀 필드 상황 ---")]
     // 중요! 어떤 모드의 몬스터든 이 주머니에 다 담을 수 있습니다.
     public BaseMonster currentTargetMonster;
@@ -34,11 +34,11 @@ public class PuzzleBattleManager : MonoBehaviour
     public List<Slider> heroHPBars = new List<Slider>(); // 아군 영웅 5인 체력바 슬라이더 리스트
     public TextMeshProUGUI turnTextUI;
 
-    public int currentTurn = 0; 
-    public int currentScore = 0; 
-    public GameObject btn_StartTouchTrigger_Direct; 
+    public int currentTurn = 0;
+    public int currentScore = 0;
+    public GameObject btn_StartTouchTrigger_Direct;
 
-    public Board puzzleBoardComponent; 
+    public Board puzzleBoardComponent;
 
 
     public static PuzzleBattleManager Instance { get; private set; }
@@ -49,12 +49,12 @@ public class PuzzleBattleManager : MonoBehaviour
         if (Instance == null) Instance = this;
         else Destroy(gameObject);
     }
-    
-    
-    
-    
 
-     // 🌟 [새로 추가] 던전 안에서 파티원들의 진짜 최대 체력 원본을 기억해 둘 딕셔너리 주머니
+
+
+
+
+    // 🌟 [새로 추가] 던전 안에서 파티원들의 진짜 최대 체력 원본을 기억해 둘 딕셔너리 주머니
     private static Dictionary<int, int> partyMaxHpBackup = new Dictionary<int, int>();
     private void Start()
     {
@@ -81,9 +81,9 @@ public class PuzzleBattleManager : MonoBehaviour
         } // if 종료
     } // Start() 최종 종료
 
-    
-    
-    
+
+
+
 
     public void OnUserDragBlock()
     {
@@ -147,33 +147,33 @@ public class PuzzleBattleManager : MonoBehaviour
     // 🌟 [개발자님 최신 계층구조 200% 정밀 반영]: 하단 아군 영웅 5명의 카드와 HP 바 주소를 1대1 유기적 연동시킵니다!
     private void SetupBattleEntities()
     {
-    Debug.Log("[배틀 연산 1단계] 내 정예 파티원 데이터 수거 및 HP 회선 연결 시작!");
-    if (GameManager.Instance == null || GameManager.Instance.partyMembers == null) return;
+        Debug.Log("[배틀 연산 1단계] 내 정예 파티원 데이터 수거 및 HP 회선 연결 시작!");
+        if (GameManager.Instance == null || GameManager.Instance.partyMembers == null) return;
 
-    // 🌟 [핵심 수정]: 일반 스테이지 패널이나 무한 모드 패널 중 현재 하이어라키에서 실제로 '켜져 있는 패널'을 대장 부모로 선정합니다!
-    GameObject activeBattlePanel = null;
-    if (panel_InfiniteBattle != null && panel_InfiniteBattle.activeSelf) activeBattlePanel = panel_InfiniteBattle;
-    else if (panel_PuzzleBattle != null && panel_PuzzleBattle.activeSelf) activeBattlePanel = panel_PuzzleBattle;
+        // 🌟 [핵심 수정]: 일반 스테이지 패널이나 무한 모드 패널 중 현재 하이어라키에서 실제로 '켜져 있는 패널'을 대장 부모로 선정합니다!
+        GameObject activeBattlePanel = null;
+        if (panel_InfiniteBattle != null && panel_InfiniteBattle.activeSelf) activeBattlePanel = panel_InfiniteBattle;
+        else if (panel_PuzzleBattle != null && panel_PuzzleBattle.activeSelf) activeBattlePanel = panel_PuzzleBattle;
 
-    if (activeBattlePanel != null)
-    {
-        // 🌟 이제 현재 켜져 있는 전장 패널 밑에서 'PartyContainer_Battle' 상자를 정확하게 조준 타격합니다!
-        Transform battlePartyListTrans = activeBattlePanel.transform.Find("PartyContainer_Battle");
-        if (battlePartyListTrans == null)
+        if (activeBattlePanel != null)
         {
-            Debug.LogWarning($"[구조 점검] {activeBattlePanel.name} 아래에서 'PartyContainer_Battle' 상자를 찾지 못했습니다.");
-            return;
-        }
-
-        // ====== 🚀 이 아래의 자식 슬롯 수집 및 슬라이더 퍼센트 계산(While/Offset) 코드는 방금 수정한 그대로 완벽히 유지해 줍니다! ======
-        List<Transform> heroCardSlots = new List<Transform>();
-        foreach (Transform child in battlePartyListTrans)
-        {
-            if (child.name.Contains("Battle_HeroSlot"))
+            // 🌟 이제 현재 켜져 있는 전장 패널 밑에서 'PartyContainer_Battle' 상자를 정확하게 조준 타격합니다!
+            Transform battlePartyListTrans = activeBattlePanel.transform.Find("PartyContainer_Battle");
+            if (battlePartyListTrans == null)
             {
-                heroCardSlots.Add(child);
+                Debug.LogWarning($"[구조 점검] {activeBattlePanel.name} 아래에서 'PartyContainer_Battle' 상자를 찾지 못했습니다.");
+                return;
             }
-        }
+
+            // ====== 🚀 이 아래의 자식 슬롯 수집 및 슬라이더 퍼센트 계산(While/Offset) 코드는 방금 수정한 그대로 완벽히 유지해 줍니다! ======
+            List<Transform> heroCardSlots = new List<Transform>();
+            foreach (Transform child in battlePartyListTrans)
+            {
+                if (child.name.Contains("Battle_HeroSlot"))
+                {
+                    heroCardSlots.Add(child);
+                }
+            }
 
             heroHPBars.Clear();
             int activePartyCount = GameManager.Instance.partyMembers.Count;
@@ -198,84 +198,84 @@ public class PuzzleBattleManager : MonoBehaviour
                 }
 
                 // 🌟 [HP 바 연동]: 자식 밑에 매달려 대기 중인 슬라이더 'HP_Bar'를 추적해 캐릭터 고유 체력 영점을 강제 동기화시킵니다!
-            // 📄 211번 라인 부근 기존 Slider 연결 코드 구역을 찾아 아래 코드로 완전히 교체합니다!
-            Transform hpBarTrans = heroCardSlots[i].transform.Find("HP_Bar");
-            if (hpBarTrans != null)
-            {
-                Slider hpSlider = hpBarTrans.GetComponent<Slider>();
-                if (hpSlider != null)
+                // 📄 211번 라인 부근 기존 Slider 연결 코드 구역을 찾아 아래 코드로 완전히 교체합니다!
+                Transform hpBarTrans = heroCardSlots[i].transform.Find("HP_Bar");
+                if (hpBarTrans != null)
                 {
-                    // 🌟 1. [퍼센트 작동 환경 구축] 슬라이더의 작동 범위를 무조건 0부터 1까지(비율)로 고정합니다.
-                    hpSlider.minValue = 0f;
-                    hpSlider.maxValue = 1f;
-
-                    // 🌟 2. static 주머니에 저장해 둔 이 영웅의 진짜 '최대 체력 원본' 가져오기
-                    int maxHP = 100; // 원본을 못 찾을 때를 대비한 안전 장치 수치
-                    if (partyMaxHpBackup.ContainsKey(currentHeroData.id))
+                    Slider hpSlider = hpBarTrans.GetComponent<Slider>();
+                    if (hpSlider != null)
                     {
-                        maxHP = partyMaxHpBackup[currentHeroData.id];
+                        // 🌟 1. [퍼센트 작동 환경 구축] 슬라이더의 작동 범위를 무조건 0부터 1까지(비율)로 고정합니다.
+                        hpSlider.minValue = 0f;
+                        hpSlider.maxValue = 1f;
+
+                        // 🌟 2. static 주머니에 저장해 둔 이 영웅의 진짜 '최대 체력 원본' 가져오기
+                        int maxHP = 100; // 원본을 못 찾을 때를 대비한 안전 장치 수치
+                        if (partyMaxHpBackup.ContainsKey(currentHeroData.id))
+                        {
+                            maxHP = partyMaxHpBackup[currentHeroData.id];
+                        }
+
+                        // 🌟 3. 현재 체력과 최대 체력을 1:1 비교하여 정밀한 비율(0.0 ~ 1.0) 계산
+                        float hpPercent = (float)currentHeroData.hp / maxHP;
+
+                        // 🌟 4. 비율 수치를 슬라이더에 주입하여 풀피일 땐 100% 빈틈없이 초록색으로 꽉 채웁니다!
+                        hpSlider.value = hpPercent;
+
+                        // 🌟 5. [인스펙터 잠금 해제 및 4대 레이아웃 강제 동기화 대완공]
+                        // 프리팹 수치와 상관없이 부모(HP_Bar), 배경, 게이지의 모든 영역을 1:1로 강제 밀착시킵니다.
+                        RectTransform hpBarRect = hpBarTrans.GetComponent<RectTransform>();
+                        RectTransform backgroundRect = hpBarTrans.Find("Background")?.GetComponent<RectTransform>();
+                        RectTransform fillArea = hpBarTrans.Find("Fill Area")?.GetComponent<RectTransform>();
+                        RectTransform fill = fillArea?.Find("Fill")?.GetComponent<RectTransform>();
+
+                        // ① 최상위 부모인 HP_Bar의 높이를 날씬한 일자형(12)으로 강제 픽스
+                        if (hpBarRect != null)
+                        {
+                            var size = hpBarRect.sizeDelta;
+                            size.y = 12f; // 뚱뚱하던 높이를 날씬하게 깎음
+                            hpBarRect.sizeDelta = size;
+                        }
+
+                        // ② 빨간색 배경(Background)을 부모 크기에 100% 꽉 차게 자석 정렬
+                        if (backgroundRect != null)
+                        {
+                            backgroundRect.anchorMin = Vector2.zero;
+                            backgroundRect.anchorMax = Vector2.one;
+                            backgroundRect.offsetMin = Vector2.zero;
+                            backgroundRect.offsetMax = Vector2.zero;
+                        }
+
+                        // ③ 게이지 영역(Fill Area)을 부모 크기에 100% 꽉 차게 자석 정렬
+                        if (fillArea != null)
+                        {
+                            fillArea.anchorMin = Vector2.zero;
+                            fillArea.anchorMax = Vector2.one;
+                            fillArea.offsetMin = Vector2.zero;
+                            fillArea.offsetMax = Vector2.zero;
+                        }
+
+                        // ④ 초록색 피(Fill)의 여백과 앵커를 완벽하게 일치시켜 오차 박멸
+                        if (fill != null)
+                        {
+                            fill.anchorMin = Vector2.zero;
+                            fill.anchorMax = Vector2.one;
+                            fill.offsetMin = Vector2.zero;
+                            fill.offsetMax = Vector2.zero; // 🚀 마이너스로 삐져나가던 붉은 잔상 강제 소멸
+                        }
+
+                        // ⑤ 자동 정렬 시스템(Layout Group)의 강제 찌그러트림 간섭을 최종 차단
+                        UnityEngine.UI.LayoutElement hpLayout = hpSlider.GetComponent<UnityEngine.UI.LayoutElement>();
+                        if (hpLayout != null)
+                        {
+                            hpLayout.ignoreLayout = true;
+                        }
+
+                        // 원래의 매니저 주머니 등록 코드로 부드럽게 이어집니다.
+                        heroHPBars.Add(hpSlider);
                     }
-
-                    // 🌟 3. 현재 체력과 최대 체력을 1:1 비교하여 정밀한 비율(0.0 ~ 1.0) 계산
-                    float hpPercent = (float)currentHeroData.hp / maxHP;
-
-                    // 🌟 4. 비율 수치를 슬라이더에 주입하여 풀피일 땐 100% 빈틈없이 초록색으로 꽉 채웁니다!
-                    hpSlider.value = hpPercent;
-
-                    // 🌟 5. [인스펙터 잠금 해제 및 4대 레이아웃 강제 동기화 대완공]
-                    // 프리팹 수치와 상관없이 부모(HP_Bar), 배경, 게이지의 모든 영역을 1:1로 강제 밀착시킵니다.
-                    RectTransform hpBarRect = hpBarTrans.GetComponent<RectTransform>();
-                    RectTransform backgroundRect = hpBarTrans.Find("Background")?.GetComponent<RectTransform>();
-                    RectTransform fillArea = hpBarTrans.Find("Fill Area")?.GetComponent<RectTransform>();
-                    RectTransform fill = fillArea?.Find("Fill")?.GetComponent<RectTransform>();
-
-                    // ① 최상위 부모인 HP_Bar의 높이를 날씬한 일자형(12)으로 강제 픽스
-                    if (hpBarRect != null)
-                    {
-                        var size = hpBarRect.sizeDelta;
-                        size.y = 12f; // 뚱뚱하던 높이를 날씬하게 깎음
-                        hpBarRect.sizeDelta = size;
-                    }
-
-                    // ② 빨간색 배경(Background)을 부모 크기에 100% 꽉 차게 자석 정렬
-                    if (backgroundRect != null)
-                    {
-                        backgroundRect.anchorMin = Vector2.zero;
-                        backgroundRect.anchorMax = Vector2.one;
-                        backgroundRect.offsetMin = Vector2.zero;
-                        backgroundRect.offsetMax = Vector2.zero;
-                    }
-
-                    // ③ 게이지 영역(Fill Area)을 부모 크기에 100% 꽉 차게 자석 정렬
-                    if (fillArea != null)
-                    {
-                        fillArea.anchorMin = Vector2.zero;
-                        fillArea.anchorMax = Vector2.one;
-                        fillArea.offsetMin = Vector2.zero;
-                        fillArea.offsetMax = Vector2.zero;
-                    }
-
-                    // ④ 초록색 피(Fill)의 여백과 앵커를 완벽하게 일치시켜 오차 박멸
-                    if (fill != null)
-                    {
-                        fill.anchorMin = Vector2.zero;
-                        fill.anchorMax = Vector2.one;
-                        fill.offsetMin = Vector2.zero;
-                        fill.offsetMax = Vector2.zero; // 🚀 마이너스로 삐져나가던 붉은 잔상 강제 소멸
-                    }
-
-                    // ⑤ 자동 정렬 시스템(Layout Group)의 강제 찌그러트림 간섭을 최종 차단
-                    UnityEngine.UI.LayoutElement hpLayout = hpSlider.GetComponent<UnityEngine.UI.LayoutElement>();
-                    if (hpLayout != null)
-                    {
-                        hpLayout.ignoreLayout = true;
-                    }
-
-                    // 원래의 매니저 주머니 등록 코드로 부드럽게 이어집니다.
-                    heroHPBars.Add(hpSlider);
                 }
-            }
-            
+
 
             }
             Debug.Log($"[아군 진형 연동 완공] 총 {heroHPBars.Count}명의 파티원이 실시간 생명력 게이지를 장착 완료했습니다!");
@@ -311,51 +311,51 @@ public class PuzzleBattleManager : MonoBehaviour
             Debug.Log($"[전투 전용 자동 연동] 영웅 HP 바 등록 완료! (현재 {heroHPBars.Count}개)");
         }
     }
-    
-    
-    
-    
+
+
+
+
     public void OnClickBackToVillageFromInfinite()
     {
-        // [기존 필수 1] 켜져 있던 무한모드 결과창 패널(GAMEOVER TXT)을 시원하게 꺼버립니다.
+        // [기획 흐름 적용] BACK 버튼 클릭 시 무한모드 패널... (방금 새로 붙여넣은 부분)
+        GameObject infinitePanel = GameObject.Find("Canvas")?.transform.Find("Panel_INPuzzleBattle")?.gameObject;
+        if (infinitePanel != null)
+        {
+            infinitePanel.SetActive(false);
+        }
+
+        // [기존 필수 1] 켜져 있던 무한모드 결과창 패널... (여기서부터 원래 있던 코드 시작)
         if (panel_InfiniteReward != null)
         {
             panel_InfiniteReward.SetActive(false);
         }
-
-        // [기존 필수 2] 플레이가 끝난 무한모드 퍼즐판 패널(Panel_INPuzzleBattle)도 꺼줍니다.
-        if (panel_InfiniteBattle != null)
-        {
-            panel_InfiniteBattle.SetActive(false);
-        }
-
-        // 🛠️ [변수명 일치 교정]: puzzleBoard -> puzzleBoardComponent
-        if (puzzleBoardComponent != null)
-        {
-            puzzleBoardComponent.ShutdownAndCleanupBoard(); 
-        }
-
-     // 🌟 PuzzleBattleManager.cs 내부 OnClickBackToVillageFromInfinite() 함수 끝자락 교체 구역
-     if (GameManager.Instance != null)
-     {
-        // 1. 기존의 무한모드 화면 정돈 명령 가동
-        GameManager.Instance.OnClickInfiniteStageBackButton();
-        
-        // 2. 🔓 [형님이 검거하신 진짜 정답 치트키 작동!]
-        // 창고에 잠들어 있던 빠른 이동 버튼 부활 사령탑 함수를 원격으로 강력하게 깨웁니다!
-        GameManager.Instance.ExitBattleStage();
-        
-        Debug.Log("🎪 [대완공] ExitBattleStage 함수 원격 가동! 빠른 이동 버튼이 완벽하게 ON 복구되었습니다.");
-       }
-      }
     
 
+        // 🌟 PuzzleBattleManager.cs 내부 OnClickBackToVillageFromInfinite() 함수 끝자락 교체 구역
+        if (GameManager.Instance != null)
+        {
+            // 1. 기존의 무한모드 화면 정돈 명령 가동
+            GameManager.Instance.OnClickInfiniteStageBackButton();
+
+            // 2. 🏰 [형님이 검격하신 진짜 정답 치트키 작동!]
+            // // 창고에 잠들어 있던 빠른 이동 버튼 부활 사령탑 함수를 원격으로 강력하게 깨웁니다!
+            GameManager.Instance.ExitBattleStage();
+            
+                Debug.Log("★ [대완공] ExitBattleStage 함수 원격 가동! 빠른 이동 버튼이 완벽하게 ON 복구되었습니다.");
+            }
+        }
+    
+// ◀ OnClickBackToVillageFromInfinite() 함수가 끝나는 괄호입니다.
 
 
-     // 💡 [여기서부터 복사해서 맨 밑 괄호 직전에 그대로 붙여넣으세요]
 
-     // 1. 3분 무한 모드가 끝났을 때 1위~10위까지 보이지 않는 장부를 계산해 저장하는 정산기
-     // 🛠️ Board.cs에서 모든 연쇄가 끝났을 때 원격 호출하는 최종 정산 사령탑 단락
+
+
+
+    // 💡 [여기서부터 복사해서 맨 밑 괄호 직전에 그대로 붙여넣으세요]
+
+    // 1. 3분 무한 모드가 끝났을 때 1위~10위까지 보이지 않는 장부를 계산해 저장하는 정산기
+    // 🛠️ Board.cs에서 모든 연쇄가 끝났을 때 원격 호출하는 최종 정산 사령탑 단락
     public void OnTimerEnd()
      {
 
