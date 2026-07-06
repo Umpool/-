@@ -151,16 +151,17 @@ public class PuzzleBattleManager : MonoBehaviour
             Transform startTrigger = panel_InfiniteBattle.transform.Find("Btn_StartTouchTrigger");
             if (startTrigger != null) startTrigger.gameObject.SetActive(true);
         }
-
         if (btn_StartTouchTrigger_Direct != null) btn_StartTouchTrigger_Direct.SetActive(true);
 
-        // [전투 로직 활성화]
+        // ◀ 방금 새로 들어온 부활 엔진 코드가 이 자리에 안착합니다!
         if (puzzleBoardComponent != null)
         {
             puzzleBoardComponent.enabled = true;
             puzzleBoardComponent.InitializeNewBoard();
+            Debug.Log("🎯 [부활 완공] StartPuzzleBattle 내부에서 보드판 컴포넌트 가동 완료!");
         }
-    }
+    } // ◀ StartPuzzleBattle() 함수의 끝!
+
 
 
 
@@ -334,123 +335,119 @@ public class PuzzleBattleManager : MonoBehaviour
 
     public void OnClickBackToVillageFromInfinite()
     {
-        // 🔓 [합치기 완료] 마우스 드래그 센서 원상복구 안전핀 가동!
+        // 🧼 [왕초보 특제: 마을로 가기 버튼 클릭 즉시 완벽 세탁기 가동]
+        currentTurn = 0;       // 1. 내부 턴수 즉시 0으로 초기화
+        currentScore = 0;      // 2. 내부 점수 즉시 0으로 초기화
+        isTimeOver = false;    // 3. 마우스를 가로막던 제한시간 종료 안전핀 즉시 해제 (False)
+        UpdateTurnTextUI();    // 4. 화면에 보이는 인게임 턴수 글자도 즉시 "0 턴"으로 초기화
+
+        // 5. 다음 판 진입 시 버그 없이 바로 굴러가도록 보드판 엔진 가동 및 새 블록 정품 배치!
         if (puzzleBoardComponent != null)
         {
             puzzleBoardComponent.gameObject.SetActive(true);
             puzzleBoardComponent.enabled = true;
+            puzzleBoardComponent.InitializeNewBoard();
         }
 
-        // 1. 무한모드 패널 강제 OFF (숨기기)
+        // 6. 무한모드 패널 강제 OFF (숨기기)
         GameObject infinitePanel = GameObject.Find("Canvas")?.transform.Find("Panel_INPuzzleBattle")?.gameObject;
         if (infinitePanel != null)
         {
             infinitePanel.SetActive(false);
         }
 
-        // 2. 무한모드 결과창 패널 강제 OFF
+        // 7. 무한모드 결과창 패널 강제 OFF
         if (panel_InfiniteReward != null)
         {
             panel_InfiniteReward.SetActive(false);
         }
 
-        // 3. 대장 컴퓨터에게 마을 이동 및 단축바 부활 명령 전송
+        // 8. 대장 컴퓨터에게 마을 이동 및 단축바 부활 명령 전송
         if (GameManager.Instance != null)
         {
             GameManager.Instance.OnClickInfiniteStageBackButton();
             GameManager.Instance.ExitBattleStage();
 
-            Debug.Log("★ [마을 복귀] 패널 안전하게 OFF 완료 및 단축바 부활 완료!");
+            Debug.Log("★ [마을 복귀 및 대완공] 마을로 가기 버튼을 누른 타이밍에 모든 데이터 초기화 및 보드판 세탁 완료!");
         }
     }
 
-    public void OnTimerEnd() // // 무한모드 종료시점 무한모드 종료시점 무한모드 종료시점
-    {
-        // 🏁 [제한시간 종료: 무한모드 완전 셧다운 시스템]
-        isTimeOver = true;
-        // =================================================================
-        // 🧼 [왕초보 특제: 기록 세우기 완료 즉시 완벽 세탁기 가동]
-        // =================================================================
-        currentTurn = 0;       // 1. 내부 턴수 즉시 0으로 초기화
-        currentScore = 0;      // 2. 내부 점수 즉시 0으로 초기화
-        isTimeOver = false;    // 3. 마우스를 가로막던 제한시간 종료 안전핀 즉시 해제 (False)
-        UpdateTurnTextUI();    // 4. 화면에 보이는 인게임 턴수 글자도 즉시 "0 턴"으로 초기화
 
-        // 5. 기존 정품 보드판에 블록들을 완전히 새로고침 배치하고 마우스 드래그 장치 사전 개방!
+    public void OnTimerEnd()
+    {
+        // 1. 타임오버 및 퍼즐판 동결
+        isTimeOver = true;
         if (puzzleBoardComponent != null)
         {
-            puzzleBoardComponent.InitializeNewBoard();
-            puzzleBoardComponent.enabled = true;
+            puzzleBoardComponent.enabled = false;
+            puzzleBoardComponent.StopAllCoroutines();
         }
 
-        Debug.Log("🧹 [즉시 리셋 완료] 결과창에 기록을 세운 즉시 턴, 점수, 타임오버가 완벽하게 새것으로 복구되었습니다!");
-        // // 내부 저장소에서 1등부터 10등까지의 점수를 배열로 싹 긁어옵니다. (기존 랭킹 기능 100% 보존)
-        int[] highScores = new int[10];
-        for (int i = 0; i < 10; i++)
+        // 2. 최종 점수 및 턴수 추출 (UI 텍스트 및 현재 변수 활용)
+        int finalScore = currentScore;
+        int finalTurns = currentTurn;
+        TMPro.TextMeshProUGUI realScoreTMP = transform.Find("ScoreText")?.GetComponent<TMPro.TextMeshProUGUI>();
+        if (realScoreTMP != null)
         {
-            highScores[i] = PlayerPrefs.GetInt($"INF_RANK_{i + 1}", 0);
+            string cleanNumbers = System.Text.RegularExpressions.Regex.Replace(realScoreTMP.text, @"[^\d]", "");
+            int.TryParse(cleanNumbers, out finalScore);
         }
 
-        // // 현재 대미지 점수가 명예의 전당 몇 등인지 순위 검사 (기존 랭킹 기능 100% 보존)
+        // 3. 결과 팝업 UI 업데이트
+        if (textFinalScore != null) textFinalScore.text = $"최종 대미지 : {finalScore:N0}";
+        if (textFinalTurns != null)
+        {
+            textFinalTurns.text = $"걸린 턴수 : {finalTurns} 턴";
+            textFinalTurns.gameObject.SetActive(true);
+        }
+
+        // 4. 랭킹 데이터 정산 (Top 10) 및 PlayerPrefs 저장
+        int[] highScores = new int[10];
+        for (int i = 0; i < 10; i++) highScores[i] = PlayerPrefs.GetInt($"INF_RANK_{i + 1}", 0);
+
         int currentRank = 0;
         for (int i = 0; i < 10; i++)
         {
             if (finalScore > highScores[i])
             {
                 currentRank = i + 1;
+                // 하위 기록 밀어내기
+                for (int j = 9; j > i; j--) highScores[j] = highScores[j - 1];
+                highScores[i] = finalScore;
                 break;
             }
         }
 
-        // -----------------------------------------------------------------
-        // 🛠️ [기록 갱신 안내 가동]: 1~3순위 명예의 전당 진입 시 축하 문구 연출
-        // -----------------------------------------------------------------
-        if (currentRank >= 1 && currentRank <= 3)
+        // 5. 랭킹 UI 갱신 (1~3위 텍스트)
+        if (currentRank >= 1 && currentRank <= 3 && textRecordNotice != null)
         {
-            if (textRecordNotice != null)
-            {
-                textRecordNotice.gameObject.SetActive(true);
-                textRecordNotice.text = $"기록갱신! [{currentRank}위] 달성!";
-            }
+            textRecordNotice.gameObject.SetActive(true);
+            textRecordNotice.text = $"기록갱신! [{currentRank} 위] 달성!";
         }
-        else
-        {
-            if (textRecordNotice != null) textRecordNotice.gameObject.SetActive(false);
-        }
-        // 💾 [탑 10 데이터 밀어내기 정산] 내 아래 등수들의 기록을 한 칸씩 밑으로 밀어냅니다.
-        if (currentRank >= 1 && currentRank <= 10)
-        {
-            for (int i = 9; i >= currentRank; i--)
-            {
-                highScores[i] = highScores[i - 1];
-            }
-            highScores[currentRank - 1] = finalScore;
+        else if (textRecordNotice != null) textRecordNotice.gameObject.SetActive(false);
 
-            for (int i = 0; i < 10; i++)
-            {
-                PlayerPrefs.SetInt($"INF_RANK_{i + 1}", highScores[i]);
-            }
-            // 💾 [624번 라인 PlayerPrefs.Save(); 바로 아랫줄부터 드래그해서 교체하세요!]
-            PlayerPrefs.Save();
-        } // 🔒 1. highScores 기록을 밀어내던 if (currentRank >= 1 ...) 문을 완전히 닫아줍니다.
+        // 6. 데이터 저장 및 게임오버 연출
+        for (int i = 0; i < 10; i++) PlayerPrefs.SetInt($"INF_RANK_{i + 1}", highScores[i]);
+        PlayerPrefs.Save();
 
-        // 🌟 [무한모드 패널 제어 및 교차 편집]
         if (panel_InfiniteBattle != null)
         {
-            // [A] 결과창 텍스트 박스(GAMEOVER TXT)를 확실하게 ON 합니다.
             Transform gameover = panel_InfiniteBattle.transform.Find("GAMEOVER TXT");
-            if (gameover != null)
-            {
-                gameover.gameObject.SetActive(true);
-            }
+            if (gameover != null) gameover.gameObject.SetActive(true);
         }
+        if (btn_StartTouchTrigger_Direct != null) btn_StartTouchTrigger_Direct.SetActive(false);
 
-        // [B] 게임오버 순간이므로 스타트 트리거 버튼은 완벽하게 끕니다.
-        if (btn_StartTouchTrigger_Direct != null)
+        // 7. 자동 리셋 기능 (다음 판 준비)
+        currentTurn = 0;
+        currentScore = 0;
+        isTimeOver = false;
+        UpdateTurnTextUI();
+        if (puzzleBoardComponent != null)
         {
-            btn_StartTouchTrigger_Direct.SetActive(false);
-            Debug.Log("🏁 [최적화 완공] GAMEOVER TXT는 ON, 트리거 버튼은 OFF 교차 편집 완료!");
+            puzzleBoardComponent.InitializeNewBoard();
+            puzzleBoardComponent.enabled = true;
         }
+        Debug.Log("🎯 [대완공] OnTimerEnd() 통합 및 리셋 완료!");
     }
 
 
