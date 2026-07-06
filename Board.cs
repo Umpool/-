@@ -286,14 +286,22 @@ public void OnClickRealStartInfiniteTimer()
 
             foreach (var result in results)
             {
-                if (result.gameObject != null && (result.gameObject.name.StartsWith("Block_") || result.gameObject.name.StartsWith("Block_")))
+                if (result.gameObject != null && (result.gameObject.name.StartsWith("Block_")))
                 {
                     selectedBlock = result.gameObject;
-                    clickStartPos = Input.mousePosition; // 누른 시점 픽셀 기억
-                    FindBlockIndex(selectedBlock, out startX, out startY); // 격자 인덱스 추적
+
+                    // ◀ 마우스 클릭(드래그 시작) 시 즉시 최상단 레이어로 이동
+                    if (selectedBlock.TryGetComponent<RectTransform>(out var selectedRT))
+                    {
+                        selectedRT.SetAsLastSibling();
+                    }
+
+                    clickStartPos = Input.mousePosition;
+                    FindBlockIndex(selectedBlock, out startX, out startY);
                     break;
                 }
             }
+
         } // <- 🎯 GetMouseButtonDown(0) 조건문이 완전히 끝나는 닫는 괄호
 
         // 2. 마우스 왼쪽 버튼을 떼는 순간 (드래그 완료 판정) - foreach 바깥으로 정상 탈출!
@@ -597,7 +605,7 @@ public void OnClickRealStartInfiniteTimer()
             // 유저가 직접 드래그해서 첫 번째 매치가 터진 순간에만 실행됩니다!
 if (isUserTurn)
 {
-    // 🔔 [Monster 타격 연동 코드]: 터진 블록의 총 개수당 100 데미지 계산
+    // 🔔 [Monster 타격 연동 코드]: 터진 블록의 총 개수당 100 대미지 계산
 if (InfiniteMonster.Instance != null)
 {
     // 1. [기획 규칙]: 동시 파괴된 블록 개수(matches.Count)에 따른 보너스 배율 계산
