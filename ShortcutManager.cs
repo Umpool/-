@@ -82,6 +82,13 @@ public class ShortcutManager : MonoBehaviour
         // 4. 서브 캐릭터 선택창 및 출발하기 자동 연결
         if (subCharBackButton != null) subCharBackButton.onClick.AddListener(() => GoBackToMainChar());
         if (startAdventureButton != null) startAdventureButton.onClick.AddListener(() => StartBattleStage());
+
+        // 5. 예/아니오 팝업창 자동 연결 (Start 함수의 맨 아랫줄에 추가)
+        if (yesButton != null) yesButton.onClick.AddListener(() => OnPopupYesClicked());
+        if (noButton != null) noButton.onClick.AddListener(() => OnPopupNoClicked());
+        // 팝업창 활성화 코드 바로 밑에 배치!
+        FindAnyObjectByType<ShortcutManager>().OnOpenConfirmPopup();
+
     }
 
 
@@ -208,13 +215,24 @@ public class ShortcutManager : MonoBehaviour
             Debug.LogWarning($"[단축키 경고] 연결된 버튼이 없거나 잠겨있습니다: {debugMessage}");
         }
     }
+    // ====================================================================
+    // 🎯 [실제 화면 조작]: 인스펙터에 등록하여 직접 제어할 UI 패널 오브젝트들
+    // ====================================================================
+    [Header("ㅡ 실제 화면 껐다 켜기용 UI 패널 등록 ㅡ")]
+    public GameObject panelIntro;          // PANEL_Intro 오브젝트 연결
+    public GameObject panelLobbyMenu;      // Panel_StageMode (또는 로비 패널) 연결
+    public GameObject panelCharSelect;     // Panel_CharacterSelect 연결
+    public GameObject panelSubCharSelect;  // Panel_SubCharacterSelect 연결
 
-    // 화면 상태 변경 함수
+    // ====================================================================
+    // 🔄 [오류 해결]: 삭제되었던 화면 상태 변경 추적 함수를 다시 복구합니다.
+    // ====================================================================
     public void ChangeScreenState(GameScreenState newState)
     {
         currentScreen = newState;
         Debug.Log($"<color=lime>[화면 상태 변경]</color> 현재 입력 컨텍스트: {newState}");
     }
+
     // ====================================================================
     // 💡 [실제 기능 주머니]: 버튼이나 단축키가 눌렸을 때 진짜 실행될 게임 로직들
     // ====================================================================
@@ -222,39 +240,91 @@ public class ShortcutManager : MonoBehaviour
     {
         Debug.Log("🎬 인트로 화면이 꺼지고 메인 메뉴가 열립니다.");
         ChangeScreenState(GameScreenState.LobbyMenu);
+
+        if (panelIntro != null) panelIntro.SetActive(false);
+        if (panelLobbyMenu != null) panelLobbyMenu.SetActive(true);
     }
 
     private void StartNewAdventure()
     {
-        Debug.Log("⚔️ [새로운 모험] 시작! 캐릭터 선택창으로 장부를 이동합니다.");
+        Debug.Log("⚔ [새로운 모험] 시작! 캐릭터 선택창으로 장부를 이동합니다.");
         ChangeScreenState(GameScreenState.CharSelect);
+
+        if (panelLobbyMenu != null) panelLobbyMenu.SetActive(false);
+        if (panelCharSelect != null) panelCharSelect.SetActive(true);
     }
 
     private void GoBackToLobby()
     {
-        Debug.Log("↩️ 캐릭터 선택 취소! 로비 메뉴로 돌아갑니다.");
+        Debug.Log("↩ 캐릭터 선택 취소! 로비 메뉴로 돌아갑니다.");
         ChangeScreenState(GameScreenState.LobbyMenu);
+
+        if (panelCharSelect != null) panelCharSelect.SetActive(false);
+        if (panelLobbyMenu != null) panelLobbyMenu.SetActive(true);
     }
 
     private void SelectClass(string className)
     {
         Debug.Log($"🎭 메인 캐릭터로 [{className}]를 선택했습니다! 서브 캐릭터 선택창으로 이동합니다.");
         ChangeScreenState(GameScreenState.SubCharSelect);
+
+        if (panelCharSelect != null) panelCharSelect.SetActive(false);
+        if (panelSubCharSelect != null) panelSubCharSelect.SetActive(true);
     }
 
     private void GoBackToMainChar()
     {
-        Debug.Log("↩️ 서브 캐릭터 선택 취소! 메인 캐릭터 선택창으로 돌아갑니다.");
+        Debug.Log("↩ 서브 캐릭터 선택 취소! 메인 캐릭터 선택창으로 돌아갑니다.");
         ChangeScreenState(GameScreenState.CharSelect);
+
+        if (panelSubCharSelect != null) panelSubCharSelect.SetActive(false);
+        if (panelCharSelect != null) panelCharSelect.SetActive(true);
     }
 
     private void StartBattleStage()
     {
         Debug.Log("🚀 모든 파티 구성 완료! 3매치 퍼즐 던전으로 진입합니다!");
+
+        if (panelSubCharSelect != null) panelSubCharSelect.SetActive(false);
+
+        // 🎯 [유니티 6 경고(CS0618) 해결]: FindObjectOfType 대신 정석 함수를 사용합니다.
+        Board puzzleBoard = Object.FindAnyObjectByType<Board>();
+        if (puzzleBoard != null)
+        {
+            // 🎯 [보호 수준(CS0122) 에러 임시 조치]: 만약 이 줄에서 계속 에러가 난다면,
+            // Board.cs 파일 상단으로 가셔서 'private bool isProcessing'을 'public bool isProcessing'으로 고쳐주시면 됩니다!
+            puzzleBoard.isProcessing = false;
+            puzzleBoard.currentTurn = 0;
+            puzzleBoard.comboCount = 0;
+        }
     }
 
+    // 💡 [추가]: 인게임의 서브캐릭터 선택 매니저나 버튼에서 팝업창을 띄울 때 이 함수를 호출하게 만듭니다.
+    public void OnOpenConfirmPopup()
+    {
+        Debug.Log("⚠️ [팝업창 감지]: 파티 추가 팝업이 열렸습니다. 단축키를 예(1)/아니오(2) 모드로 전환합니다.");
+
+        // 🎯 장부 상태를 팝업창 전용으로 변경하여 숫자 1, 2가 팝업 버튼에 맵핑되도록 합니다.
+        ChangeScreenState(GameScreenState.ConfirmPopup);
+    }
+    private void OnPopupYesClicked()
+    {
+        Debug.Log("⭕ 팝업창 [예] 클릭 완료! 서브 캐릭터 선택창 상태로 장부를 복구합니다.");
+        // '예'를 누른 후 서브캐릭터 창이 유지된다면 SubCharSelect로, 
+        // 만약 퍼즐 게임으로 바로 진입한다면 다음 화면 상태에 맞게 인스펙터나 코드로 조율해 주시면 됩니다.
+        ChangeScreenState(GameScreenState.SubCharSelect);
+    }
+
+
+    private void OnPopupNoClicked()
+    {
+        Debug.Log("❌ 팝업창 [아니오] 클릭 완료! 서브 캐릭터 선택창 상태로 장부를 복구합니다.");
+        ChangeScreenState(GameScreenState.SubCharSelect);
+    }
+
+
     private void ContinueGame() { Debug.Log("💾 이어하기 버튼 클릭됨"); }
-    private void OpenSettings() { Debug.Log("⚙️ 설정 버튼 클릭됨"); }
+    private void OpenSettings() { Debug.Log("⚙ 설정 버튼 클릭됨"); }
     private void RestInVillage() { Debug.Log("💤 휴식하기 버튼 클릭됨"); }
 
 }
