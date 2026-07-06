@@ -40,6 +40,11 @@ public class PuzzleBattleManager : MonoBehaviour
 
     public Board puzzleBoardComponent;
 
+    // 🔓 [보호 수준 완전 개방] 외부(PuzzleBattleManager)에서 액세스하여 리셋할 수 있도록 public으로 변경합니다!
+    public bool isProcessing = false;
+    public bool isSwappingNow = false;
+    public bool isSwapping = false;
+    public bool isMatching = false; // ◀ 이 주머니가 개방되면서 에러가 완치됩니다!
 
     public static PuzzleBattleManager Instance { get; private set; }
 
@@ -104,69 +109,72 @@ public class PuzzleBattleManager : MonoBehaviour
         // (나중에 여기에 매칭 검사하고 턴 누적하는 코드가 추가될 예정입니다)
     }
 
-
-    // 💡 [StartPuzzleBattle 함수 전체를 아래 내용으로 덮어씌워 주세요]
-    // ✅ [진입 회로 완전 정상화]: 전장에 새로 들어오는 순간, 꺼져있던 팝업을 강제로 찾아 끄고 시작 버튼만 켭니다!
-    // ✅ 부모 패널이 켜지면서 자식이 같이 동반 활성화되는 유니티 UI 순서 버그를 완벽하게 차단한 정품 진입 함수입니다!
-    // ✅ 형님이 말씀하신 "게임오버 끄고! 시작 팝업 켜고!" 규칙을 200% 정밀 반영한 진입 함수입니다.
-    // ✅ 괄호 밸런스를 완벽하게 맞춘 수정된 코드입니다.
+    // 배틀 진입
     public void StartPuzzleBattle(string gameMode)
     {
-        // 👾 무한모드 화면이 새로 켜졌으므로 몬스터의 누적 대미지 장부도 즉시 0점으로 세탁합니다!
-        if (InfiniteMonster.Instance != null)
+        Debug.Log($"🚀 [전투 개막] 모드 이름 판독 중: {gameMode}");
+
+        // 🛡️ [질문자님 제보 특제 안전핀 장착]
+        // 오직 인스펙터 버튼 매개변수 칸에 'infinite'라고 적혀있을 때만 무한모드 세탁기를 돌립니다!
+        if (gameMode == "infinite")
         {
-            InfiniteMonster.Instance.ResetMonsterForNewGame();
+            // 1. 대장 컴퓨터에게 무한모드(2) 상태임을 각인
+            if (GameManager.Instance != null)
+            {
+                GameManager.Instance.stageMode = 2;
+            }
+
+            // 2. 무한모드 전용 몬스터 0점 세탁 및 풀피 부활
+            if (InfiniteMonster.Instance != null)
+            {
+                InfiniteMonster.Instance.ResetAndRespawnMonster();
+            }
+
+            // 3. 내부 UI 전광판 무한모드용 완전 리셋
+            currentTurn = 0;
+            currentScore = 0;
+            isTimeOver = false;
+            UpdateTurnTextUI();
+
+            Debug.Log("🧼 [무한모드 전용] 세탁기 및 무선 안테나 리셋 정산 완공!");
+        }
+        else
+        {
+            // 🏰 [일반 모드 구역]: 매개변수가 infinite가 아니라면 기존 일반 스테이지 규칙을 그대로 따릅니다.
+            // (만약 기존에 일반 모드용 turn이나 score 세팅이 따로 있었다면 여기에 복구해주시면 됩니다.)
+            Debug.Log("⚔️ [일반 모드 전용] 원래 기획 흐름대로 부작용 없이 안전하게 전투를 시작합니다.");
         }
 
-        currentTurn = 0;
-        UpdateTurnTextUI();
+        // 4. [공통 가동 엔진]: 일반 모드든 무한모드든 퍼즐판 자체는 신선하게 새로 굴려야 합니다!
+        if (puzzleBoardComponent != null)
+        {
+            puzzleBoardComponent.StopAllCoroutines();
 
-        // [화면 전환 및 UI 설정]
-        if (panel_PuzzleBattle != null) panel_PuzzleBattle.SetActive(false);
-        if (panel_InfiniteBattle != null) panel_InfiniteBattle.SetActive(true);
-
-        // =================================================================
-        // 🧼 [왕초보 특제: 인스펙터가 켜진 직후 확실한 전광판 리셋 시스템]
-        // 패널이 확실하게 켜진 상태이므로, 이제 대미지판과 타이머를 찾아 0으로 세탁합니다!
-        // =================================================================
-        currentTurn = 0;
-        currentScore = 0;
-        isTimeOver = false;
-        UpdateTurnTextUI();
-
-        // 1. 점수판 글씨 리셋
-        TMPro.TextMeshProUGUI scoreTextComponent = transform.Find("ScoreText")?.GetComponent<TMPro.TextMeshProUGUI>();
-        if (scoreTextComponent == null) scoreTextComponent = GameObject.Find("ScoreText")?.GetComponent<TMPro.TextMeshProUGUI>();
-        if (scoreTextComponent != null) scoreTextComponent.text = "누적 대미지: 0";
-
-        // 2. 타이머 전광판 글씨 리셋 (원하는 기본 제한시간으로 설정)
-        TMPro.TextMeshProUGUI timerTextComponent = transform.Find("Text Timer")?.GetComponent<TMPro.TextMeshProUGUI>();
-        if (timerTextComponent == null) timerTextComponent = GameObject.Find("Text Timer")?.GetComponent<TMPro.TextMeshProUGUI>();
-        if (timerTextComponent != null) timerTextComponent.text = "01:00.000";
+            // 잠겨있던 문지기 스위치를 공통으로 안전하게 열어줍니다.
+            // 🔓 맨 앞을 public으로 바꿔서 외부(PuzzleBattleManager)에서도 마음대로 리셋할 수 있게 문을 엽니다!
+            puzzleBoardComponent.enabled = false;
+            puzzleBoardComponent.gameObject.SetActive(false);
+            puzzleBoardComponent.gameObject.SetActive(true);
+            puzzleBoardComponent.enabled = true;
 
 
-        GameObject realPartyList = GameObject.Find("Canvas")?.transform.Find("PartyListContainer")?.gameObject;
-        if (realPartyList != null) realPartyList.SetActive(false);
+            // 새 블록 정품 배치 가동
+            puzzleBoardComponent.InitializeNewBoard();
+        }
 
-        // [버그 수정: 팝업 처리]
+        // 5. 버튼 및 UI 트리거 마감 처리
         if (panel_InfiniteBattle != null)
         {
             Transform gameover = panel_InfiniteBattle.transform.Find("GAMEOVER TXT");
             if (gameover != null) gameover.gameObject.SetActive(false);
-
-            Transform startTrigger = panel_InfiniteBattle.transform.Find("Btn_StartTouchTrigger");
-            if (startTrigger != null) startTrigger.gameObject.SetActive(true);
         }
-        if (btn_StartTouchTrigger_Direct != null) btn_StartTouchTrigger_Direct.SetActive(true);
 
-        // ◀ 방금 새로 들어온 부활 엔진 코드가 이 자리에 안착합니다!
-        if (puzzleBoardComponent != null)
+        if (btn_StartTouchTrigger_Direct != null)
         {
-            puzzleBoardComponent.enabled = true;
-            puzzleBoardComponent.InitializeNewBoard();
-            Debug.Log("🎯 [부활 완공] StartPuzzleBattle 내부에서 보드판 컴포넌트 가동 완료!");
+            btn_StartTouchTrigger_Direct.SetActive(false); // 터치 문구 숨기기
         }
-    } // ◀ StartPuzzleBattle() 함수의 끝!
+    }
+
 
 
 
@@ -344,6 +352,10 @@ public class PuzzleBattleManager : MonoBehaviour
         // 🧼 [왕초보 특제: 마을로 가기 버튼 클릭 즉시 완벽 세탁기 가동]
         currentTurn = 0;       // 1. 내부 턴수 즉시 0으로 초기화
         currentScore = 0;      // 2. 내부 점수 즉시 0으로 초기화
+        if (InfiniteMonster.Instance != null)
+        {
+            InfiniteMonster.Instance.ResetAndRespawnMonster(); // ◀ 새 함수 이름으로 교체!
+        }
         isTimeOver = false;    // 3. 마우스를 가로막던 제한시간 종료 안전핀 즉시 해제 (False)
         UpdateTurnTextUI();    // 4. 화면에 보이는 인게임 턴수 글자도 즉시 "0 턴"으로 초기화
 
@@ -376,39 +388,55 @@ public class PuzzleBattleManager : MonoBehaviour
 
             Debug.Log("★ [마을 복귀 및 대완공] 마을로 가기 버튼을 누른 타이밍에 모든 데이터 초기화 및 보드판 세탁 완료!");
         }
-    }
+        // 5. 다음 판 진입 시 버그 없이 바로 굴러가도록 보드판 엔진 가동 및 새 블록 정품 배치!
+        if (puzzleBoardComponent != null)
+        {
+            // 🛑 [질문자님 특제 차단벽 붕괴 스위치]: 백그라운드에서 아직도 무언가를 기다리며 마우스를 잠그고 있던 
+            // 모든 연쇄 폭발, 스왑, 데드락 판정용 스위치 주머니를 강제로 완전히 열어버립니다(false)!
+            puzzleBoardComponent.StopAllCoroutines(); // 1. 유령 코루틴 완전 사형
+            puzzleBoardComponent.isProcessing = false; // 2. 퍼즐판 조작 잠금 원천 해제
+            puzzleBoardComponent.isGameActive = false; // 3. 인게임 활성화 플래그 완전 초기화
 
+            // 🔎 만약 Board 스크립트 내부에 swap이나 match 플래그가 매개변수로 존재한다면 
+            // 원격으로 직접 머리채 잡고 false로 문질러 닦아줍니다!
+            // (reflection이나 직접 접근 대신 오브젝트 컴포넌트를 껐다 켜서 완벽히 공장 초기화 시킵니다.)
+            puzzleBoardComponent.enabled = false;
+
+            puzzleBoardComponent.gameObject.SetActive(true);
+            puzzleBoardComponent.enabled = true; // 4. 마우스 클릭 하드웨어 센서 완벽 개방!
+            puzzleBoardComponent.InitializeNewBoard(); // 5. 새 블록 정품 리필 완공!
+        }
+
+    }
 
     public void OnTimerEnd()
     {
-        // 1. 타임오버 및 퍼즐판 동결
+        // 1. 상태 동결
         isTimeOver = true;
-        if (puzzleBoardComponent != null)
+        if (puzzleBoardComponent != null) { puzzleBoardComponent.enabled = false; puzzleBoardComponent.StopAllCoroutines(); }
+
+        // 2. 몬스터 누적 대미지 데이터 연동 (핵심)
+        int finalScore = 0;
+        if (InfiniteMonster.Instance != null)
         {
-            puzzleBoardComponent.enabled = false;
-            puzzleBoardComponent.StopAllCoroutines();
+            finalScore = Mathf.FloorToInt(InfiniteMonster.Instance.totalDamageDealt);
+        }
+        else
+        {
+            // 백업: TMP에서 숫자 추출
+            TMPro.TextMeshProUGUI realScoreTMP = transform.Find("ScoreText")?.GetComponent<TMPro.TextMeshProUGUI>();
+            if (realScoreTMP != null)
+            {
+                string cleanNumbers = System.Text.RegularExpressions.Regex.Replace(realScoreTMP.text, @"[^\d]", "");
+                int.TryParse(cleanNumbers, out finalScore);
+            }
         }
 
-        // 2. 최종 점수 및 턴수 계산 및 UI 반영
-        int finalScore = currentScore;
-        int finalTurns = currentTurn;
-
-        // TMP 컴포넌트에서 숫자만 추출하여 갱신
-        TMPro.TextMeshProUGUI realScoreTMP = transform.Find("ScoreText")?.GetComponent<TMPro.TextMeshProUGUI>();
-        if (realScoreTMP != null)
-        {
-            string cleanNumbers = System.Text.RegularExpressions.Regex.Replace(realScoreTMP.text, @"[^\d]", "");
-            int.TryParse(cleanNumbers, out finalScore);
-        }
-
+        // 3. UI 갱신 및 랭킹 정산 (기존 기능 보존)
         if (textFinalScore != null) textFinalScore.text = $"최종 점수 : {finalScore:N0}";
-        if (textFinalTurns != null)
-        {
-            textFinalTurns.text = $"걸린 턴수 : {finalTurns} 턴";
-            textFinalTurns.gameObject.SetActive(true);
-        }
+        if (textFinalTurns != null) textFinalTurns.text = $"걸린 턴수 : {currentTurn} 턴";
 
-        // 3. 랭킹 데이터 정산 (Top 10) 및 PlayerPrefs 저장
+        // Top 10 랭킹 계산
         int[] highScores = new int[10];
         for (int i = 0; i < 10; i++) highScores[i] = PlayerPrefs.GetInt($"INF_RANK_{i + 1}", 0);
 
@@ -417,33 +445,25 @@ public class PuzzleBattleManager : MonoBehaviour
         {
             if (finalScore > highScores[i])
             {
-                currentRank = i + 1;
                 for (int j = 9; j > i; j--) highScores[j] = highScores[j - 1];
                 highScores[i] = finalScore;
+                currentRank = i + 1;
                 break;
             }
         }
+        for (int i = 0; i < 10; i++) PlayerPrefs.SetInt($"INF_RANK_{i + 1}", highScores[i]);
+        PlayerPrefs.Save();
 
-        // 4. 랭킹 UI 갱신 (1~3위 텍스트) 및 팝업창 활성화
+        // 4. UI 팝업 및 마무리
         if (currentRank >= 1 && currentRank <= 3 && textRecordNotice != null)
         {
             textRecordNotice.gameObject.SetActive(true);
             textRecordNotice.text = $"기록갱신! [{currentRank} 위] 달성!";
         }
-        else if (textRecordNotice != null) textRecordNotice.gameObject.SetActive(false);
-
-        for (int i = 0; i < 10; i++) PlayerPrefs.SetInt($"INF_RANK_{i + 1}", highScores[i]);
-        PlayerPrefs.Save();
-
-        if (panel_InfiniteBattle != null)
-        {
-            Transform gameover = panel_InfiniteBattle.transform.Find("GAMEOVER TXT");
-            if (gameover != null) gameover.gameObject.SetActive(true);
-        }
+        if (panel_InfiniteBattle != null) panel_InfiniteBattle.transform.Find("GAMEOVER TXT")?.gameObject.SetActive(true);
         if (btn_StartTouchTrigger_Direct != null) btn_StartTouchTrigger_Direct.SetActive(false);
-
-        Debug.Log("🔒 [정산 완료] OnTimerEnd에서는 리셋을 건너뛰고 기록 보존형 팝업창만 활성화 완료!");
     }
+
 
 
 
