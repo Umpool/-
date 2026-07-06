@@ -56,7 +56,12 @@ public class PuzzleBattleManager : MonoBehaviour
     public GameObject panel_NMPuzzleBattle;  // 일반 스테이지 배틀 창 (Panel_NMPuzzleBattle)
     public GameObject panel_StageRewardPopup;// 3라운드마다 뜨는 보상 팝업창
     public GameObject panel_StageClearResult;// 보스 처치 후 뜨는 최종 결과창
-
+    [Header("ㅡ 일반 스테이지용 텍스트 UI ㅡ")]
+    public TMPro.TextMeshProUGUI textStageRoundUI;
+    // 🎯 [오늘의 미션]: 유니티 에디터에서 EnemyPrefab을 등록할 수 있는 주머니입니다!
+    [Header("ㅡ 일반 스테이지용 적 프리팹 ㅡ")]
+    public GameObject normalEnemyPrefab; // 일반 스테이지용 일반 적 프리팹
+    public GameObject bossEnemyPrefab;   // 일반 스테이지용 보스 적 프리팹
 
 
     public static PuzzleBattleManager Instance { get; private set; }
@@ -126,7 +131,16 @@ public class PuzzleBattleManager : MonoBehaviour
     public void StartPuzzleBattle(string gameMode)
     {
         Debug.Log($"🚀 [전투 개막] 모드 이름 판독 중: {gameMode}");
-
+        // 🎯 [오늘의 신규 코드]: 일반모드일 때는 무한모드용 텍스트/UI 세팅을 전부 건너뛰고 
+        // 오직 보드판 그리드 내부 공간만 생성한 뒤 함수를 종료시킵니다.
+        if (isNormalStageMode)
+        {
+            if (Board.Instance != null)
+            {
+                Board.Instance.InitializeNewBoard(); // 보드판 타일 새로 생성
+            }
+            return; // 🛑 밑에 있는 무한모드 전용 UI 세팅 코드로 가지 못하게 철저히 차단!
+        }
         // 🛡️ [질문자님 제보 특제 안전핀 장착]
         // 오직 인스펙터 버튼 매개변수 칸에 'infinite'라고 적혀있을 때만 무한모드 세탁기를 돌립니다!
         if (gameMode == "infinite")
@@ -329,34 +343,6 @@ public class PuzzleBattleManager : MonoBehaviour
             Debug.Log($"[아군 진형 연동 완공] 총 {heroHPBars.Count}명의 파티원이 실시간 생명력 게이지를 장착 완료했습니다!");
         }
     }
-    private void SpawnStageRoundMonsters()
-{
-    Debug.Log($"⚔ 일반 스테이지 {currentStageType} : {currentRound} 라운드 시작!");
-
-    // 마지막 라운드인지 체크
-    if (currentRound == maxRound)
-    {
-        Debug.Log("👹 [경고] 마지막 라운드입니다! 보스 몬스터가 출현합니다!");
-        
-        // 🎯 [수정]: 기존 소환 함수를 실행합니다. (여기에 보스 체력 보너스 등을 나중에 얹을 수 있습니다)
-        SpawnMonsters(); 
-    }
-    else
-    {
-        // n라운드마다 n마리 소환 규칙 (1-n)
-        int monsterCount = currentRound; 
-        Debug.Log($"👾 일반 몬스터가 {monsterCount}마리 등장합니다. (n:1 비율)");
-        
-        // 🎯 [수정]: 기존 소환 함수를 실행하여 현재 라운드 수만큼 몬스터를 채웁니다.
-        SpawnMonsters();
-    }
-
-    // 턴수 초기화 및 보드판 새 생성 연동
-    if (Board.Instance != null)
-    {
-        Board.Instance.InitializeNewBoard();
-    }
-}
 
     // 🔔 [여기 추가] 인게임 중 스폰된 캐릭터들이 스스로의 HP바를 등록하러 오는 입구입니다.
     public void RegisterHeroHPBar(Slider heroSlider)
@@ -473,18 +459,20 @@ public class PuzzleBattleManager : MonoBehaviour
             }
         }
 
-        if (currentMonsters.Count == 0)
-{
-    Debug.Log("모든 몬스터 처치! 다음 웨이브 준비");
+        // 🎯 448번째 줄 구역을 이 코드로 교체해 줍니다.
+        if (liveCards.Count == 0)
+        {
+            Debug.Log("모든 몬스터 처치! 다음 웨이브 준비");
 
-    // 🎯 [오늘의 미션]: 만약 지금이 '일반 스테이지 모드'라면, 무한모드 코드를 건너뛰고 이쪽으로 보냅니다!
-    if (isNormalStageMode)
-    {
-        OnClearCurrentRound(); // 우리가 만든 라운드 승리 판정 함수 실행!
-        return;                // 밑에 있는 무한모드용 코드가 실행되지 않도록 여기서 함수를 즉시 종료(리턴)합니다.
-    }
-    
-    // 이 밑으로는 기존 무한모드용 코드들이 그대로 유지됩니다 (손대지 않음)
+            if (isNormalStageMode)
+            {
+                OnClearCurrentRound(); // 우리가 만든 라운드 정산 함수 실행!
+                return;
+            }
+        }
+
+
+        // 이 밑으로는 기존 무한모드용 코드들이 그대로 유지됩니다 (손대지 않음)
 
 
         // 3. UI 갱신 및 랭킹 정산 (기존 기능 보존)
@@ -671,8 +659,22 @@ public class PuzzleBattleManager : MonoBehaviour
         // 첫 라운드 몬스터 생성 시작!
         SpawnStageRoundMonsters();
     }
+    // 🎯 [오늘의 신규 코드]: 마을에서 모험 시작 버튼을 누르면 코드가 알아서 화면을 켜줍니다!
+    public void OnClickStartAdventure()
+    {
+        // Panel_StageSelect 오브젝트가 비어있지 않다면
+        if (panel_StageSelect != null)
+        {
+            // 인스펙터의 맨 위 네모 체크박스를 켜서 화면과 자식들을 통째로 활성화합니다!
+            panel_StageSelect.SetActive(true);
 
-    // 🎯 2. Stage_B 버튼을 눌렀을 때 실행될 함수 (1-1 ~ 1-7)
+            Debug.Log("🧙‍♂️ 코드로 Panel_StageSelect와 자식 오브젝트들을 모두 켰습니다!");
+        }
+    }
+
+
+
+    // 🎯 [오늘의 미션]: 통째로 누락되었던 Stage_B 버튼용 함수를 새로 추가해 줍니다!
     public void OnClickStartStageB()
     {
         isNormalStageMode = true;
@@ -691,38 +693,63 @@ public class PuzzleBattleManager : MonoBehaviour
     // 🎯 3. 라운드별 몬스터 배치 및 기획 규칙 계산 함수
 
     //일반 스테이지 모드
+    // 🎯 파일 맨 아래에 있는 진짜 SpawnStageRoundMonsters 함수 수정 구역
+    // 🎯 [수정 위치]: 파일 맨 아래 SpawnStageRoundMonsters 함수를 이 코드로 싹 교체해 줍니다!
     private void SpawnStageRoundMonsters()
     {
         Debug.Log($"⚔ 일반 스테이지 {currentStageType} : {currentRound} 라운드 시작!");
 
-        // 마지막 라운드인지 체크
+        // 라운드 전광판 UI가 연결되어 있다면 글자 갱신 (예: 1-1, 1-2)
+        if (textStageRoundUI != null)
+        {
+            textStageRoundUI.text = $"1-{currentRound}";
+        }
+
+        // 안전 우회용 함수를 먼저 실행하여 보드판 공간을 생성합니다.
+        StartPuzzleBattle("normal");
+
+        // 👹 1. 마지막 라운드: 보스 몬스터 1마리 등장 규칙!
         if (currentRound == maxRound)
         {
             Debug.Log("👹 [경고] 마지막 라운드입니다! 보스 몬스터가 출현합니다!");
 
-            // 🎯 [수정]: 기존 소환 함수를 실행합니다. (여기에 보스 체력 보너스 등을 나중에 얹을 수 있습니다)
-            SpawnMonsters();
+            // 보스 프리팹이 등록되어 있다면 그것을 쓰고, 없으면 일반 적 프리팹을 씁니다.
+            GameObject prefabToSpawn = (bossEnemyPrefab != null) ? bossEnemyPrefab : normalEnemyPrefab;
+
+            if (prefabToSpawn != null)
+            {
+                CreateEnemyCard(prefabToSpawn); // 기존 만능 소환 함수로 보스 배치!
+            }
         }
+        // 👾 2. 일반 라운드: n라운드 숫자에 맞춰 n마리 등장 및 자동 정렬 규칙!
         else
         {
-            // n라운드마다 n마리 소환 규칙 (1-n)
             int monsterCount = currentRound;
             Debug.Log($"👾 일반 몬스터가 {monsterCount}마리 등장합니다. (n:1 비율)");
-            // TODO: 일반 몬스터 monsterCount만큼 소환 로직 연동 자리
 
-            // 🎯 [수정]: 기존 소환 함수를 실행하여 현재 라운드 수만큼 몬스터를 채웁니다.
-            SpawnMonsters();
+            if (normalEnemyPrefab != null)
+            {
+                // 현재 라운드 숫자(monsterCount)만큼 반복해서 소환합니다 (1라운드엔 1마리, 2라운드엔 2마리...)
+                for (int i = 0; i < monsterCount; i++)
+                {
+                    CreateEnemyCard(normalEnemyPrefab); // 기존 만능 소환 함수로 일반 적 배치!
+                }
+            }
         }
 
-        // 턴수 초기화 및 보드판 새 생성 연동
+        // 🎯 3. 소환된 적 카드들을 화면에 예쁘게 정렬해 주는 기존 시스템 가동!
+        RefreshDynamicBattleEnemyUI();
+
+        // 🎯 4. 공간이 다 만들어진 후에 안전하게 보드판 내부 오브젝트들을 리셋합니다.
         if (Board.Instance != null)
         {
             Board.Instance.InitializeNewBoard();
         }
-        
-    }
-    
-// 🎯 4. 몬스터를 모두 처치했을 때 검사하는 함수
+
+
+
+
+    // 🎯 4. 몬스터를 모두 처치했을 때 검사하는 함수
     public void OnClearCurrentRound()
     {
         // 마지막 라운드(보스)를 깼다면 최종 결과창 출력!
@@ -746,36 +773,44 @@ public class PuzzleBattleManager : MonoBehaviour
         }
     }
 
-// 🎯 5. [계속진행] 버튼 및 다음 라운드 이동 전담 함수
-public void OnClickContinueStage()
-{
-    // 보상 팝업창을 끄고 다음 라운드로!
-    if (panel_StageRewardPopup != null) panel_StageRewardPopup.SetActive(false);
-    ProceedToNextRound();
+    // 🎯 5. [계속진행] 버튼 및 다음 라운드 이동 전담 함수
+    public void OnClickContinueStage()
+    {
+        // 보상 팝업창을 끄고 다음 라운드로!
+        if (panel_StageRewardPopup != null) panel_StageRewardPopup.SetActive(false);
+        ProceedToNextRound();
+    }
+
+    private void ProceedToNextRound()
+    {
+        currentRound++;
+        SpawnStageRoundMonsters();
+    }
+
+    // 🎯 6. 결과창의 [마을로이동] 버튼용 함수
+    public void OnClickGoToVillage()
+    {
+        isNormalStageMode = false;
+
+        // 🎯 [오늘의 미션]: 마을로 돌아갈 때는 라운드 표시 글자를 깔끔하게 지워줍니다.
+        if (textStageRoundUI != null)
+        {
+            textStageRoundUI.text = "";
+        }
+
+        // 최종 결과창 끄고, 일반 배틀창도 끄고, 마을 화면 켜기
+        if (panel_StageClearResult != null) panel_StageClearResult.SetActive(false);
+        if (panel_NMPuzzleBattle != null) panel_NMPuzzleBattle.SetActive(false);
+
+        // 유니티 계층구조(Hierarchy)에 있는 Panel_Village 오브젝트를 찾아서 켜줍니다.
+        GameObject village = GameObject.Find("Panel_Village");
+        if (village != null) village.SetActive(true);
+    }
 }
 
-private void ProceedToNextRound()
-{
-    currentRound++;
-    SpawnStageRoundMonsters();
-}
-
-// 🎯 6. 결과창의 [마을로이동] 버튼용 함수
-public void OnClickGoToVillage()
-{
-    isNormalStageMode = false;
-    
-    // 최종 결과창 끄고, 일반 배틀창도 끄고, 마을 화면 켜기
-    if (panel_StageClearResult != null) panel_StageClearResult.SetActive(false);
-    if (panel_NMPuzzleBattle != null) panel_NMPuzzleBattle.SetActive(false);
-    
-    // 유니티 계층구조(Hierarchy)에 있는 Panel_Village 오브젝트를 찾아서 켜줍니다.
-    GameObject village = GameObject.Find("Panel_Village");
-    if (village != null) village.SetActive(true);
-}
-
 
 }
+
 
 
 
