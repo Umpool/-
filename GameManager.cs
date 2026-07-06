@@ -860,13 +860,23 @@ public void OnClickEnterNormalStage()
     GameObject panelStageSelect = GameObject.Find("Canvas")?.transform.Find("Panel_StageSelect")?.gameObject;
     if (panelStageSelect != null) panelStageSelect.SetActive(true);
 
-    // 🌟 [교체식 추가] 버튼을 눌러 스테이지 진입 패널을 켜는 순간, 체크박스를 강제로 ON 합니다.
-    PuzzleBattleManager battleMgr = GameObject.Find("Canvas")?.transform.Find("Panel_INPuzzleBattle")?.GetComponent<PuzzleBattleManager>();
-    if (battleMgr != null && battleMgr.btn_StartTouchTrigger_Direct != null)
-    {
-        battleMgr.btn_StartTouchTrigger_Direct.SetActive(true);
-    }
-}
+        // 🌟 [교체식 추가] 버튼을 눌러 스테이지 진입 패널을 켜는 순간, 체크박스를 강제로 ON 합니다.
+        // // 🌟 [교체식 추가] 무한모드 버튼을 눌렀을 때도 똑같이 체크박스를 강제로 ON 합니다.
+        PuzzleBattleManager battleMgr = GameObject.Find("Canvas")?.transform.Find("Panel_INPuzzleBattle")?.GetComponent<PuzzleBattleManager>();
+        if (battleMgr != null && battleMgr.btn_StartTouchTrigger_Direct != null)
+        {
+            battleMgr.btn_StartTouchTrigger_Direct.SetActive(true);
+        }
+
+        // ◀ 방금 새로 들어온 초기화 코드가 여기에 위치하게 됩니다!
+        Transform infiniteCanvasTrans = GameObject.Find("Canvas")?.transform.Find("Panel_INPuzzleBattle");
+        if (infiniteCanvasTrans != null)
+        {
+            infiniteCanvasTrans.Find("GAMEOVER TXT")?.gameObject.SetActive(false);
+            infiniteCanvasTrans.Find("Btn_StartTouchTrigger")?.gameObject.SetActive(true);
+        }
+    } // ◀ 원래 있던 OnClickEnterInfiniteStage 함수가 완전히 끝나는 중괄호입니다.
+
 
     public void OnClickNormalStageBackButton()
     {
@@ -889,7 +899,54 @@ public void OnClickEnterInfiniteStage()
     {
         battleMgr.btn_StartTouchTrigger_Direct.SetActive(true);
     }
-}
+        if (battleMgrComponent != null)
+        {
+            // 🚀 [왕초보 특제: 무한모드 진입 시 완벽 리셋 준비 사령탑]
+            // 1. 내부 수학 데이터 및 턴수 0으로 완벽 세탁
+            battleMgrComponent.currentTurn = 0;
+            battleMgrComponent.currentScore = 0;
+            battleMgrComponent.isTimeOver = false;
+            battleMgrComponent.UpdateTurnTextUI();
+
+            // 2. 마우스 좌표 락온 및 보드판 새 출발 엔진 점화
+            if (battleMgrComponent.puzzleBoardComponent != null)
+            {
+                battleMgrComponent.puzzleBoardComponent.transform.localPosition = Vector3.zero;
+                battleMgrComponent.puzzleBoardComponent.transform.localRotation = Quaternion.identity;
+                battleMgrComponent.puzzleBoardComponent.transform.localScale = Vector3.one;
+
+                battleMgrComponent.puzzleBoardComponent.enabled = true; // 마우스 클릭 신호 장치 ON!
+                battleMgrComponent.puzzleBoardComponent.InitializeNewBoard(); // 퍼즐판 블록들 완전 새로고침 배치!
+            }
+
+            // 3. 화면 상단 대미지 판독 전광판 "0"으로 지우기
+            TMPro.TextMeshProUGUI scoreTextComponent = battleMgrComponent.transform.Find("ScoreText")?.GetComponent<TMPro.TextMeshProUGUI>();
+            if (scoreTextComponent == null)
+            {
+                scoreTextComponent = GameObject.Find("ScoreText")?.GetComponent<TMPro.TextMeshProUGUI>();
+            }
+            if (scoreTextComponent != null)
+            {
+                scoreTextComponent.text = "누적 대미지: 0";
+            }
+
+            // 4. 타이머 시간판 새것으로 리셋 충전
+            TMPro.TextMeshProUGUI timerTextComponent = battleMgrComponent.transform.Find("Text Timer")?.GetComponent<TMPro.TextMeshProUGUI>();
+            if (timerTextComponent == null)
+            {
+                timerTextComponent = GameObject.Find("Text Timer")?.GetComponent<TMPro.TextMeshProUGUI>();
+            }
+            if (timerTextComponent != null)
+            {
+                timerTextComponent.text = "01:00.000";
+            }
+
+            Debug.Log("🎯 [대완공] 인스펙터가 켜진 완벽한 타이밍에 모든 리셋 완료!");
+        }
+    }
+
+
+
 
     public void OnClickInfiniteStageBackButton()
     {
@@ -1382,25 +1439,45 @@ if (partyEditInfoText != null) partyEditInfoText.text = $"{targetData.descriptio
     }
 
 
-
-
     public void EnterBattleStage()
     {
+        // [기획 흐름 적용] 무한모드 처음 진입 시 오브젝트들을 약속된 상태로 리셋합니다. (방금 새로 넣은 코드)
+        Transform puzzleBattleCanvas = GameObject.Find("Canvas")?.transform.Find("Panel_INPuzzleBattle");
+        if (puzzleBattleCanvas != null)
+        {
+            puzzleBattleCanvas.Find("GAMEOVER TXT")?.gameObject.SetActive(false);
+            puzzleBattleCanvas.Find("Btn_StartTouchTrigger")?.gameObject.SetActive(true);
+        }
+
+        // 여기서부터는 원래 있던 기존 코드입니다. (지우지 않고 아래로 밀려남)
         if (QuickMoveButton != null)
         {
             QuickMoveButton.SetActive(false);
-            Debug.Log(" [배틀 시작] 빠른 이동 버튼 OFF.");
+            Debug.Log("[배틀 시작] 빠른 이동 버튼 OFF.");
         }
     }
-
+    // 🏰 대소문자 충돌을 원천 차단하기 위해 추가하는 안전 장치 함수입니다!
     public void ExitBattleStage()
+    {
+        // 소문자 exitBattleStage가 있다면 실행하고, 없으면 빠른 이동 버튼을 직접 켭니다.
+        if (QuickMoveButton != null)
+        {
+            QuickMoveButton.SetActive(true);
+            Debug.Log("[시스템 안전 가동] ExitBattleStage 완공! 빠른 이동 버튼 ON.");
+        }
+        exitBattleStage();
+    }
+
+    public void exitBattleStage()
     {
         if (QuickMoveButton != null)
         {
             QuickMoveButton.SetActive(true);
-            Debug.Log(" [배틀 종료] 빠른 이동 버튼 ON 복구.");
+            Debug.Log("[시스템 안전 가동] exitBattleStage 완공! 빠른 이동 버튼 ON.");
         }
     }
+
+
 
     // 빈 껍데기 함수 정의 (에러 방지용)
     private void RefreshAllCharacterMenuCards()
