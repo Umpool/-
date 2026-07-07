@@ -183,7 +183,7 @@ public class GameManager : MonoBehaviour
         {
             iconScript.SetupCardData(character, true);
         }
-    }
+
         // 🎯 [하단 창고 카드 스폰 ENGINE]: 대기 영웅 명단을 읽어 창고 보관함에 카드를 복사합니다.
         if (liveStorageMembers != null && liveStorageGridContainer != null && livePartyIconPrefab != null)
         {
@@ -194,8 +194,8 @@ public class GameManager : MonoBehaviour
                 // 1. 하단 그릇의 자식으로 새 카드를 복사합니다.
                 GameObject newIconObj = Instantiate(livePartyIconPrefab, liveStorageGridContainer);
 
-    // 2. 카드에 붙은 리모컨을 찾아 하단 '창고 상태'(false)로 데이터를 가득 채워줍니다.
-    PartyIcon iconScript = newIconObj.GetComponent<PartyIcon>();
+                // 2. 카드에 붙은 리모컨을 찾아 하단 '창고 상태'(false)로 데이터를 가득 채워줍니다.
+                PartyIcon iconScript = newIconObj.GetComponent<PartyIcon>();
                 if (iconScript != null)
                 {
                     iconScript.SetupCardData(character, false);
@@ -205,9 +205,9 @@ public class GameManager : MonoBehaviour
 
 
 
-[Header("--- [파티 리뉴얼] 실시간 출전 및 창고 장부 ---")]
-    // ⚔️ 실제로 전투에 출전하는 정예 파티원 5인의 리스트 (파티창에 해당)
-    public List<CharacterData> partyMembers = new List<CharacterData>();
+        [Header("--- [파티 리뉴얼] 실시간 출전 및 창고 장부 ---")]
+        // ⚔️ 실제로 전투에 출전하는 정예 파티원 5인의 리스트 (파티창에 해당)
+        public List<CharacterData> partyMembers = new List<CharacterData>();
 
     // 📦 파티에 들어가지 못하고 대기 중인 나머지 모든 캐릭터들의 리스트 (창고에 해당)
     public List<CharacterData> storageMembers = new List<CharacterData>();
@@ -278,7 +278,7 @@ public class GameManager : MonoBehaviour
 
         // 🔄 깨끗하게 비워진 전장에 실시간 데이터 기반으로 새 카드를 다시 그릴 준비를 마쳤습니다.
         // 다음 파트에서 상단/하단 주머니 데이터를 순차적으로 엮어서 화면에 찍어냅니다.
-    }
+
         // 🎯 [정예 파티 스폰 엔진]: 상단 파티 정예 멤버 5명을 화면에 실시간으로 생성합니다.
         if (partyMembers != null && partyGridContainer != null && partyIconPrefab != null)
         {
@@ -289,8 +289,8 @@ public class GameManager : MonoBehaviour
                 // 1. 부모 그릇(partyGridContainer)의 자식으로 캐릭터 카드 오브젝트를 새로 만듭니다.
                 GameObject newIconObj = Instantiate(partyIconPrefab, partyGridContainer);
 
-    // 2. 카드 프리팩에 붙어있는 PartyIcon 스크립트 리모컨을 확보합니다.
-    PartyIcon iconScript = newIconObj.GetComponent<PartyIcon>();
+                // 2. 카드 프리팩에 붙어있는 PartyIcon 스크립트 리모컨을 확보합니다.
+                PartyIcon iconScript = newIconObj.GetComponent<PartyIcon>();
                 if (iconScript != null)
                 {
                     // 💡 [핵심 연동]: 이 카드가 상단 '파티원 상태'임을 체크(isParty = true)하고 데이터를 주입합니다!
@@ -301,22 +301,23 @@ public class GameManager : MonoBehaviour
         // 🎯 [창고 보관함 스폰 엔진]: 하단 창고 멤버들을 화면에 실시간으로 생성합니다.
         if (storageMembers != null && storageGridContainer != null && partyIconPrefab != null)
         {
-        foreach (CharacterData character in storageMembers)
-        {
-        if (character == null) continue;
+            foreach (CharacterData character in storageMembers)
+            {
+                if (character == null) continue;
 
-        // 1. 하단 부모 그릇(storageGridContainer)의 자식으로 캐릭터 카드를 복사합니다.
-        GameObject newIconObj = Instantiate(partyIconPrefab, storageGridContainer);
+                // 1. 하단 부모 그릇(storageGridContainer)의 자식으로 캐릭터 카드를 복사합니다.
+                GameObject newIconObj = Instantiate(partyIconPrefab, storageGridContainer);
 
-        // 2. 카드 프리팩에 붙어있는 PartyIcon 스크립트 리모컨을 확보합니다.
-        PartyIcon iconScript = newIconObj.GetComponent<PartyIcon>();
-        if (iconScript != null)
-        {
-            // 💡 [핵심 연동]: 이 카드가 하단 '창고 상태'임을 체크(isParty = false)하고 데이터를 주입합니다!
-            iconScript.SetupCardData(character, false);
+                // 2. 카드 프리팩에 붙어있는 PartyIcon 스크립트 리모컨을 확보합니다.
+                PartyIcon iconScript = newIconObj.GetComponent<PartyIcon>();
+                if (iconScript != null)
+                {
+                    // 💡 [핵심 연동]: 이 카드가 하단 '창고 상태'임을 체크(isParty = false)하고 데이터를 주입합니다!
+                    iconScript.SetupCardData(character, false);
+                }
+            }
         }
-    }
-}
+
 
     // GameManager.cs 내부에 추가할 코드
     public enum CanvasState { PuzzleBattle, Other } // 모드 상태 정의
@@ -338,13 +339,13 @@ public class GameManager : MonoBehaviour
     }
 
     void Start()
-{
-    // 🏁 [정석 복구 완료]: 불필요한 패널 차단 트롤링을 전부 걷어내고 안전하게 방 장부만 세팅합니다!
-    if (popup_AlertWindow != null) popup_AlertWindow.SetActive(false);
-    if (txt_MainNoticeText != null) txt_MainNoticeText.gameObject.SetActive(false);
-    if (panel_PartyEditView != null) panel_PartyEditView.SetActive(false);
-    if (popup_PartyAddConfirm != null) popup_PartyAddConfirm.SetActive(false);
-    GameObject topMenuBar = GameObject.Find("Canvas")?.transform.Find("상단 단축바")?.gameObject;
+    {
+        // 🏁 [정석 복구 완료]: 불필요한 패널 차단 트롤링을 전부 걷어내고 안전하게 방 장부만 세팅합니다!
+        if (popup_AlertWindow != null) popup_AlertWindow.SetActive(false);
+        if (txt_MainNoticeText != null) txt_MainNoticeText.gameObject.SetActive(false);
+        if (panel_PartyEditView != null) panel_PartyEditView.SetActive(false);
+        if (popup_PartyAddConfirm != null) popup_PartyAddConfirm.SetActive(false);
+        GameObject topMenuBar = GameObject.Find("Canvas")?.transform.Find("상단 단축바")?.gameObject;
         if (topMenuBar != null)
         {
             RectTransform topBarRect = topMenuBar.GetComponent<RectTransform>();
@@ -467,7 +468,7 @@ public class GameManager : MonoBehaviour
             {
                 float moveSpeed = 500f; // 키보드 이동 속도 (원하는 대로 변경 가능)
                 Vector2 targetPos = villageRectTransform.anchoredPosition + (keyboardInput.normalized * moveSpeed * Time.deltaTime);
-                
+
                 // 283번째 줄에 이미 만들어두신 '화면 밖 이탈 방지 감금 함수'를 그대로 재활용하여 안전성 확보!
                 villageRectTransform.anchoredPosition = RestrictPositionInsideVillage(targetPos);
             }
@@ -700,120 +701,120 @@ public class GameManager : MonoBehaviour
     }
     public void OnClickCharacter(int charId)
     {
-    selectedCharId = charId;
-    CharacterData data = allCharacters.Find(x => x.id == charId);
-    if (data == null) return;
+        selectedCharId = charId;
+        CharacterData data = allCharacters.Find(x => x.id == charId);
+        if (data == null) return;
 
-    // 다른 방해 팝업들 즉시 물리적으로 전원 차단
-    if (popup_CharacterInfo != null) popup_CharacterInfo.SetActive(false);
-    if (popup_PartyEditCharacterInfo != null) popup_PartyEditCharacterInfo.SetActive(false);
+        // 다른 방해 팝업들 즉시 물리적으로 전원 차단
+        if (popup_CharacterInfo != null) popup_CharacterInfo.SetActive(false);
+        if (popup_PartyEditCharacterInfo != null) popup_PartyEditCharacterInfo.SetActive(false);
 
-    // 🌟 [교정 1] 철벽 만석 판정 : 파티원이 이미 5명이면 경고창을 띄우고 "즉시 함수 종료"
-    if (partyMembers.Count >= 5)
-    {
-        if (popup_AlertWindow != null)
+        // 🌟 [교정 1] 철벽 만석 판정 : 파티원이 이미 5명이면 경고창을 띄우고 "즉시 함수 종료"
+        if (partyMembers.Count >= 5)
         {
-            popup_AlertWindow.SetActive(true);
-            StopAllCoroutines();
-            StartCoroutine(FadeOutAlertWindow_SubCharSelect("정원이 가득찼습니다"));
+            if (popup_AlertWindow != null)
+            {
+                popup_AlertWindow.SetActive(true);
+                StopAllCoroutines();
+                StartCoroutine(FadeOutAlertWindow_SubCharSelect("정원이 가득찼습니다"));
+            }
+            return; // 🚀 여기서도 철저하게 리턴으로 잘라줍니다!
         }
-        return; // 🚀 여기서도 철저하게 리턴으로 잘라줍니다!
-    }
         // [2] 중복 판정
-    // 442번 라인 아래인 [2] 중복 판정 구간부터 아래 코드로 깔끔하게 변경해 줍니다.
-    // [2] 중복 판정
-    if (partyMembers.Contains(data))
-    {
-        if (popup_AlertWindow != null)
+        // 442번 라인 아래인 [2] 중복 판정 구간부터 아래 코드로 깔끔하게 변경해 줍니다.
+        // [2] 중복 판정
+        if (partyMembers.Contains(data))
         {
-            popup_AlertWindow.SetActive(true);
-            StopAllCoroutines();
-            StartCoroutine(FadeOutAlertWindow_SubCharSelect("이미 파티에 소속된 캐릭터입니다."));
+            if (popup_AlertWindow != null)
+            {
+                popup_AlertWindow.SetActive(true);
+                StopAllCoroutines();
+                StartCoroutine(FadeOutAlertWindow_SubCharSelect("이미 파티에 소속된 캐릭터입니다."));
+            }
+            return; // 🌟 void 함수이므로 false를 빼고 pure하게 return; 만 적어줍니다!
         }
-        return; // 🌟 void 함수이므로 false를 빼고 pure하게 return; 만 적어줍니다!
-    }
 
-    // 모든 검사를 통과했다면 기존 서브캐 정보창 정상 가동
-    if (popup_AlertWindow != null) popup_AlertWindow.SetActive(false);
+        // 모든 검사를 통과했다면 기존 서브캐 정보창 정상 가동
+        if (popup_AlertWindow != null) popup_AlertWindow.SetActive(false);
         if (popup_CharacterInfo != null)
+        {
+            // 하이어라키의 자식 경로를 스스로 추적하여 글씨 컴포넌트를 낚아챕니다.
+            TMPro.TextMeshProUGUI nameTextComponent = popup_CharacterInfo.transform.Find("캐릭터 이름")?.GetComponent<TMPro.TextMeshProUGUI>();
+            TMPro.TextMeshProUGUI infoTextComponent = popup_CharacterInfo.transform.Find("캐릭터 정보")?.GetComponent<TMPro.TextMeshProUGUI>();
+
+            if (nameTextComponent != null) nameTextComponent.text = data.characterName;
+            if (infoTextComponent != null) infoTextComponent.text = $"{data.description}\n(공격력: {data.attackPower} / 체력: {data.hp})";
+
+            popup_CharacterInfo.SetActive(true);
+
+            // 내부 확인3, 취소3 버튼 정렬 보장
+            Transform confirm3Btn = popup_CharacterInfo.transform.Find("확인3");
+            Transform cancel3Btn = popup_CharacterInfo.transform.Find("취소3");
+            if (confirm3Btn != null) confirm3Btn.gameObject.SetActive(true);
+            if (cancel3Btn != null) cancel3Btn.gameObject.SetActive(true);
+        }
+    } // 🌟 OnClickCharacter 함수가 여기서 완전히 닫힙니다.
+
+    // 🌟[새로 추가] 파티에 추가 하시겠습니까? 팝업의 '취소4' 버튼 연동 함수
+    public void OnClickPartyAddConfirm_No()
     {
-        // 하이어라키의 자식 경로를 스스로 추적하여 글씨 컴포넌트를 낚아챕니다.
-        TMPro.TextMeshProUGUI nameTextComponent = popup_CharacterInfo.transform.Find("캐릭터 이름")?.GetComponent<TMPro.TextMeshProUGUI>();
-        TMPro.TextMeshProUGUI infoTextComponent = popup_CharacterInfo.transform.Find("캐릭터 정보")?.GetComponent<TMPro.TextMeshProUGUI>();
-
-        if (nameTextComponent != null) nameTextComponent.text = data.characterName;
-        if (infoTextComponent != null) infoTextComponent.text = $"{data.description}\n(공격력: {data.attackPower} / 체력: {data.hp})";
-
-        popup_CharacterInfo.SetActive(true);
-        
-        // 내부 확인3, 취소3 버튼 정렬 보장
-        Transform confirm3Btn = popup_CharacterInfo.transform.Find("확인3");
-        Transform cancel3Btn = popup_CharacterInfo.transform.Find("취소3");
-        if (confirm3Btn != null) confirm3Btn.gameObject.SetActive(true);
-        if (cancel3Btn != null) cancel3Btn.gameObject.SetActive(true);
+        // 파티에 추가 하시겠습니까? 와 자식들 OFF
+        if (popup_PartyAddConfirm != null) popup_PartyAddConfirm.SetActive(false);
     }
-} // 🌟 OnClickCharacter 함수가 여기서 완전히 닫힙니다.
-
-// 🌟[새로 추가] 파티에 추가 하시겠습니까? 팝업의 '취소4' 버튼 연동 함수
-public void OnClickPartyAddConfirm_No()
-{
-    // 파티에 추가 하시겠습니까? 와 자식들 OFF
-    if (popup_PartyAddConfirm != null) popup_PartyAddConfirm.SetActive(false);
-}
 
     // ========================================================
     // 🏡 [여기에 새로 복사해서 붙여넣으세요!] 마을 편집창 창고 캐릭터 클릭 함수
     // ========================================================
-// 📄 GameManager.cs - 481번 라인부터 함수 끝나는 중괄호까지 싹 덮어써 주세요!
-public void OnClickPartyEditwarehouseCharacter(int charId)
-{
-    // 1. [광클 원천 차단막] 질문 팝업창이 이미 켜져 있다면 신호 즉시 파괴
-    if (popup_PartyAddConfirm != null && popup_PartyAddConfirm.activeSelf) 
+    // 📄 GameManager.cs - 481번 라인부터 함수 끝나는 중괄호까지 싹 덮어써 주세요!
+    public void OnClickPartyEditwarehouseCharacter(int charId)
     {
-        return; 
-    }
-
-    selectedCharId = charId;
-    CharacterData data = allCharacters.Find(x => x.id == charId);
-    if (data == null) return;
-
-    // 2. [텍스트 출력] 캐릭터 이름과 설명 실시간 출력
-    if (partyEditNameText != null) partyEditNameText.text = data.characterName;
-    if (partyEditInfoText != null) 
-    {
-        partyEditInfoText.text = $"{data.description}\n(공격력: {data.attackPower} / 체력: {data.hp})";
-    }
-
-    // 🔥 3. [철벽 만석 판정]: 파티 멤버가 이미 5명이면 "정원이 가득찼습니다"를 띄우고 "즉시 종료"해야 합니다!
-    if (partyMembers.Count >= 5)
-    {
-        if (popup_AlertWindow != null)
+        // 1. [광클 원천 차단막] 질문 팝업창이 이미 켜져 있다면 신호 즉시 파괴
+        if (popup_PartyAddConfirm != null && popup_PartyAddConfirm.activeSelf)
         {
-            popup_AlertWindow.SetActive(true);
-            StopAllCoroutines();
-            StartCoroutine(FadeOutAlertWindow_PartyEdit("정원이 가득찼습니다"));
+            return;
         }
-        return; // 🌟 [가장 중요] 아래쪽 '추가하시겠습니까' 코드로 못 내려가게 여기서 완전히 도끼로 잘라버립니다!
-    }
 
-    // 4. [중복 판정]: 이미 파티에 있는 캐릭터라면 즉시 종료
-    if (partyMembers.Contains(data))
-    {
-        if (popup_AlertWindow != null)
+        selectedCharId = charId;
+        CharacterData data = allCharacters.Find(x => x.id == charId);
+        if (data == null) return;
+
+        // 2. [텍스트 출력] 캐릭터 이름과 설명 실시간 출력
+        if (partyEditNameText != null) partyEditNameText.text = data.characterName;
+        if (partyEditInfoText != null)
         {
-            popup_AlertWindow.SetActive(true);
-            StopAllCoroutines();
-            StartCoroutine(FadeOutAlertWindow_PartyEdit("이미 파티에 소속된 캐릭터입니다."));
+            partyEditInfoText.text = $"{data.description}\n(공격력: {data.attackPower} / 체력: {data.hp})";
         }
-        return; // 🌟 여기서도 철저하게 리턴으로 잘라줍니다!
-    }
 
-    // 5. [신규 가입 프리패스]: 만석도 아니고 중복도 아닐 때만 팝업창을 켭니다.
-    if (popup_PartyAddConfirm != null)
-    {
-        popup_PartyAddConfirm.SetActive(true);
+        // 🔥 3. [철벽 만석 판정]: 파티 멤버가 이미 5명이면 "정원이 가득찼습니다"를 띄우고 "즉시 종료"해야 합니다!
+        if (partyMembers.Count >= 5)
+        {
+            if (popup_AlertWindow != null)
+            {
+                popup_AlertWindow.SetActive(true);
+                StopAllCoroutines();
+                StartCoroutine(FadeOutAlertWindow_PartyEdit("정원이 가득찼습니다"));
+            }
+            return; // 🌟 [가장 중요] 아래쪽 '추가하시겠습니까' 코드로 못 내려가게 여기서 완전히 도끼로 잘라버립니다!
+        }
+
+        // 4. [중복 판정]: 이미 파티에 있는 캐릭터라면 즉시 종료
+        if (partyMembers.Contains(data))
+        {
+            if (popup_AlertWindow != null)
+            {
+                popup_AlertWindow.SetActive(true);
+                StopAllCoroutines();
+                StartCoroutine(FadeOutAlertWindow_PartyEdit("이미 파티에 소속된 캐릭터입니다."));
+            }
+            return; // 🌟 여기서도 철저하게 리턴으로 잘라줍니다!
+        }
+
+        // 5. [신규 가입 프리패스]: 만석도 아니고 중복도 아닐 때만 팝업창을 켭니다.
+        if (popup_PartyAddConfirm != null)
+        {
+            popup_PartyAddConfirm.SetActive(true);
+        }
     }
-}
 
 
 
@@ -837,12 +838,12 @@ public void OnClickPartyEditwarehouseCharacter(int charId)
                 TMPro.TextMeshProUGUI mainText = popup_AlertWindow.GetComponent<TMPro.TextMeshProUGUI>();
                 if (mainText != null)
                 {
-                    
+
                     mainText.text = "정원이 가득찼습니다";
                 }
 
-                popup_AlertWindow.SetActive(true); 
-                StopAllCoroutines(); 
+                popup_AlertWindow.SetActive(true);
+                StopAllCoroutines();
                 StartCoroutine(FadeOutAlertWindow());
             }
             return false; // 진행 차단
@@ -856,12 +857,12 @@ public void OnClickPartyEditwarehouseCharacter(int charId)
                 TMPro.TextMeshProUGUI mainText = popup_AlertWindow.GetComponent<TMPro.TextMeshProUGUI>();
                 if (mainText != null)
                 {
-                    
+
                     mainText.text = "이미 파티에 소속된 캐릭터입니다.";
                 }
 
-                popup_AlertWindow.SetActive(true); 
-                StopAllCoroutines(); 
+                popup_AlertWindow.SetActive(true);
+                StopAllCoroutines();
                 StartCoroutine(FadeOutAlertWindow());
             }
             return false; // 진행 차단
@@ -869,7 +870,7 @@ public void OnClickPartyEditwarehouseCharacter(int charId)
 
         return true; // 통과!
     }
-//여기까지 1단락 
+    //여기까지 1단락 
 
 
 
@@ -984,7 +985,7 @@ public void OnClickPartyEditwarehouseCharacter(int charId)
 
         popup_AlertWindow.SetActive(false);
     }
-        private System.Collections.IEnumerator FadeOutAlertWindow_PartyEdit(string message)
+    private System.Collections.IEnumerator FadeOutAlertWindow_PartyEdit(string message)
     {
         if (popup_AlertWindow == null) yield break;
 
@@ -1009,7 +1010,7 @@ public void OnClickPartyEditwarehouseCharacter(int charId)
 
         popup_AlertWindow.SetActive(false);
     }
-            // ========================================================
+    // ========================================================
     // 징검다리 코루틴: 옛날 이름으로 호출하는 코드(539, 558, 615 라인)를 
     // 안전하게 캐릭터 선택창용(흰색 글씨) 코루틴으로 연결해 주는 구원 투수 코드입니다!
     // ========================================================
@@ -1019,11 +1020,11 @@ public void OnClickPartyEditwarehouseCharacter(int charId)
         // 만약 이 함수들이 호출되는 곳이 서브캐 선택창이 맞다면 이대로 두시면 완벽합니다!
         TMPro.TextMeshProUGUI mainText = popup_AlertWindow != null ? popup_AlertWindow.GetComponent<TMPro.TextMeshProUGUI>() : null;
         string currentMsg = mainText != null ? mainText.text : "정원이 가득찼습니다";
-        
+
         yield return StartCoroutine(FadeOutAlertWindow_SubCharSelect(currentMsg));
     }
 
-    
+
 
 
 
@@ -1087,12 +1088,12 @@ public void OnClickPartyEditwarehouseCharacter(int charId)
         if (panel_ConfirmRemove) panel_ConfirmRemove.SetActive(false);
     }
 
-public void OnClickEnterNormalStage()
-{
-    Debug.Log("[마을] 일반 모드 클릭 -> Panel_StageSelect와 자식들 ON");
-    stageMode = 1;
-    GameObject panelStageSelect = GameObject.Find("Canvas")?.transform.Find("Panel_StageSelect")?.gameObject;
-    if (panelStageSelect != null) panelStageSelect.SetActive(true);
+    public void OnClickEnterNormalStage()
+    {
+        Debug.Log("[마을] 일반 모드 클릭 -> Panel_StageSelect와 자식들 ON");
+        stageMode = 1;
+        GameObject panelStageSelect = GameObject.Find("Canvas")?.transform.Find("Panel_StageSelect")?.gameObject;
+        if (panelStageSelect != null) panelStageSelect.SetActive(true);
 
         // 🌟 [교체식 추가] 버튼을 눌러 스테이지 진입 패널을 켜는 순간, 체크박스를 강제로 ON 합니다.
         // // 🌟 [교체식 추가] 무한모드 버튼을 눌렀을 때도 똑같이 체크박스를 강제로 ON 합니다.
@@ -1109,7 +1110,7 @@ public void OnClickEnterNormalStage()
             infiniteCanvasTrans.Find("GAMEOVER TXT")?.gameObject.SetActive(false);
             infiniteCanvasTrans.Find("Btn_StartTouchTrigger")?.gameObject.SetActive(true);
         }
-    } 
+    }
 
 
     public void OnClickNormalStageBackButton()
@@ -1196,73 +1197,73 @@ public void OnClickEnterNormalStage()
 
 
 
-public void OnClickInfiniteStageBackButton()
+    public void OnClickInfiniteStageBackButton()
     {
         Debug.Log("[무한목록] 뒤로가기 클릭 -> 마을로 이동 및 Panel_InfiniteStage OFF");
         GameObject panelInfinite = GameObject.Find("Canvas")?.transform.Find("Panel_InfiniteStage")?.gameObject;
         if (panelInfinite != null) panelInfinite.SetActive(false);
         if (panel_Village) panel_Village.SetActive(true);
     }
-// [기존 함수 보완] 파티창의 아이콘을 클릭했을 때 작동
-public void OnClickPartyMemberIcon(CharacterData clickedCharacter)
-{
-    if (clickedCharacter == null) return;
-    pendingRemoveCharacter = clickedCharacter; // 제거 대기 캐릭터 임시 보관
-
-    // 캐릭터 정보도 함께 출력해 줍니다.
-    if (partyEditNameText != null) partyEditNameText.text = clickedCharacter.characterName;
-if (partyEditInfoText != null) partyEditInfoText.text = $"{clickedCharacter.description}\n(공격력: {clickedCharacter.attackPower} / 체력: {clickedCharacter.hp})";
-    // 현재 파티 편집창이 켜져 있는 상태라면 신형 제거 팝업(Panel_ConfirmRemove2)을 ON
-    if (panel_PartyEditView != null && panel_PartyEditView.activeSelf)
+    // [기존 함수 보완] 파티창의 아이콘을 클릭했을 때 작동
+    public void OnClickPartyMemberIcon(CharacterData clickedCharacter)
     {
-        GameObject confirmPopup2 = panel_PartyEditView.transform.Find("Panel_ConfirmRemove2")?.gameObject;
-        if (confirmPopup2 != null)
+        if (clickedCharacter == null) return;
+        pendingRemoveCharacter = clickedCharacter; // 제거 대기 캐릭터 임시 보관
+
+        // 캐릭터 정보도 함께 출력해 줍니다.
+        if (partyEditNameText != null) partyEditNameText.text = clickedCharacter.characterName;
+        if (partyEditInfoText != null) partyEditInfoText.text = $"{clickedCharacter.description}\n(공격력: {clickedCharacter.attackPower} / 체력: {clickedCharacter.hp})";
+        // 현재 파티 편집창이 켜져 있는 상태라면 신형 제거 팝업(Panel_ConfirmRemove2)을 ON
+        if (panel_PartyEditView != null && panel_PartyEditView.activeSelf)
         {
-            confirmPopup2.SetActive(true); // Panel_ConfirmRemove2 와 자식들 ON
-            Debug.Log($"[신형 팝업] {clickedCharacter.characterName} 제거 확인창 ON");
+            GameObject confirmPopup2 = panel_PartyEditView.transform.Find("Panel_ConfirmRemove2")?.gameObject;
+            if (confirmPopup2 != null)
+            {
+                confirmPopup2.SetActive(true); // Panel_ConfirmRemove2 와 자식들 ON
+                Debug.Log($"[신형 팝업] {clickedCharacter.characterName} 제거 확인창 ON");
+            }
+            return;
         }
-        return;
-    }
-    if (panel_ConfirmRemove != null)
-    {
-        panel_ConfirmRemove.SetActive(true); // 🌟 기존 기능 그대로 유지
-
-        // 🚀 [여기만 추가] 부모 패널 안에 있는 모든 자식 오브젝트들을 확실하게 ON 시킵니다.
-        foreach (Transform child in panel_ConfirmRemove.transform)
+        if (panel_ConfirmRemove != null)
         {
-            child.gameObject.SetActive(true);
+            panel_ConfirmRemove.SetActive(true); // 🌟 기존 기능 그대로 유지
+
+            // 🚀 [여기만 추가] 부모 패널 안에 있는 모든 자식 오브젝트들을 확실하게 ON 시킵니다.
+            foreach (Transform child in panel_ConfirmRemove.transform)
+            {
+                child.gameObject.SetActive(true);
+            }
         }
     }
-}
 
-// [새로 추가] Panel_ConfirmRemove2 내부의 '예' 버튼과 연동할 함수
-public void OnClickPartyEditRemoveYes()
-{
-    if (pendingRemoveCharacter != null)
+    // [새로 추가] Panel_ConfirmRemove2 내부의 '예' 버튼과 연동할 함수
+    public void OnClickPartyEditRemoveYes()
     {
-        Debug.Log($"[파티 편집 제거] {pendingRemoveCharacter.characterName} 파티에서 제외");
-        partyMembers.Remove(pendingRemoveCharacter);
+        if (pendingRemoveCharacter != null)
+        {
+            Debug.Log($"[파티 편집 제거] {pendingRemoveCharacter.characterName} 파티에서 제외");
+            partyMembers.Remove(pendingRemoveCharacter);
+            pendingRemoveCharacter = null;
+        }
+
+        // 1. 파티창 UI 새로고침 (제거된 데이터가 반영되어 자동으로 창고나 목록 정렬 상태 유지)
+        UpdatePartyUI();
+        RefreshAllButtonsActiveState();
+
+        // 2. Panel_ConfirmRemove2와 자식들 OFF
+        GameObject confirmPopup2 = panel_PartyEditView?.transform.Find("Panel_ConfirmRemove2")?.gameObject;
+        if (confirmPopup2 != null) confirmPopup2.SetActive(false);
+    }
+
+    // [새로 추가] Panel_ConfirmRemove2 내부의 '아니오' 버튼과 연동할 함수
+    public void OnClickPartyEditRemoveNo()
+    {
         pendingRemoveCharacter = null;
+
+        // Panel_ConfirmRemove2와 자식들 OFF
+        GameObject confirmPopup2 = panel_PartyEditView?.transform.Find("Panel_ConfirmRemove2")?.gameObject;
+        if (confirmPopup2 != null) confirmPopup2.SetActive(false);
     }
-
-    // 1. 파티창 UI 새로고침 (제거된 데이터가 반영되어 자동으로 창고나 목록 정렬 상태 유지)
-    UpdatePartyUI();
-    RefreshAllButtonsActiveState();
-
-    // 2. Panel_ConfirmRemove2와 자식들 OFF
-    GameObject confirmPopup2 = panel_PartyEditView?.transform.Find("Panel_ConfirmRemove2")?.gameObject;
-    if (confirmPopup2 != null) confirmPopup2.SetActive(false);
-}
-
-// [새로 추가] Panel_ConfirmRemove2 내부의 '아니오' 버튼과 연동할 함수
-public void OnClickPartyEditRemoveNo()
-{
-    pendingRemoveCharacter = null;
-
-    // Panel_ConfirmRemove2와 자식들 OFF
-    GameObject confirmPopup2 = panel_PartyEditView?.transform.Find("Panel_ConfirmRemove2")?.gameObject;
-    if (confirmPopup2 != null) confirmPopup2.SetActive(false);
-}
 
 
 
@@ -1388,11 +1389,11 @@ public void OnClickPartyEditRemoveNo()
         if (panel_TopBar != null) panel_TopBar.SetActive(true);
         if (partyListContainer) partyListContainer.SetActive(true);
         if (panel_PartyEditView != null)
-        if (popup_PartyAddConfirm != null) popup_PartyAddConfirm.SetActive(false);
-{
-    Transform confirmPopup2 = panel_PartyEditView.transform.Find("Panel_ConfirmRemove2");
-    if (confirmPopup2 != null) confirmPopup2.gameObject.SetActive(false);
-}
+            if (popup_PartyAddConfirm != null) popup_PartyAddConfirm.SetActive(false);
+        {
+            Transform confirmPopup2 = panel_PartyEditView.transform.Find("Panel_ConfirmRemove2");
+            if (confirmPopup2 != null) confirmPopup2.gameObject.SetActive(false);
+        }
 
         UpdatePartyUI();
     }
@@ -1411,27 +1412,27 @@ public void OnClickPartyEditRemoveNo()
         if (PartyListContainer != null) PartyListContainer.SetActive(false);
     }
 
-public void OnClickWarehouseCharacterCard(CharacterData targetData)
-{
-    if (targetData == null) return;
-
-    // 1. [캐릭터 이름 및 정보 출력] 클릭 즉시 좌측이나 하단 텍스트에 스탯 출력
-    if (partyEditNameText != null) partyEditNameText.text = targetData.characterName;
-if (partyEditInfoText != null) partyEditInfoText.text = $"{targetData.description}\n(공격력: {targetData.attackPower} / 체력: {targetData.hp})";
-    // 2. [판정] 이미 구현된 마스터 판정기 활용 (만석 및 중복 검사)
-    // 파티 편집창(isPartyEditView = true) 기준으로 검사 진행
-    if (!CheckPartyAvailability(targetData, true)) 
+    public void OnClickWarehouseCharacterCard(CharacterData targetData)
     {
-        return; // 만석이거나 중복이면 팝업 경고가 뜨고 아래 로직(파티 추가)은 차단됨
-    }
+        if (targetData == null) return;
 
-    // 3. [파티에 추가] 판정 통과 시 파티 리스트에 등록하고 UI 갱신
-    Debug. Log($"[파티 편집] 파티 명단에 {targetData.characterName} 추가 완료");
-    partyMembers.Add(targetData);
-    
-    // 4. [파티창으로 이동] 전체 파티 UI를 새로고침하여 파티창 컨테이너에 배치시킴
-    UpdatePartyUI();
-}
+        // 1. [캐릭터 이름 및 정보 출력] 클릭 즉시 좌측이나 하단 텍스트에 스탯 출력
+        if (partyEditNameText != null) partyEditNameText.text = targetData.characterName;
+        if (partyEditInfoText != null) partyEditInfoText.text = $"{targetData.description}\n(공격력: {targetData.attackPower} / 체력: {targetData.hp})";
+        // 2. [판정] 이미 구현된 마스터 판정기 활용 (만석 및 중복 검사)
+        // 파티 편집창(isPartyEditView = true) 기준으로 검사 진행
+        if (!CheckPartyAvailability(targetData, true))
+        {
+            return; // 만석이거나 중복이면 팝업 경고가 뜨고 아래 로직(파티 추가)은 차단됨
+        }
+
+        // 3. [파티에 추가] 판정 통과 시 파티 리스트에 등록하고 UI 갱신
+        Debug.Log($"[파티 편집] 파티 명단에 {targetData.characterName} 추가 완료");
+        partyMembers.Add(targetData);
+
+        // 4. [파티창으로 이동] 전체 파티 UI를 새로고침하여 파티창 컨테이너에 배치시킴
+        UpdatePartyUI();
+    }
 
     private string CalculateCurrentSynergyText()
     {
@@ -1501,15 +1502,15 @@ if (partyEditInfoText != null) partyEditInfoText.text = $"{targetData.descriptio
             puzzleManager.enemyHPBar.value = Mathf.Max(0f, currentHP - (amount / 100f));
             Debug.Log($"[몬스터 타격!] 대미지 {amount} 적중! 남은 HP 게이지: {puzzleManager.enemyHPBar.value}");
 
-        if (puzzleManager.enemyHPBar.value <= 0f)
-        {
-            Debug.Log("[전투 승리 선포] 무한 모드 몬스터 격파! 보상 창 전개.");
-            // 💡 [1203번 줄 수정]: 문장 맨 끝에 영광의 세미콜론(;)을 확실하게 쾅 찍어 문단을 마감해 줍니다!
-            Board boardComponent = puzzleManager.puzzleBoardComponent; 
+            if (puzzleManager.enemyHPBar.value <= 0f)
+            {
+                Debug.Log("[전투 승리 선포] 무한 모드 몬스터 격파! 보상 창 전개.");
+                // 💡 [1203번 줄 수정]: 문장 맨 끝에 영광의 세미콜론(;)을 확실하게 쾅 찍어 문단을 마감해 줍니다!
+                Board boardComponent = puzzleManager.puzzleBoardComponent;
 
-            // 💡 [1204번 줄 수정]: if문 수식을 정돈하고, 최신형 클리너 명령어인 ShutdownAndCleanupBoard(); 로 단어를 교체합니다!
-            if (boardComponent != null) boardComponent.ShutdownAndCleanupBoard();
-        }
+                // 💡 [1204번 줄 수정]: if문 수식을 정돈하고, 최신형 클리너 명령어인 ShutdownAndCleanupBoard(); 로 단어를 교체합니다!
+                if (boardComponent != null) boardComponent.ShutdownAndCleanupBoard();
+            }
 
         }
         else
@@ -1631,14 +1632,14 @@ if (partyEditInfoText != null) partyEditInfoText.text = $"{targetData.descriptio
             {
                 puzzleBoardTrans.gameObject.SetActive(true);
                 Board boardComponent = puzzleBoardTrans.GetComponent<Board>();
-            if (boardComponent != null)
-            {
-                // 💡 [수정 완료]: 옛날식 수동 세팅 2줄을 지우고, 최신형 자동 폭발 방지 엔진 1줄로 통합 교체합니다!
-                boardComponent.InitializeNewBoard();
+                if (boardComponent != null)
+                {
+                    // 💡 [수정 완료]: 옛날식 수동 세팅 2줄을 지우고, 최신형 자동 폭발 방지 엔진 1줄로 통합 교체합니다!
+                    boardComponent.InitializeNewBoard();
 
-                InitializeDynamicBattlePartyUI();
-                Debug.Log("[퍼즐 소환 완료] 6x6 격자 보석 블록 출력 완료.");
-            }
+                    InitializeDynamicBattlePartyUI();
+                    Debug.Log("[퍼즐 소환 완료] 6x6 격자 보석 블록 출력 완료.");
+                }
 
             }
         }
@@ -1762,23 +1763,24 @@ if (partyEditInfoText != null) partyEditInfoText.text = $"{targetData.descriptio
         // 예: UpdatePartyUI(); 등 하단 슬롯 프리팹을 새로고침하는 함수 이름 입력
     }
     // 🌟[새로 추가] 파티에 추가 하시겠습니까? 팝업의 '확인4' 버튼 연동 함수
-public void OnClickPartyAddConfirm_Yes()
-{
-    CharacterData data = allCharacters.Find(x => x.id == selectedCharId);
-    if (data != null)
+    public void OnClickPartyAddConfirm_Yes()
     {
-        Debug.Log($"[파티 편집 가입] {data.characterName} 파티 추가 완료!");
-        partyMembers.Add(data); // 파티 리스트에 데이터 추가
+        CharacterData data = allCharacters.Find(x => x.id == selectedCharId);
+        if (data != null)
+        {
+            Debug.Log($"[파티 편집 가입] {data.characterName} 파티 추가 완료!");
+            partyMembers.Add(data); // 파티 리스트에 데이터 추가
+        }
+
+        // 1. 파티창 UI 실시간 새로고침 (파티창 컨테이너로 캐릭터 이동 처리)
+        UpdatePartyUI();
+        RefreshAllButtonsActiveState();
+
+        // 2. 파티에 추가 하시겠습니까? 와 자식들 OFF
+        if (popup_PartyAddConfirm != null)
+        {
+            popup_PartyAddConfirm.SetActive(false);
+        }
+
     }
-
-    // 1. 파티창 UI 실시간 새로고침 (파티창 컨테이너로 캐릭터 이동 처리)
-    UpdatePartyUI();
-    RefreshAllButtonsActiveState();
-
-    // 2. 파티에 추가 하시겠습니까? 와 자식들 OFF
-    if (popup_PartyAddConfirm != null)
-    {
-        popup_PartyAddConfirm.SetActive(false);
-    }}
-
 }
