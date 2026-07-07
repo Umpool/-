@@ -98,6 +98,119 @@ public class GameManager : MonoBehaviour
     [Header("배틀 전용 동적 파티창 설정")]
     public GameObject battlePartyContainer; // 인스펙터에서 PartyContainer_Battle을 연결할 칸
 
+    [Header("--- [파티 리뉴얼] 실시간 출전 및 창고 장부 ---")]
+    // ⚔️ 실제로 전투에 출전하는 정예 파티원 5인의 리스트 (파티창에 해당)
+    public List<CharacterData> partyMembers = new List<CharacterData>();
+
+    // 📦 파티에 들어가지 못하고 대기 중인 나머지 모든 캐릭터들의 리스트 (창고에 해당)
+    public List<CharacterData> storageMembers = new List<CharacterData>();
+
+    // 🎯 [시스템 가동 인터페이스]: 특정 캐릭터를 파티로 넣거나 창고로 빼는 통합 연산 함수
+    public void ToggleCharacterAssignment(CharacterData targetCharacter)
+    {
+        if (targetCharacter == null) return;
+
+        // 🔍 1. 이미 파티에 들어가 있는 녀석인지 검사합니다.
+        if (partyMembers.Contains(targetCharacter))
+        {
+            // 파티창에서 제거하고 창고 장부로 강제 워프시킵니다.
+            partyMembers.Remove(targetCharacter);
+            if (!storageMembers.Contains(targetCharacter))
+            {
+                storageMembers.Add(targetCharacter);
+            }
+            Debug.Log($"📦 [창고 입고] {targetCharacter.characterName}이(가) 정예 파티에서 해제되어 창고로 복귀했습니다.");
+        }
+        else
+        {
+            // 🔍 2. 파티에 없는 신규 인원인데, 이미 파티가 5명으로 꽉 찼는지 검사합니다.
+            if (partyMembers.Count >= 5)
+            {
+                Debug.LogWarning("⚠️ [파티 만원] 정예 출전 파티원은 최대 5명까지만 구성할 수 있습니다!");
+                return;
+            }
+
+            // 창고에서 제거하고 파티창 정예 명단에 등록합니다.
+            if (storageMembers.Contains(targetCharacter))
+            {
+                storageMembers.Remove(targetCharacter);
+            }
+            partyMembers.Add(targetCharacter);
+            Debug.Log($"⚔️ [정예 출전] {targetCharacter.characterName}이(가) 창고에서 나와 배틀 엔트리에 등록되었습니다.");
+        }
+
+        // 🔄 데이터 상태가 완전히 바뀌었으므로 파티 편집 화면 UI 패널을 새로고침합니다.
+        RefreshPartyEditUI();
+    }
+
+    [Header("--- [파티 UI] 리프레시 전용 배치 그릇 컨테이너 ---")]
+    public Transform partyGridContainer;   // 상단 파티원 카드들이 배치될 스크롤 부모 그릇
+    public Transform storageGridContainer; // 하단 창고 보관함 카드들이 배치될 스크롤 부모 그릇
+    public GameObject partyIconPrefab;     // 화면에 실시간으로 찍어낼 캐릭터 카드 프리팩 에셋
+
+    // 🎯 [파티 UI 새로고침 핵심 기동 스위치]
+    public void RefreshPartyEditUI()
+    {
+        // 🧼 [상단 파티창 물청소]: 기존에 복사되어 있던 프리팩 자식들을 철저히 파괴합니다.
+        if (partyGridContainer != null)
+        {
+            foreach (Transform child in partyGridContainer)
+            {
+                Destroy(child.gameObject);
+            }
+        }
+
+        // 🧼 [하단 창고창 물청소]: 이전에 찍혀있던 창고 프리팩 자식들도 싹 파괴합니다.
+        if (storageGridContainer != null)
+        {
+            foreach (Transform child in storageGridContainer)
+            {
+                Destroy(child.gameObject);
+            }
+        }
+
+        // 🔄 깨끗하게 비워진 전장에 실시간 데이터 기반으로 새 카드를 다시 그릴 준비를 마쳤습니다.
+        // 다음 파트에서 상단/하단 주머니 데이터를 순차적으로 엮어서 화면에 찍어냅니다.
+    }
+        // 🎯 [정예 파티 스폰 엔진]: 상단 파티 정예 멤버 5명을 화면에 실시간으로 생성합니다.
+        if (partyMembers != null && partyGridContainer != null && partyIconPrefab != null)
+        {
+            foreach (CharacterData character in partyMembers)
+            {
+                if (character == null) continue;
+
+                // 1. 부모 그릇(partyGridContainer)의 자식으로 캐릭터 카드 오브젝트를 새로 만듭니다.
+                GameObject newIconObj = Instantiate(partyIconPrefab, partyGridContainer);
+
+    // 2. 카드 프리팩에 붙어있는 PartyIcon 스크립트 리모컨을 확보합니다.
+    PartyIcon iconScript = newIconObj.GetComponent<PartyIcon>();
+                if (iconScript != null)
+                {
+                    // 💡 [핵심 연동]: 이 카드가 상단 '파티원 상태'임을 체크(isParty = true)하고 데이터를 주입합니다!
+                    iconScript.SetupCardData(character, true);
+                }
+            }
+        }
+        // 🎯 [창고 보관함 스폰 엔진]: 하단 창고 멤버들을 화면에 실시간으로 생성합니다.
+        if (storageMembers != null && storageGridContainer != null && partyIconPrefab != null)
+        {
+        foreach (CharacterData character in storageMembers)
+        {
+        if (character == null) continue;
+
+        // 1. 하단 부모 그릇(storageGridContainer)의 자식으로 캐릭터 카드를 복사합니다.
+        GameObject newIconObj = Instantiate(partyIconPrefab, storageGridContainer);
+
+        // 2. 카드 프리팩에 붙어있는 PartyIcon 스크립트 리모컨을 확보합니다.
+        PartyIcon iconScript = newIconObj.GetComponent<PartyIcon>();
+        if (iconScript != null)
+        {
+            // 💡 [핵심 연동]: 이 카드가 하단 '창고 상태'임을 체크(isParty = false)하고 데이터를 주입합니다!
+            iconScript.SetupCardData(character, false);
+        }
+    }
+}
+
     // GameManager.cs 내부에 추가할 코드
     public enum CanvasState { PuzzleBattle, Other } // 모드 상태 정의
     public CanvasState currentCanvasState;
@@ -111,15 +224,13 @@ public class GameManager : MonoBehaviour
     }
 
 
-    void Awake()
+    private void Awake()
     {
         if (Instance == null) Instance = this;
         else Destroy(gameObject);
-
-        RefreshAllCharacterMenuCards();
     }
 
-void Start()
+    void Start()
 {
     // 🏁 [정석 복구 완료]: 불필요한 패널 차단 트롤링을 전부 걷어내고 안전하게 방 장부만 세팅합니다!
     if (popup_AlertWindow != null) popup_AlertWindow.SetActive(false);
@@ -259,34 +370,37 @@ void Start()
             HandleVillageInertiaDrag();
         }
     }
+
+    // 🎯 [에러 완벽 박멸 파트 1]: 마을 복귀 버튼 기능 오류와 유령 변수 버그를 제거합니다.
     public void OnClickReturnToVillage()
     {
-        // 1. 배틀 매니저 청소 (기존 코드 유지)
+        // 1. 배틀 매니저 초기화 및 연산 리셋 (안전 핀 검사)
         if (PuzzleBattleManager.Instance != null)
         {
-            PuzzleBattleManager.Instance.ResetBattleSystemForNextEntry();
+            PuzzleBattleManager.Instance.InitGame();
         }
 
-        // 2. [에러 완벽 박멸] 꼬여버린 GoToVillage 함수 대신, 실제 변수를 사용해 직접 마을을 켭니다!
-        if (panel_Village != null) 
+        // 2. 마을 화면 패널 활성화 처리
+        if (panel_Village != null)
         {
             panel_Village.SetActive(true);
         }
-        
-        if (partyListContainer != null) 
+
+        // 3. 아군 파티 리스트 컨테이너 레이아웃 가림막 닫기
+        if (partyListContainer != null)
         {
             partyListContainer.SetActive(false);
         }
-
-        // 3. 인게임 퍼즐 배틀 패널을 하이어라키에서 직접 찾아서 안전하게 꺼버립니다.
-        GameObject ingameBattlePanel = GameObject.Find("Canvas")?.transform.Find("Panel_INPuzzleBattle")?.gameObject;
+        // 4. 인게임 퍼즐 배틀판 패널을 하이어라키에서 직접 추적하여 안전하게 꺼버립니다.
+        GameObject ingameBattlePanel = GameObject.Find("Canvas")?.transform.Find("Panel_INFPuzzleBattle")?.gameObject;
         if (ingameBattlePanel != null)
         {
             ingameBattlePanel.SetActive(false);
         }
 
-        Debug.Log("🏡 [성공] 마을 복귀 및 배틀 패널 완전 세탁 완료!");
-    }
+        Debug.Log("💥 [GameManager] 마을 복귀 성공! 배틀 패널 완벽 세탁 완료.");
+    } // 👈 🎯 [오류 해결]: OnClickReturnToVillage 함수를 안전하게 끝맺는 닫는 중괄호입니다!
+
 
     private void HandleVillageInertiaDrag()
     {
