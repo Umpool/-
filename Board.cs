@@ -317,9 +317,16 @@ public class Board : MonoBehaviour
         // 1. 마우스 왼쪽 버튼을 누르는 순간 (클릭)
         if (Input.GetMouseButtonDown(0))
         {
-            // 만약 완전히 정리 중(isProcessing)일 때는 클릭 신호만 받고 스와이프 연산은 잠시 대기시킵니다.
-            if (isProcessing) return;
+            // 🔔 [추가] 매니저의 상태를 체크하여 플레이어 턴이 아니면 드래그 시작을 원천 차단합니다.
+            PuzzleBattleManager manager = FindObjectOfType<PuzzleBattleManager>();
+            if (manager != null && manager.currentState != PuzzleBattleManager.GameState.PlayerTurn)
+            {
+                Debug.LogWarning("현재 플레이어 턴이 아니므로 블록을 선택할 수 없습니다.");
+                return; // 이하 드래그 처리를 모두 무시하고 나감
+            }
 
+            // // 만약 완전히 정리 중(isProcessing)일 때는 클릭 신호만 받고 스와이프 연산은 잠시 대기시킵니다
+            if (isProcessing) return;
             Vector3 mouseWorldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
             Debug.Log($"[클릭 감지 신호 수신] 🖱️ 화면 마우스 위치: {Input.mousePosition} | 🌍 유니티 월드 변환 좌표: {mouseWorldPos}");
 
@@ -358,6 +365,10 @@ public class Board : MonoBehaviour
             if (swipeDelta.magnitude > 40f)
             {
                 CalculateSwipeDirection(swipeDelta);
+                if (manager != null)
+                {
+                    manager.SetState(PuzzleBattleManager.GameState.Matching);
+                }
             }
             selectedBlock = null; // 조작 대상 초기화
         }
