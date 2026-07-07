@@ -6,6 +6,160 @@ using UnityEngine.UI; // 🌟 슬라이더 및 UI 컴포넌트 제어용 필수 
 
 public class PuzzleBattleManager : MonoBehaviour
 {
+    // [1] 게임 모드 및 상태 정의
+    public enum GameMode { Infinite, Normal }
+    public enum GameState { Ready, PlayerTurn, Matching, EnemyTurn, WaveClear, GameClear, GameOver }
+
+    [Header("--- 현재 게임 설정 ---")]
+    public GameMode currentMode = GameMode.Normal; // 기본값을 일반모드로 설정
+    public GameState currentState = GameState.Ready;
+
+    [Header("--- 일반모드용 데이터 ---")]
+    public StageData currentStageData; // 현재 플레이 중인 스테이지 데이터 에셋
+
+
+    // [2] 게임 초기화 및 상태 설정
+    public void InitGame()
+    {
+        currentState = GameState.Ready;
+        currentTurn = 0;
+        currentScore = 0;
+
+        if (currentMode == GameMode.Normal && currentStageData != null)
+        {
+            Debug.Log($"일반모드 시작: {currentStageData.stageName}");
+
+            // 1. [기존 코드 보완] 일반배틀 전용 패널 주머니가 있다면 먼저 켭니다.
+            if (panel_PuzzleBattle != null)
+            {
+                panel_PuzzleBattle.SetActive(true);
+            }
+
+            // 2. 🚨 [강제 On 방어선 구축] 다른 스크립트가 화면을 정리하면서 꺼버렸을 확률 방어!
+            // Hierarchy 창에 보이는 'Panel_NMPuzzleBattle' 오브젝트를 인스펙터의 panel_PuzzleBattle 슬롯에 드래그해 두셨다면,
+            // 다른 매니저가 무엇을 껐든 간에 이 시점에 무조건 다시 화면에 켜집니다.
+
+            // 일반모드 보드 생성 엔진 가동
+            if (Board.Instance != null)
+            {
+                Board.Instance.StartNormalMode();
+
+                // 만약 Board가 붙은 오브젝트 자체(NMPuzzleBoard)나 부모가 꺼져있을 수 있으므로 강제 활성화
+                Board.Instance.gameObject.SetActive(true);
+            }
+        }
+        else
+        {
+            Debug.Log("무한모드 시작");
+            // 기존 무한모드 몬스터 스폰 루틴 실행
+        }
+
+        // 초기화가 끝나면 플레이어 턴으로 전환
+        SetState(GameState.PlayerTurn);
+    }
+
+    // [3] 상태 변경을 안전하게 관리하는 함수
+    // PuzzleBattleManager.cs 내부
+
+    public void SetState(GameState newState)
+    {
+        currentState = newState;
+        Debug.Log($"게임 상태 전환 -> {currentState}");
+
+        switch (currentState)
+        {
+            case GameState.PlayerTurn:
+                Debug.Log("🎮 플레이어 턴입니다. 블록을 움직이세요.");
+                break;
+
+            case GameState.Matching:
+                break;
+
+            case GameState.EnemyTurn:
+                Debug.Log("👹 적(몬스터) 턴 시작! 플레이어를 공격합니다.");
+                CheckTurnEnd();
+                break;
+
+            case GameState.GameClear:
+                Debug.Log("★ 스테이지 클리어! ★");
+
+                // 🔔 [UI 연동]: 스테이지 클리어 시 결과 팝업창을 화면에 띄웁니다!
+                if (panel_InfiniteReward != null)
+                {
+                    panel_InfiniteReward.SetActive(true);
+
+                    // 텍스트 컴포넌트들이 연결되어 있다면 안내 문구도 수정해 줍니다.
+                    if (textRecordNotice != null)
+                        textRecordNotice.text = "스테이지 클리어 완료!";
+                }
+
+                // 게임이 끝났으므로 보드 작동 비활성화
+                if (Board.Instance != null) Board.Instance.isGameActive = false;
+                break;
+
+            case GameState.GameOver:
+                Debug.Log("☠ 게임 오버 ☠");
+
+                // 🔔 [UI 연동]: 턴을 모두 소모해 게임 오버되었을 때 결과 팝업창을 띄웁니다!
+                if (panel_InfiniteReward != null)
+                {
+                    panel_InfiniteReward.SetActive(true);
+
+                    if (textRecordNotice != null)
+                        textRecordNotice.text = "제한 턴수 초과! 게임 오버";
+                }
+
+                // 게임이 끝났으므로 보드 작동 비활성화
+                if (Board.Instance != null) Board.Instance.isGameActive = false;
+                break;
+        }
+    }
+
+
+    // 턴 소모 및 승리/패배 규칙 체크
+    // 🔔 [4] 일반모드 승리/패배 규칙 체크 (하나로 완벽하게 합쳐진 버전)
+    private void CheckTurnEnd()
+    {
+        // 1. 일반모드일 때의 정산 규칙
+        if (currentMode == GameMode.Normal && currentStageData != null)
+        {
+            int maxTurns = currentStageData.maxTurns;
+
+            // Board에 기록된 currentTurn 값을 안전하게 가져옵니다.
+            int playedTurn = Board.Instance != null ? Board.Instance.currentTurn : 0;
+            int remainingTurns = maxTurns - playedTurn;
+
+            Debug.Log($"📊 [턴 정산] 진행된 턴: {playedTurn} / 총 제한 턴: {maxTurns} (남은 턴: {remainingTurns})");
+
+            // 🏆 조건 1: 스테이지 승리 조건 (몬스터 HP 조건이 준비되면 주석을 해제하세요)
+            // if (Monster.Instance.currentHP <= 0) 
+            // {
+            //     SetState(GameState.GameClear);
+            //     return;
+            // }
+
+            // 💀 조건 2: 제한 턴수 초과 시 게임 오버
+            if (remainingTurns <= 0)
+            {
+                SetState(GameState.GameOver);
+                return;
+            }
+        }
+        // 2. 무한모드일 때의 정산 규칙
+        else
+        {
+            // 무한모드 전용 로직이 필요하다면 여기에 추가
+        }
+
+        // 아무런 승리/패배 조건에도 걸리지 않았다면 다시 플레이어 턴으로 환원
+        SetState(GameState.PlayerTurn);
+    }
+
+
+
+
+
+
     [Header("--- 무한모드 최종 정산 시스템 ---")]
     public GameObject panel_InfiniteReward;  // 결과창 패널(InfiniteRewardPanel 등)을 통째로 연결할 방
     public TextMeshProUGUI textFinalScore;   // Text_FinalScore 연결
@@ -93,6 +247,8 @@ public TMPro.TextMeshProUGUI textNormalComboUI;       // Combo 연결용
     {
         currentTurn = 0;
         UpdateTurnTextUI();
+
+        InitGame();
 
         if (GameManager.Instance != null && GameManager.Instance.partyMembers != null)
         {
