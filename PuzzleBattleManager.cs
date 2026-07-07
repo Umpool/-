@@ -56,9 +56,13 @@ public class PuzzleBattleManager : MonoBehaviour
     public GameObject panel_NMPuzzleBattle;  // 일반 스테이지 배틀 창 (Panel_NMPuzzleBattle)
     public GameObject panel_StageRewardPopup;// 3라운드마다 뜨는 보상 팝업창
     public GameObject panel_StageClearResult;// 보스 처치 후 뜨는 최종 결과창
-    [Header("ㅡ 일반 스테이지용 텍스트 UI ㅡ")]
-        [Header("ㅡ 일반 스테이지용 파티 컨테이너 ㅡ")]
-    public Transform nmPartyContainerBattle;
+
+
+
+    [Header("--- 파티창 설정 ---")]
+    [SerializeField] private Transform NMPartyContainer; // 이 부분이 정확히 들어가 있는지 확인하세요.
+    [SerializeField] private GameObject normalStagePuzzleBoard; 
+    [SerializeField] private TMPro.TextMeshProUGUI normalStageTextUI;
     public TMPro.TextMeshProUGUI textStageRoundUI;
     // 🎯 [오늘의 미션]: 유니티 에디터에서 EnemyPrefab을 등록할 수 있는 주머니입니다!
     [Header("ㅡ 일반 스테이지용 적 프리팹 ㅡ")]
@@ -137,15 +141,96 @@ public TMPro.TextMeshProUGUI textNormalComboUI;       // Combo 연결용
     public void StartPuzzleBattle(string gameMode)
     {
         Debug.Log($"🚀 [전투 개막] 모드 이름 판독 중: {gameMode}");
-        // 🎯 [오늘의 신규 코드]: 일반모드일 때는 무한모드용 텍스트/UI 세팅을 전부 건너뛰고 
-        // 오직 보드판 그리드 내부 공간만 생성한 뒤 함수를 종료시킵니다.
-        if (isNormalStageMode)
+        // 🎯 [오늘의 미션]: 일반 모드가 작동 중일 때 들어오는 무한 모드 터치 신호를 차단합니다.
+        if (isNormalStageMode && gameMode == "infinite")
         {
-            if (Board.Instance != null)
+            Debug.Log("🛡️ [방어 성공] 일반 모드 중 무한 모드 강제 시작 신호가 가로채는 것을 완벽 차단했습니다.");
+            return;
+        }
+        // 🎯 [스테이지 길이 세팅]: 들어온 gameMode 문자열에 따라 최대 라운드 수를 다르게 설정합니다.
+        int maxStageRound = 5; // 💡 여기에 'int'를 붙여서 변수를 새로 정의해 줍니다!
+
+        // 🎯 [화면 전환 및 스테이지 길이 세팅]: 이전 패널들을 끄고 배틀 패널을 켭니다.
+        if (gameMode == "Stage_A")
+        {
+            maxStageRound = 5; // A버튼: 1-1 ~ 1-5 스테이지
+            Debug.Log($"🎮 [일반 모드 A] 1-1부터 1-{maxStageRound}까지 진행됩니다.");
+
+            // 🎬 [화면 전환 로직 실행]
+            if (panel_NMPuzzleBattle != null) panel_NMPuzzleBattle.SetActive(true); // 배틀 패널 ON (자식 포함)
+
+            // 🧹 기존 화면들 체크 해제 (OFF)
+            // (※ 만약 아래 변수명에 빨간 줄이 가면, 상단에 선언해 두신 실제 마을/스테이지선택 패널 변수명으로 변경해 주세요)
+            if (GameManager.Instance != null && GameManager.Instance.panel_Village != null) 
+                GameManager.Instance.panel_Village.SetActive(false);             
+
+            if (panel_StageSelect != null) 
+                panel_StageSelect.SetActive(false); // 💡 앞에 GameManager 주소를 빼고 다이렉트로 연결!
+            Debug.Log("🖥️ [화면 정리 완료] 마을 및 스테이지 선택창을 끄고 배틀 전장 화면을 켰습니다.");
+        }
+        else if (gameMode == "Stage_B")
+        {
+            maxStageRound = 7; // B버튼: 1-1 ~ 1-7 스테이지
+            Debug.Log($"🎮 [일반 모드 B] 1-1부터 1-{maxStageRound}까지 진행됩니다.");
+
+            // 🎬 [화면 전환 로직 실행]
+            if (panel_NMPuzzleBattle != null) panel_NMPuzzleBattle.SetActive(true); // 배틀 패널 ON (자식 포함)
+
+            // 🧹 기존 화면들 체크 해제 (OFF)
+            if (GameManager.Instance != null && GameManager.Instance.panel_Village != null) 
+                GameManager.Instance.panel_Village.SetActive(false);             
+
+            if (panel_StageSelect != null) 
+                panel_StageSelect.SetActive(false); // 💡 앞에 GameManager 주소를 빼고 다이렉트로 연결!
+            Debug.Log("🖥️ [화면 정리 완료] 마을 및 스테이지 선택창을 끄고 배틀 전장 화면을 켰습니다.");
+        }
+    
+
+
+
+        // 🎯 [오늘의 미션]: 일반 스테이지 모드일 때는 무한모드 세탁기 코드를 완전히 건너뜁니다!
+            // 🚀 [일반 스테이지 전용 3매치 가동 핵심 코드]
+            if (isNormalStageMode)
             {
-                Board.Instance.InitializeNewBoard(); // 보드판 타일 새로 생성
+                // 1. 실시간 살아있는 카드 장부를 깨끗하게 비우고 새로 시작할 준비를 합니다.
+                liveCards.Clear();
+
+                // 2. 일반 스테이지 전용 UI 및 보드 활성화
+                if (NMPartyContainer != null) NMPartyContainer.gameObject.SetActive(true);
+                if (normalStagePuzzleBoard != null) normalStagePuzzleBoard.SetActive(true);
+
+                // 3. 일반 스테이지 전용 텍스트 UI에 진행 상황 표시 (A/B 선택에 맞춤)
+                if (normalStageTextUI != null)
+                {
+                    normalStageTextUI.text = $"STAGE 1-1 / 1-{maxStageRound}";
+                    Debug.Log($"📝 [UI 연동] 일반 스테이지 UI 텍스트 세팅 완료 (목표: 1-{maxStageRound})");
+                }
+
+                // 4. 6x6 보드판 정품 리필 및 매치 엔진 가동
+                if (Board.Instance != null)
+                {
+                    Debug.Log("🎲 [보드 초기화] 잠겨있던 문지기 스위치를 강제로 풀고 6x6 보드판 정품 리필을 가동합니다.");
+                    Board.Instance.InitializeNewBoard();
+                }
+                else
+                {
+                    Debug.LogError("⚠️ [오류] Board.Instance를 찾을 수 없습니다! 씬에 Board 스크립트가 있는지 확인하세요.");
+                }
+
+                Debug.Log("🎮 [독점회로 가동] 일반모드 전용 셋업을 완료하고 무한모드 간섭을 차단했습니다.");
+                // 💡 기존에 있던 return;을 과감히 제거하여 아래의 몬스터 이동(181줄~) 및 시너지 출력 코드까지 연달아 부드럽게 흐르도록 만듭니다!
             }
-            return; // 🛑 밑에 있는 무한모드 전용 UI 세팅 코드로 가지 못하게 철저히 차단!
+        // 🎯 [오늘의 최종 미션]: 무한모드 쪽에 생성된 몬스터들을 일반모드 EnemyContainer 상자 밑으로 쏙 배달해 줍니다!
+        GameObject infEnemyContainer = GameObject.Find("Panel_INPuzzleBattle/EnemyContainer");
+        GameObject nmEnemyContainerObj = GameObject.Find("Panel_NMPuzzleBattle/EnemyContainer");
+
+        if (infEnemyContainer != null && nmEnemyContainerObj != null)
+        {
+            foreach (Transform child in infEnemyContainer.transform)
+            {
+                child.SetParent(nmEnemyContainerObj.transform, false);
+            }
+            Debug.Log("🚚 [배달 완료] 1라운드 일반 몬스터 카드를 일반 스테이지 상자로 안전하게 이사시켰습니다!");
         }
 
             // 일반모드 시너지 텍스트 출력
@@ -155,12 +240,14 @@ public TMPro.TextMeshProUGUI textNormalComboUI;       // Combo 연결용
         textNormalSynergyDisplay.text = "현재 활성화된 시너지 효과 표시 구역"; 
     }
     
+    
+    
     // 일반모드 콤보 텍스트 출력
-    if (textNormalComboUI != null)
-    {
-        // 콤보 변수 이름을 넣어 화면에 실시간 출력합니다.
-        textNormalComboUI.text = $"COMBO!"; 
-    }
+        if (textNormalComboUI != null)
+        {
+            // 콤보 변수 이름을 넣어 화면에 실시간 출력합니다.
+            textNormalComboUI.text = $"COMBO!";
+        }
 
         // 🛡️ [질문자님 제보 특제 안전핀 장착]
         // 오직 인스펙터 버튼 매개변수 칸에 'infinite'라고 적혀있을 때만 무한모드 세탁기를 돌립니다!
@@ -208,7 +295,9 @@ public TMPro.TextMeshProUGUI textNormalComboUI;       // Combo 연결용
 
             // 새 블록 정품 배치 가동
             puzzleBoardComponent.InitializeNewBoard();
+            
         }
+        
 
         // 5. 버튼 및 UI 트리거 마감 처리
         if (panel_InfiniteBattle != null)
@@ -248,17 +337,18 @@ else if (panel_NMPuzzleBattle != null && panel_NMPuzzleBattle.activeSelf) active
             battlePartyListTrans = activeBattlePanel.transform.Find("PartyContainer_Battle");
         }
 
-        // 🌟 [안전 장치]: 위에서 상자를 못 찾았더라도 인스펙터에 직접 등록했다면 그 상자를 사용합니다!
-        if (battlePartyListTrans == null && nmPartyContainerBattle != null)
+        // 🎯 [오늘의 미션]: 만약 위에서 상자를 못 찾았더라도, 일반 스테이지 전용 주머니가 세팅되어 있다면 그걸 다이렉트로 사용합니다!
+        if (battlePartyListTrans == null && NMPartyContainer != null)
         {
-            battlePartyListTrans = nmPartyContainerBattle;
+            battlePartyListTrans = NMPartyContainer;
         }
 
         if (battlePartyListTrans == null)
         {
-            Debug.LogWarning("[구조 점검] PartyContainer_Battle 상자를 찾지 못했습니다.");
+            Debug.LogWarning("[구조 점검] 아군 파티를 나열할 PartyContainer_Battle 상자를 찾지 못했습니다.");
             return;
         }
+
 
             // ====== 🚀 이 아래의 자식 슬롯 수집 및 슬라이더 퍼센트 계산(While/Offset) 코드는 방금 수정한 그대로 완벽히 유지해 줍니다! ======
             List<Transform> heroCardSlots = new List<Transform>();
@@ -269,6 +359,24 @@ else if (panel_NMPuzzleBattle != null && panel_NMPuzzleBattle.activeSelf) active
                     heroCardSlots.Add(child);
                 }
             }
+            // 🎯 [파티창 엔진 연동]: 수집된 자식 슬롯들에 실제 캐릭터 데이터를 쌩쌩하게 주입합니다.
+            for (int i = 0; i < heroCardSlots.Count; i++)
+            {
+                var partyIconScript = heroCardSlots[i].GetComponent<PartyIcon>(); 
+                if (partyIconScript != null)
+                {
+                    // GameManager의 실제 파티원 명단(partyMembers) 데이터를 순서대로 매칭합니다.
+                    if (GameManager.Instance != null && GameManager.Instance.partyMembers != null && i < GameManager.Instance.partyMembers.Count)
+                    {
+                        var heroData = GameManager.Instance.partyMembers[i];
+                        
+                        // 공유해주신 PartyIcon.cs의 Setup 함수를 깨워 데이터와 배틀 활성화(true) 신호를 보냅니다!
+                        partyIconScript.Setup(heroData, isBattle: true);
+                        heroCardSlots[i].gameObject.SetActive(true);
+                    }
+                }
+            }
+            Debug.Log("🛡️ [파티창 연동 완료] 기존 로직을 보존한 상태로 PartyIcon 스펙 주입을 마쳤습니다!");
 
             heroHPBars.Clear();
             int activePartyCount = GameManager.Instance.partyMembers.Count;
@@ -777,11 +885,12 @@ else if (panel_NMPuzzleBattle != null && panel_NMPuzzleBattle.activeSelf) active
         }
 
 
-            // 🎯 3. 소환된 적 카드들을 화면에 예쁘게 정렬해 주는 기존 시스템 가동!
-            SetupBattleEntities();
+        // 🎯 3. 소환된 적 카드들을 화면에 예쁘게 정렬해 주는 기존 시스템 가동!
+        SetupBattleEntities();
 
-            // 🎯 4. 공간이 다 만들어진 후에 안전하게 보드판 내부 오브젝트들을 리셋합니다.
-            if (Board.Instance != null) Board.Instance.InitializeNewBoard();
+        // 🎯 4. 공간이 다 만들어진 후에 안전하게 보드판 내부 오브젝트들을 리셋합니다.
+        if (Board.Instance != null) Board.Instance.InitializeNewBoard();
+            
         }
 
 
