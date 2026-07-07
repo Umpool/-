@@ -37,6 +37,17 @@ public class PuzzleBattleManager : MonoBehaviour
 
     [Header("--- 실시간 생존 영웅 카드 리스트 ---")]
     public List<CharacterCard> liveCards = new List<CharacterCard>();
+
+    [Header("--- UI 관련 변수들 ---")]
+    public TextMeshProUGUI textFinalScore;
+    public TextMeshProUGUI textFinalTurns;
+    public TextMeshProUGUI textRecordNotice;
+    public TextMeshProUGUI textNPCLeaderboard;
+    public GameObject panel_InfiniteReward;
+    public GameObject panel_NPCLeaderboard_Popup;
+    public GameObject btn_StartTouchTrigger_Direct;
+    public TextMeshProUGUI turnTextUI;
+
     private void Awake()
     {
         // 싱글톤 인스턴스 등록 및 중복 방지 방어선 구축
@@ -184,64 +195,84 @@ public class PuzzleBattleManager : MonoBehaviour
             }
         }
     }
-      /// <summary>
-      /// 외부 시스템에서 배틀 진입 신호를 보낼 때 무한모드 엔진을 켜주는 메인 게이트
-      /// </summary>
+    /// <summary>
+    /// 외부 시스템에서 배틀 진입 신호를 보낼 때 무한모드 엔진을 켜주는 메인 게이트
+    /// </summary>
     public void StartPuzzleBattle(string gameMode)
     {
-        // 일반모드 신호(Stage_A, Stage_B 등)가 오면 작동을 거부하고 회로를 보호합니다.
         if (!gameMode.Equals("2"))
         {
-            Debug.LogWarning($"⚠️ [무한매니저] 무한모드(모드'2')가 아니므로 작동을 거부합니다. 모드: {gameMode}");
+            Debug.LogWarning($"⚠️ [무한매니저] 무한모드(모드'2')가 아니므로 작동을 거부합니다.");
             return;
         }
 
         Debug.Log("♾️ [무한모드 엔진 가동] 무한 퍼즐 배틀 월드로 진입합니다.");
 
-        // 글로벌 캔버스 상태를 퍼즐 배틀 모드로 안전하게 변경
+        // 1. 캔버스 및 패널 상태 동기화
         if (GameManager.Instance != null)
         {
             GameManager.Instance.UpdateCanvasState(GameManager.CanvasState.PuzzleBattle);
         }
-
-        // 무한 전용 전장 패널 활성화
         if (panel_PuzzleBattle != null) panel_PuzzleBattle.SetActive(true);
 
-        // 무한 전용 몬스터 레이아웃 즉시 스폰
+        // 2. 몬스터 스폰 및 보드 활성화
         if (InfiniteMonster.Instance != null)
         {
             InfiniteMonster.Instance.SpawnInfiniteMonster();
         }
-
-        // 보드 잠금을 해제하고 플레이어 기차 출발
         if (Board.Instance != null) Board.Instance.isGameActive = true;
 
+        // 3. UI 상태 초기화 (주석 요구사항 반영)
+        if (btn_StartTouchTrigger_Direct != null) btn_StartTouchTrigger_Direct.SetActive(false);
+
+        // 게임오버 텍스트 초기화 (주석 요구사항 반영)
+        GameObject goText = GameObject.Find("Canvas")?.transform.Find("Panel_INPuzzleBattle/GAMEOVER TXT")?.gameObject;
+        if (goText != null) goText.SetActive(false);
+
         SetState(GameState.PlayerTurn);
-    
-       // 새롭게 정렬된 랭킹 데이터를 유니티 레지스트리(저장소)에 영구 보존
+    }
+
+    public void OnTimerEnd(int finalScore)
+    {
+        isTimeOver = true;
+        SetState(GameState.GameOver);
+
+        // 1. 결과 UI 표시
+        if (panel_InfiniteReward != null) panel_InfiniteReward.SetActive(true);
+        if (textFinalScore != null) textFinalScore.text = $"최종 점수 : {finalScore:N0}";
+        if (textFinalTurns != null) textFinalTurns.text = $"걸린 턴수 : {currentTurn} 턴";
+
+        // 2. 랭킹 시스템 정산 회로 (주석 요구사항 반영)
+        int[] highScores = new int[10];
+        for (int i = 0; i < 10; i++) highScores[i] = PlayerPrefs.GetInt($"INF_RANK_{i + 1}", 0);
+
+        int currentRank = 0;
         for (int i = 0; i < 10; i++)
         {
-            PlayerPrefs.SetInt($"INF_RANK_{i + 1}", highScores[i]);
+            if (finalScore > highScores[i])
+            {
+                for (int j = 9; j > i; j--) highScores[j] = highScores[j - 1];
+                highScores[i] = finalScore;
+                currentRank = i + 1;
+                break;
+            }
         }
+
+        // 데이터 저장
+        for (int i = 0; i < 10; i++) PlayerPrefs.SetInt($"INF_RANK_{i + 1}", highScores[i]);
         PlayerPrefs.Save();
 
-        // 3. 순위 진입 축하 연출 가동
+        // 3. 순위 진입 축하 연출
         if (currentRank >= 1 && currentRank <= 3 && textRecordNotice != null)
         {
             textRecordNotice.gameObject.SetActive(true);
             textRecordNotice.text = $"🔥 기록갱신! [{currentRank} 위] 달성! 🔥";
         }
 
-        // 4. 게임오버 전용 시각 텍스트 및 시작 차단 연출
+        // 4. 게임오버 전용 UI 활성화
         GameObject goText = GameObject.Find("Canvas")?.transform.Find("Panel_INPuzzleBattle/GAMEOVER TXT")?.gameObject;
         if (goText != null) goText.SetActive(true);
-
-        if (btn_StartTouchTrigger_Direct != null) btn_StartTouchTrigger_Direct.SetActive(false);
     }
-
-    /// <summary>
-    /// 로컬 장부에서 탑텐 데이터를 긁어와 화면에 출력하는 함수
-    /// </summary>
     public void RefreshNPCLeaderboardUI()
     {
         System.Text.StringBuilder sb = new System.Text.StringBuilder();
@@ -318,19 +349,7 @@ public class PuzzleBattleManager : MonoBehaviour
         }
     }
 
-    // 새롭게 정렬된 랭킹 데이터를 유니티 레지스트리(저장소)에 영구 보존
-    for (int i = 0; i < 10; i++)
-    {
-        PlayerPrefs.SetInt($"INF_RANK_{i + 1}", highScores[i]);
-    }
-    PlayerPrefs.Save();
 
-    // 3. 순위 진입 축하 연출 가동
-    if (currentRank >= 1 && currentRank <= 3 && textRecordNotice != null)
-    {
-        textRecordNotice.gameObject.SetActive(true);
-        textRecordNotice.text = $"🔥 기록갱신! [{currentRank} 위] 달성! 🔥";
-    }
 
     // 4. 게임오버 전용 시각 텍스트 및 시작 차단 연출
     GameObject goText = GameObject.Find("Canvas")?.transform.Find("Panel_INPuzzleBattle/GAMEOVER TXT")?.gameObject;
@@ -362,28 +381,7 @@ public class PuzzleBattleManager : MonoBehaviour
 
         if (rt != null) rt.anchoredPosition = targetPosition;
     }
-    public void StartPuzzleBattle(string gameMode)
-    {
-        if (!gameMode.Equals("2"))
-        {
-            Debug.LogWarning($"⚠️ [무한매니저] 무한모드(모드'2')가 아니므로 작동을 취소합니다.");
-            return;
-        }
 
-        Debug.Log("♾️ [무한모드 엔진 가동] 무한 퍼즐 배틀을 시작합니다.");
-
-        // 🎯 [에러 해결]: 캔버스 상태 대신 패널 직접 활성화
-        if (panel_PuzzleBattle != null) panel_PuzzleBattle.SetActive(true);
-
-        // 몬스터 소환 엔진
-        if (InfiniteMonster.Instance != null)
-        {
-            InfiniteMonster.Instance.SpawnInfiniteMonster();
-        }
-
-        isProcessing = false;
-        SetState(GameState.PlayerTurn);
-    }
     public void UpdateTurnTextUI()
     {
         if (turnTextUI != null)
