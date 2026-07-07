@@ -712,7 +712,16 @@ public class Board : MonoBehaviour
         isSwapping = false;
         isMatching = false;
         isSwappingNow = false;
-    }
+
+        PuzzleBattleManager manager = FindAnyObjectByType<PuzzleBattleManager>();
+        if (manager != null)
+        {
+            if (manager.currentState == PuzzleBattleManager.GameState.Matching)
+            {
+                manager.SetState(PuzzleBattleManager.GameState.EnemyTurn);
+            }
+        }
+    } // 👈 DestroyAndRefillRoutine 함수 전체가 끝나는 최종 중괄호
 
 
 
