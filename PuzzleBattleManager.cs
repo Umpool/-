@@ -74,6 +74,9 @@ public class Board : MonoBehaviour
     public GameObject gameOverTxtPanel; // 다이렉트 주머니!
 
     private float[] comboDamageMultipliers = new float[] { 1.0f, 1.2f, 1.5f, 1.8f, 2.0f, 2.5f };
+    // 🔔 [1구역 수정] Board.cs 연동을 위해 누락된 변수 이름표 복구
+    public GameObject panel_InfiniteReward;       // 결과창 보상 패널 리모컨
+    public GameObject btn_StartTouchTrigger_Direct; // 시작 터치 트리거 버튼 리모컨
 
     private void Awake()
     {
@@ -81,11 +84,24 @@ public class Board : MonoBehaviour
 
         Instance = this;
     }
+    // 🔔 [상단 변수 구역에 추가] Board.cs 및 내부 연산에서 찾는 변수 이름 완벽 복구
+    public GameObject btn_StartTouchTrigger_Direct;
+    public GameObject panel_InfiniteReward;
 
-    
-        // 게임이 시작될 때 나 자신(Board)을 이름표에 등록합니다.
-        
-    
+    // 🔔 [2구역 수정] 보드가 수시로 원격 호출하는 턴 텍스트 갱신 함수 복구
+    public void UpdateTurnTextUI()
+    {
+        if (turnTextUI != null)
+        {
+            turnTextUI.text = $"{currentTurn} 턴";
+        }
+    }
+
+
+
+    // 게임이 시작될 때 나 자신(Board)을 이름표에 등록합니다.
+
+
     public string GetBlockColor(GameObject block)
     {
         if (block == null) return "None";
@@ -1091,6 +1107,17 @@ public class Board : MonoBehaviour
         InitializeNewBoard();
         Debug.Log("🔄 [순환 완공] 게임오버 창이 닫히고 스타트 트리거 버튼이 켜지며 무한모드가 재시작됩니다!");
     }
+    // 🔔 [3구역 수정] 매개변수(int finalScore) 장부를 칼같이 일치시켜 줍니다.
+    public void OnTimerEnd(int finalScore)
+    {
+        isTimeOver = true;
+        SetState(GameState.GameOver);
+
+        // 정산 창에 최종 점수가 찍히도록 텍스트 변환 로직 연동
+        if (textFinalScore != null) textFinalScore.text = $"최종 점수 : {finalScore:N0}";
+        if (panel_InfiniteReward != null) panel_InfiniteReward.SetActive(true);
+        if (btn_StartTouchTrigger_Direct != null) btn_StartTouchTrigger_Direct.SetActive(false);
+    }
 
     // 🎯 [정밀 UI 픽셀 위치 이동 부품]: 블록들이 꼬이거나 아래로 밀려 내려가지 않게 막아주는 방어선 코드
     private IEnumerator MoveBlockSmoothlyUI(GameObject target, Vector2 targetPosition)
@@ -1115,4 +1142,27 @@ public class Board : MonoBehaviour
 
         if (rt != null) rt.anchoredPosition = targetPosition;
     }
+    public void StartPuzzleBattle(string gameMode)
+    {
+        if (!gameMode.Equals("2"))
+        {
+            Debug.LogWarning($"⚠️ [무한매니저] 무한모드(모드'2')가 아니므로 작동을 취소합니다.");
+            return;
+        }
+
+        Debug.Log("♾️ [무한모드 엔진 가동] 무한 퍼즐 배틀을 시작합니다.");
+
+        // 🎯 [에러 해결]: 캔버스 상태 대신 패널 직접 활성화
+        if (panel_PuzzleBattle != null) panel_PuzzleBattle.SetActive(true);
+
+        // 몬스터 소환 엔진
+        if (InfiniteMonster.Instance != null)
+        {
+            InfiniteMonster.Instance.SpawnInfiniteMonster();
+        }
+
+        isProcessing = false;
+        SetState(GameState.PlayerTurn);
+    }
+
 } // 🚨 파일의 맨 마지막을 닫아주는 전체 마침표 중괄호입니다! 이 밑에는 아무것도 적지 마세요.
