@@ -47,10 +47,18 @@ public class Board : MonoBehaviour
     [SerializeField] private bool isSwappingNow = false;
     [SerializeField] private bool isUserTurn = false;
 
-
+    [Header("--- 배틀 핵심 UI 패널 록온 ---")]
+    public GameObject panel_PuzzleBattle;
+    public GameObject panel_InfiniteReward;
 
     [SerializeField] private Transform puzzleBoard; // <-- 이 줄을 변수 모여있는 곳에 추가
+                                                    // 🔔 [누락된 필수 변수 복구] 이 장부가 위에 있어야 아래 함수가 정상 작동합니다!
+    [Header("--- 턴 표시용 텍스트 UI ---")]
+    public TMPro.TextMeshProUGUI turnTextUI;
 
+    // 🔔 [누락된 버튼 변수 복구] Board.cs가 화면을 켤 때 이 리모컨 변수를 직접 부릅니다.
+    [Header("--- 시작 터치 트리거 버튼 ---")]
+    public GameObject btn_StartTouchTrigger_Direct;
 
     [Header("ㅡ 이사 온 부드러운 콤보 시스템 ㅡ")]
     public int currentCombo = 0;
@@ -80,10 +88,8 @@ public class Board : MonoBehaviour
         Instance = this;
     }
 
-    
-        // 게임이 시작될 때 나 자신(Board)을 이름표에 등록합니다.
-        
-    
+
+
     public string GetBlockColor(GameObject block)
     {
         if (block == null) return "None";
@@ -272,14 +278,6 @@ public class Board : MonoBehaviour
         ShutdownAndCleanupBoard();
     }
 
-    public void StartNormalMode()
-    {
-        InitializeNewBoard();
-        currentTurn = 0;
-        comboCount = 0;
-        isGameActive = true;
-        Debug.Log("⚔️ [시작] 일반모드가 가동되었습니다. 보스를 처치하세요!");
-    }
 
     public void OnClickRealStartInfiniteTimer()
     {
@@ -713,15 +711,36 @@ public class Board : MonoBehaviour
         isMatching = false;
         isSwappingNow = false;
 
-        PuzzleBattleManager manager = FindAnyObjectByType<PuzzleBattleManager>();
-        if (manager != null)
+        // 🔔 [최종 마감 연동] 현재 화면 상황을 판독하여 알맞은 매니저에게 신호를 분기합니다.
+        NormalBattleManager normalManager = FindAnyObjectByType<NormalBattleManager>();
+
+        // 🎯 판독 기준: 일반모드 매니저가 존재하고, 일반모드 전용 패널이 화면에 활성화(On)되어 있다면 "일반모드"입니다.
+        if (normalManager != null && normalManager.panel_NormalPuzzleBattle != null && normalManager.panel_NormalPuzzleBattle.activeInHierarchy)
         {
-            if (manager.currentState == PuzzleBattleManager.GameState.Matching)
+            // ⚔️ 일반모드 정산 회로 가동
+            if (normalManager.currentState == NormalBattleManager.GameState.Matching)
             {
-                manager.SetState(PuzzleBattleManager.GameState.EnemyTurn);
+                // 일반모드에서는 블록이 한 번 터져서 정리가 끝날 때마다 진행 턴수를 1씩 정직하게 올려줍니다.
+                currentTurn++;
+
+                // 일반모드 매니저에게 적으로 턴을 넘기라고 신호 송신
+                normalManager.SetState(NormalBattleManager.GameState.EnemyTurn);
             }
         }
-    } // 👈 DestroyAndRefillRoutine 함수 전체가 끝나는 최종 중괄호
+        // 🎯 그 외의 상황(일반모드 패널이 꺼져있음)이라면 기존의 "무한모드"로 취급합니다.
+        else
+        {
+            PuzzleBattleManager infiniteManager = FindAnyObjectByType<PuzzleBattleManager>();
+            if (infiniteManager != null)
+            {
+                // 무한모드 매니저에게 적 턴 신호 송신
+                if (infiniteManager.currentState == PuzzleBattleManager.GameState.Matching)
+                {
+                    infiniteManager.SetState(PuzzleBattleManager.GameState.EnemyTurn);
+                }
+            }
+        } //DestroyAndRefillRoutine 
+    }
 
 
 
@@ -1042,6 +1061,20 @@ public class Board : MonoBehaviour
             }
         }
     }
+    /// <summary>
+    /// 다음 판 진입을 위해 연출 UI 및 스타트 버튼을 초기 상태로 복구하는 함수
+    /// </summary>
+    public void ResetBattleSystemForNextEntry()
+    {
+        GameObject goText = GameObject.Find("Canvas")?.transform.Find("Panel_INPuzzleBattle/GAMEOVER TXT")?.gameObject;
+        if (goText != null) goText.SetActive(false);
+
+        if (btn_StartTouchTrigger_Direct != null)
+        {
+            btn_StartTouchTrigger_Direct.SetActive(true);
+            Debug.Log("🧹 [PuzzleBattleManager] 다음 진입을 위한 전장 청소 완수!");
+        }
+    }
 
     // 🎯 [재시작 트리거]: 결과창 화면을 터치했을 때 다시 태초의 상태로 부활시키는 함수
     public void RestartGameByTouch()
@@ -1076,28 +1109,7 @@ public class Board : MonoBehaviour
         InitializeNewBoard();
         Debug.Log("🔄 [순환 완공] 게임오버 창이 닫히고 스타트 트리거 버튼이 켜지며 무한모드가 재시작됩니다!");
     }
-
-    // 🎯 [정밀 UI 픽셀 위치 이동 부품]: 블록들이 꼬이거나 아래로 밀려 내려가지 않게 막아주는 방어선 코드
-    private IEnumerator MoveBlockSmoothlyUI(GameObject target, Vector2 targetPosition)
-    {
-        if (target == null) yield break;
-        RectTransform rt = target.GetComponent<RectTransform>();
-        if (rt == null) yield break;
-
-        rt.SetAsLastSibling(); // 드래그 중인 블록이 다른 블록 뒤로 숨지 않게 레이어 맨 앞으로 이동
-        Vector2 startPos = rt.anchoredPosition;
-        float elapsed = 0f;
-        float duration = 0.15f; // 쾌속 슬라이딩 스피드 0.15초 고정
-
-        while (elapsed < duration)
-        {
-            elapsed += Time.deltaTime;
-            float t = elapsed / duration;
-            t = t * t * (3f - 2f * t); // 부드러운 감속 연출 효과
-            if (rt != null) rt.anchoredPosition = Vector2.Lerp(startPos, targetPosition, t);
-            yield return null;
-        }
-
-        if (rt != null) rt.anchoredPosition = targetPosition;
-    }
-} // 🚨 파일의 맨 마지막을 닫아주는 전체 마침표 중괄호입니다! 이 밑에는 아무것도 적지 마세요.
+    // 🔔 [3구역 수정] 매개변수(int finalScore) 장부를 칼같이 일치시켜 줍니다.
+    /// <summary>
+    /// 무한모드 제한 시간이 종료되었을 때 타이머에 의해 강제 격발되는 최종 정산 함수
+    /// </summary>
