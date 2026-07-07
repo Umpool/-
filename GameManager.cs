@@ -109,7 +109,7 @@ public class GameManager : MonoBehaviour
     public List<CharacterData> livePartyMembers = new List<CharacterData>();
 
     // 📦 정예에 들어가지 못하고 보관함(창고)에 대기 중인 나머지 멤버들의 명단 리스트
-    public List<CharacterData> liveStorageMembers = new List<CharacterData>();
+    public List<CharacterData> liveliveStorageMembers = new List<CharacterData>();
     // 🎯 [실시간 워프 스위치]: 캐릭터를 파티/창고로 이동시키고 UI를 갱신합니다.
     public void ToggleLiveCharacterAssignment(CharacterData targetCharacter)
     {
@@ -119,11 +119,11 @@ public class GameManager : MonoBehaviour
         if (livePartyMembers.Contains(targetCharacter))
         {
             livePartyMembers.Remove(targetCharacter);
-            if (!liveStorageMembers.Contains(targetCharacter)) liveStorageMembers.Add(targetCharacter);
+            if (!liveliveStorageMembers.Contains(targetCharacter)) liveliveStorageMembers.Add(targetCharacter);
         }
         else if (livePartyMembers.Count < 5)
         {
-            if (liveStorageMembers.Contains(targetCharacter)) liveStorageMembers.Remove(targetCharacter);
+            if (liveliveStorageMembers.Contains(targetCharacter)) liveliveStorageMembers.Remove(targetCharacter);
             livePartyMembers.Add(targetCharacter);
         }
         else
@@ -134,9 +134,10 @@ public class GameManager : MonoBehaviour
         RefreshLivePartyEditUI(); // UI 갱신
     }
     // 🎯 [파티 UI 물청소 스위치]: 화면에 있던 옛날 카드들을 싹 지워줍니다.
+    // 🎯 [오류 해결 파트 1]: 중괄호 탈출 버그를 잡고 상단 파티 카드를 실시간으로 찍어냅니다.
     public void RefreshLivePartyEditUI()
     {
-        // 상단 파티창 물청소
+        // 🧼 상단 파티 배치 그릇 물청소
         if (livePartyGridContainer != null)
         {
             foreach (Transform child in livePartyGridContainer)
@@ -145,7 +146,7 @@ public class GameManager : MonoBehaviour
             }
         }
 
-        // 하단 창고창 물청소
+        // 🧼 하단 창고 보관함 그릇 물청소
         if (liveStorageGridContainer != null)
         {
             foreach (Transform child in liveStorageGridContainer)
@@ -153,64 +154,27 @@ public class GameManager : MonoBehaviour
                 Destroy(child.gameObject);
             }
         }
-        // 하단 창고창 물청소
-        if (liveStorageGridContainer != null)
-        {
-            foreach (Transform child in liveStorageGridContainer)
-            {
-                Destroy(child.gameObject);
-            }
-        } // 👈 바로 이 줄 맨 뒤를 마우스로 클릭하고 엔터(Enter)를 치세요!
-          // 🎯 [상단 파티 카드 스폰 엔진]: 실시간으로 명단을 읽어 파티창에 카드를 복사합니다.
+
+        // ⚔️ [상단 파티 카드 생성]: 정예 명단을 스캔하여 상단 영역에 카드를 스폰합니다.
         if (livePartyMembers != null && livePartyGridContainer != null && livePartyIconPrefab != null)
         {
             foreach (CharacterData character in livePartyMembers)
             {
                 if (character == null) continue;
 
-                // 1. 상단 그릇의 자식으로 새 카드 오브젝트를 만듭니다.
+                // 부모 그릇의 자식으로 새 캐릭터 카드를 복사해 만듭니다.
                 GameObject newIconObj = Instantiate(livePartyIconPrefab, livePartyGridContainer);
 
-                // 2. 카드에 붙은 리모컨을 찾아 상단 '파티 상태'(true)로 데이터를 채워줍니다.
+                // 카드에 부착된 리모컨을 확보하여 상단 '파티 상태'(true)로 스펙을 주입합니다.
                 PartyIcon iconScript = newIconObj.GetComponent<PartyIcon>();
                 if (iconScript != null)
                 {
+                    // 💡 새로 병합된 SetupCardData 함수를 정밀 타격 호출합니다!
                     iconScript.SetupCardData(character, true);
                 }
             }
         }
-        if (iconScript != null)
-        {
-            iconScript.SetupCardData(character, true);
-        }
-
-        // 🎯 [하단 창고 카드 스폰 ENGINE]: 대기 영웅 명단을 읽어 창고 보관함에 카드를 복사합니다.
-        if (liveStorageMembers != null && liveStorageGridContainer != null && livePartyIconPrefab != null)
-        {
-            foreach (CharacterData character in liveStorageMembers)
-            {
-                if (character == null) continue;
-
-                // 1. 하단 그릇의 자식으로 새 카드를 복사합니다.
-                GameObject newIconObj = Instantiate(livePartyIconPrefab, liveStorageGridContainer);
-
-                // 2. 카드에 붙은 리모컨을 찾아 하단 '창고 상태'(false)로 데이터를 가득 채워줍니다.
-                PartyIcon iconScript = newIconObj.GetComponent<PartyIcon>();
-                if (iconScript != null)
-                {
-                    iconScript.SetupCardData(character, false);
-                }
-            }
-        }
-
-
-
-        [Header("--- [파티 리뉴얼] 실시간 출전 및 창고 장부 ---")]
-        // ⚔️ 실제로 전투에 출전하는 정예 파티원 5인의 리스트 (파티창에 해당)
-        public List<CharacterData> partyMembers = new List<CharacterData>();
-
-    // 📦 파티에 들어가지 못하고 대기 중인 나머지 모든 캐릭터들의 리스트 (창고에 해당)
-    public List<CharacterData> storageMembers = new List<CharacterData>();
+    }
 
     // 🎯 [시스템 가동 인터페이스]: 특정 캐릭터를 파티로 넣거나 창고로 빼는 통합 연산 함수
     public void ToggleCharacterAssignment(CharacterData targetCharacter)
@@ -222,9 +186,9 @@ public class GameManager : MonoBehaviour
         {
             // 파티창에서 제거하고 창고 장부로 강제 워프시킵니다.
             partyMembers.Remove(targetCharacter);
-            if (!storageMembers.Contains(targetCharacter))
+            if (!liveStorageMembers.Contains(targetCharacter))
             {
-                storageMembers.Add(targetCharacter);
+                liveStorageMembers.Add(targetCharacter);
             }
             Debug.Log($"📦 [창고 입고] {targetCharacter.characterName}이(가) 정예 파티에서 해제되어 창고로 복귀했습니다.");
         }
@@ -238,9 +202,9 @@ public class GameManager : MonoBehaviour
             }
 
             // 창고에서 제거하고 파티창 정예 명단에 등록합니다.
-            if (storageMembers.Contains(targetCharacter))
+            if (liveStorageMembers.Contains(targetCharacter))
             {
-                storageMembers.Remove(targetCharacter);
+                liveStorageMembers.Remove(targetCharacter);
             }
             partyMembers.Add(targetCharacter);
             Debug.Log($"⚔️ [정예 출전] {targetCharacter.characterName}이(가) 창고에서 나와 배틀 엔트리에 등록되었습니다.");
@@ -299,9 +263,9 @@ public class GameManager : MonoBehaviour
             }
         }
         // 🎯 [창고 보관함 스폰 엔진]: 하단 창고 멤버들을 화면에 실시간으로 생성합니다.
-        if (storageMembers != null && storageGridContainer != null && partyIconPrefab != null)
+        if (liveStorageMembers != null && storageGridContainer != null && partyIconPrefab != null)
         {
-            foreach (CharacterData character in storageMembers)
+            foreach (CharacterData character in liveStorageMembers)
             {
                 if (character == null) continue;
 
@@ -317,6 +281,7 @@ public class GameManager : MonoBehaviour
                 }
             }
         }
+    }
 
 
     // GameManager.cs 내부에 추가할 코드
