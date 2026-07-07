@@ -98,6 +98,19 @@ public class GameManager : MonoBehaviour
     [Header("배틀 전용 동적 파티창 설정")]
     public GameObject battlePartyContainer; // 인스펙터에서 PartyContainer_Battle을 연결할 칸
 
+    // GameManager.cs 내부에 추가할 코드
+    public enum CanvasState { PuzzleBattle, Other } // 모드 상태 정의
+    public CanvasState currentCanvasState;
+
+    public void UpdateCanvasState(CanvasState state)
+    {
+        currentCanvasState = state;
+        Debug.Log("캔버스 상태가 변경되었습니다: " + state);
+
+        // 필요하다면 여기에 UI를 켜고 끄는 로직을 추가할 수 있습니다.
+    }
+
+
     void Awake()
     {
         if (Instance == null) Instance = this;
