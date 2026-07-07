@@ -9,6 +9,11 @@ using UnityEngine.EventSystems; // 🎯 [오류 해결]: PointerEventData를 컴
 // 이제 마우스 입력은 Update 리뉴얼 엔진이 전담하므로, 뒤에 붙은 인터페이스 단어들을 전부 떼어냅니다.
 public class Board : MonoBehaviour
 {
+    // 🎯 [오늘의 미션]: 다른 스크립트에서 Board를 언제든 부를 수 있도록 이름표(싱글톤)를 만들어 줍니다.
+    public static Board Instance;
+
+
+
     // ---- [추가] 옛날 코드에서 가져온 Block 선택 및 되돌리기용 변수 ----
 
     private int prevFirstX, prevFirstY;   // 되돌리기를 위한 첫 번째 Block의 이전 좌표
@@ -66,15 +71,19 @@ public class Board : MonoBehaviour
     [Header("ㅡ 이사 온 게임오버 팝업 UI ㅡ")]
     public GameObject gameOverTxtPanel; // 다이렉트 주머니!
 
-
-
     private float[] comboDamageMultipliers = new float[] { 1.0f, 1.2f, 1.5f, 1.8f, 2.0f, 2.5f };
 
     private void Awake()
     {
         allBlocks = new GameObject[width, height];
+
+        Instance = this;
     }
 
+    
+        // 게임이 시작될 때 나 자신(Board)을 이름표에 등록합니다.
+        
+    
     public string GetBlockColor(GameObject block)
     {
         if (block == null) return "None";
@@ -101,11 +110,27 @@ public class Board : MonoBehaviour
     // 🎯 [ width / height 장부 완벽 연동 ] 현재 코드의 변수 명칭을 100% 보존한 초기화 엔진
     public void InitializeNewBoard()
     {
+                // 🛡️ [핵심 해결책]: 일반 모드로 처음 진입할 때 빈 블록 상자(width x height 크기)를 메모리에 확실하게 새로 생성해 줍니다!
+        if (allBlocks == null)
+        {
+            allBlocks = new GameObject[width, height];
+            Debug.Log($"📦 [보드 상자 개설] {width}x{height} 크기의 새로운 블록 보관 배열 상자를 성공적으로 개설했습니다.");
+        }
         // 🔓 [왕초보 특제: 두 번째 판 마우스 차단벽 원천 붕괴 락온]
         // 버튼을 눌러 새 판을 까는 바로 그 순간, 마우스를 꽉 잠그고 있던 유령 스위치들을 완전히 강제 해제합니다!
         isGameActive = true;     // 1. 게임 활성화 상태 ON!
         isProcessing = false;    // 2. 블록 연산 중 잠금 해제(false)!
         isMatching = false;      // 3. 매칭 계산 중 잠금 해제(false)!
+        isSwapping = false;      //잠금해제!
+
+        // 🎯 [완벽 해결 미션]: 변수 충돌 문제를 우회하여 일반 스테이지 크기를 6x6으로 강제 지정합니다!
+        if (width <= 0 || height <= 0)
+        {
+            width = 6;
+            height = 6;
+            Debug.Log("📐 [보드 시스템] 일반 스테이지용 6x6 규격을 안전하게 강제 고정했습니다!");
+        }
+    
 
         ClearAllBoardObjects();
 
@@ -200,6 +225,12 @@ public class Board : MonoBehaviour
 
     public void ClearAllBoardObjects()
     {
+        if (allBlocks == null)
+        {
+            Debug.Log("🧹 [보드 청소] 블록 상자가 비어있어 청소 연산을 안전하게 패스합니다.");
+            return;
+        }
+
         for (int x = 0; x < width; x++)
         {
             for (int y = 0; y < height; y++)
@@ -212,6 +243,7 @@ public class Board : MonoBehaviour
             }
         }
     }
+
 
     public void StartInfiniteMode()
     {
