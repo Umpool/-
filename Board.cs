@@ -310,15 +310,14 @@ public class Board : MonoBehaviour
     private void Update()
     {
         // 💡 [ON 상태]: 넷 중 단 하나라도 true가 되면 마우스 입력을 '철저히 차단(잠금)'합니다.
-        if (isProcessing || isSwapping || isMatching || isSwappingNow)
-        {
-            return; // 마우스 클릭/드래그 로직을 실행하지 않고 패스!
-        }
+        if (isProcessing || isSwapping || isMatching || isSwappingNow) return;
+
+        // 💡 manager 변수를 Update 시작 시점에 선언하여 Scope(범위) 문제 해결
+        PuzzleBattleManager manager = FindAnyObjectByType<PuzzleBattleManager>();
         // 1. 마우스 왼쪽 버튼을 누르는 순간 (클릭)
         if (Input.GetMouseButtonDown(0))
         {
-            // 🔔 [추가] 매니저의 상태를 체크하여 플레이어 턴이 아니면 드래그 시작을 원천 차단합니다.
-            PuzzleBattleManager manager = FindObjectOfType<PuzzleBattleManager>();
+
             if (manager != null && manager.currentState != PuzzleBattleManager.GameState.PlayerTurn)
             {
                 Debug.LogWarning("현재 플레이어 턴이 아니므로 블록을 선택할 수 없습니다.");
