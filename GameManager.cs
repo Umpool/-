@@ -388,10 +388,11 @@ public class GameManager : MonoBehaviour
                 containerRect.anchoredPosition = new Vector2(containerRect.anchoredPosition.x, 100f);
             }
 
-            foreach (var member in allCharacters)
+            foreach (var member in liveStorageMembers)
             {
                 if (member == null) continue;
-                GameObject cardObj = Instantiate(partyMemberPrefab, warehouseContainer.transform);
+                GameObject cardObj = Instantiate(partyMemberPrefab, liveStorageGridContainer);
+
                 PartyIcon partyIconScript = cardObj.GetComponent<PartyIcon>();
 
                 if (partyIconScript != null)
@@ -407,6 +408,7 @@ public class GameManager : MonoBehaviour
                     // 🌟 이 줄이 마을 전용 캐릭터 클릭 함수와 완벽하게 연결되었습니다!
                     // 212번 라인의 코드를 아래 한 줄로 정확하게 교체합니다.
                     cardBtn.onClick.AddListener(() => OnClickPartyEditwarehouseCharacter(member.id));
+                    cardBtn.onClick.AddListener(() => ToggleLiveCharacterAssignment(member));
                 }
             }
 
