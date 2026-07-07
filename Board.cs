@@ -33,7 +33,7 @@ public class Board : MonoBehaviour
 
     [Header("ㅡ 게임 상태 장부 ㅡ")]
     [System.NonSerialized] public GameObject[,] allBlocks; // 6x6 보드판 실제 배열 장부
-// Block이 움직이거나 터지는 중인지 체크 (조작 잠금)
+                                                           // Block이 움직이거나 터지는 중인지 체크 (조작 잠금)
     public Transform dragLayerParent;
 
     [Header("ㅡ 턴 및 콤보 데이터 ㅡ")]
@@ -79,6 +79,12 @@ public class Board : MonoBehaviour
     [Header("ㅡ 이사 온 게임오버 팝업 UI ㅡ")]
     public GameObject gameOverTxtPanel; // 다이렉트 주머니!
 
+    [Header("ㅡ 마우스 및 드래그 제어 (리뉴얼 엔진) ㅡ")]
+    private GameObject selectedBlock = null;
+    private Vector2 clickStartPos;
+    private int startX, startY;
+
+
     private float[] comboDamageMultipliers = new float[] { 1.0f, 1.2f, 1.5f, 1.8f, 2.0f, 2.5f };
 
     private void Awake()
@@ -116,7 +122,7 @@ public class Board : MonoBehaviour
     // 🎯 [ width / height 장부 완벽 연동 ] 현재 코드의 변수 명칭을 100% 보존한 초기화 엔진
     public void InitializeNewBoard()
     {
-                // 🛡️ [핵심 해결책]: 일반 모드로 처음 진입할 때 빈 블록 상자(width x height 크기)를 메모리에 확실하게 새로 생성해 줍니다!
+        // 🛡️ [핵심 해결책]: 일반 모드로 처음 진입할 때 빈 블록 상자(width x height 크기)를 메모리에 확실하게 새로 생성해 줍니다!
         if (allBlocks == null)
         {
             allBlocks = new GameObject[width, height];
@@ -136,7 +142,7 @@ public class Board : MonoBehaviour
             height = 6;
             Debug.Log("📐 [보드 시스템] 일반 스테이지용 6x6 규격을 안전하게 강제 고정했습니다!");
         }
-    
+
 
         ClearAllBoardObjects();
 
@@ -226,6 +232,7 @@ public class Board : MonoBehaviour
         }
         yield return new WaitForSeconds(0.15f); //빈칸 채우는 시간
     }
+    
 
 
 
@@ -299,10 +306,7 @@ public class Board : MonoBehaviour
 
         TimeText.text = string.Format("{0:00}:{1:00}.{2:000}", minutes, seconds, milliseconds);
     }
-    [Header("ㅡ 마우스 및 드래그 제어 (리뉴얼 엔진) ㅡ")]
-    private GameObject selectedBlock = null;
-    private Vector2 clickStartPos;
-    private int startX, startY;
+
 
     // 🎯 [완전 구현] 인스펙터/프리팹 투명 가림막을 무력화하는 무적의 픽셀 좌표 추적 시스템
     private void Update()
@@ -632,19 +636,7 @@ public class Board : MonoBehaviour
             isMatching = false;
             isSwappingNow = false;
         }
-    }
 
-
-
-
-
-
-    // 🎯 [완전 융합] 현재 코드의 콤보 배율/연쇄 폭발 장치를 100% 보존하면서 옛날 점수 연동을 이식한 엔진
-    // 🎯 [완전 복구] 콤보 배율과 연쇄 폭발을 보존한 옛날 d-2 정품 파괴/리필 통합 엔진
-    // 🎯 [완전 융합] 콤보 및 연쇄 폭발을 처리하는 통합 엔진 (리팩토링 버전)
-    // 🎯 [오류 해결 완료 버전] 콤보와 연쇄 폭발을 에러 없이 완벽 처리하는 통합 엔진
-    // 🎯 [완전 복구] 콤보와 연쇄 폭발을 에러 없이 완벽 처리하는 통합 엔진
-    // 🎯 [d-2 정품 연쇄 폭발 + 최신 콤보 시스템 융합]
     // 🎯 [3단계 수리 완결판] 무한 락 루프 방지 및 InfiniteMonster 타격/이름 규칙 보강
     private IEnumerator DestroyAndRefillRoutine(List<GameObject> matches)
     {
@@ -962,7 +954,8 @@ public class Board : MonoBehaviour
         List<Vector2Int> spawnCoords = new List<Vector2Int>();
         for (int x = 0; x < width; x++) for (int y = 0; y < height; y++) spawnCoords.Add(new Vector2Int(x, y));
 
-        spawnCoords.Sort((a, b) => {
+        spawnCoords.Sort((a, b) =>
+        {
             float d1 = Vector2.Distance(a, new Vector2(2.5f, 2.5f));
             float d2 = Vector2.Distance(b, new Vector2(2.5f, 2.5f));
             return d1.CompareTo(d2);
@@ -1104,12 +1097,14 @@ public class Board : MonoBehaviour
         isMatching = false;
         comboCount = 0;
         currentTurn = 0;
-
+    
         // 가운데서부터 사방으로 피어나는 정품 새 보드판 배치 가동!
         InitializeNewBoard();
         Debug.Log("🔄 [순환 완공] 게임오버 창이 닫히고 스타트 트리거 버튼이 켜지며 무한모드가 재시작됩니다!");
+
+        // 🔔 [3구역 수정] 매개변수(int finalScore) 장부를 칼같이 일치시켜 줍니다.
+        /// <summary>
+        /// 무한모드 제한 시간이 종료되었을 때 타이머에 의해 강제 격발되는 최종 정산 함수
+        /// </summary>
     }
-    // 🔔 [3구역 수정] 매개변수(int finalScore) 장부를 칼같이 일치시켜 줍니다.
-    /// <summary>
-    /// 무한모드 제한 시간이 종료되었을 때 타이머에 의해 강제 격발되는 최종 정산 함수
-    /// </summary>
+}
