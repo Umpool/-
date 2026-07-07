@@ -636,6 +636,7 @@ public class Board : MonoBehaviour
             isMatching = false;
             isSwappingNow = false;
         }
+    
 
     // 🎯 [3단계 수리 완결판] 무한 락 루프 방지 및 InfiniteMonster 타격/이름 규칙 보강
     private IEnumerator DestroyAndRefillRoutine(List<GameObject> matches)
@@ -1039,8 +1040,7 @@ public class Board : MonoBehaviour
         if (PuzzleBattleManager.Instance != null)
         {
             PuzzleBattleManager.Instance.currentTurn = currentTurn;
-            PuzzleBattleManager.Instance.OnTimerEnd(); // 이 함수 안에서 최종 대미지와 턴수를 정산합니다.
-
+            PuzzleBattleManager.Instance.OnTimerEnd(currentTurn);
             // ⚡ [스위치 작동 1]: 게임이 끝났으므로 '시작 담당 리모컨'은 확실하게 꺼줍니다!
             if (PuzzleBattleManager.Instance.btn_StartTouchTrigger_Direct != null)
             {
@@ -1057,17 +1057,7 @@ public class Board : MonoBehaviour
     /// <summary>
     /// 다음 판 진입을 위해 연출 UI 및 스타트 버튼을 초기 상태로 복구하는 함수
     /// </summary>
-    public void ResetBattleSystemForNextEntry()
-    {
-        GameObject goText = GameObject.Find("Canvas")?.transform.Find("Panel_INPuzzleBattle/GAMEOVER TXT")?.gameObject;
-        if (goText != null) goText.SetActive(false);
 
-        if (btn_StartTouchTrigger_Direct != null)
-        {
-            btn_StartTouchTrigger_Direct.SetActive(true);
-            Debug.Log("🧹 [PuzzleBattleManager] 다음 진입을 위한 전장 청소 완수!");
-        }
-    }
 
     // 🎯 [재시작 트리거]: 결과창 화면을 터치했을 때 다시 태초의 상태로 부활시키는 함수
     public void RestartGameByTouch()
