@@ -28,6 +28,13 @@ public class PuzzleBattleManager : MonoBehaviour
     public GameObject panel_InfiniteBattle;  // 무한모드 전용 상단 스코어 및 타이머 UI 패널
     public GameObject enemyContainer;        // 무한 몬스터가 생성되어 배치될 부모 그릇
 
+    [Header("--- 아군 및 적군 실시간 HP 스캔 변수 그룹 ---")]
+    public BaseMonster currentTargetMonster;            // 현재 플레이어가 타겟팅 중인 몬스터 주머니
+    public Slider enemyHPBar;                           // 현재 전장에 배치된 몬스터의 HP 슬라이더 바
+    public List<Slider> heroHPBars = new List<Slider>(); // 아군 파티원 5인의 실시간 HP 슬라이더 바 리스트
+    public Board puzzleBoardComponent;                  // 연결될 보드 컴포넌트 리모컨
+
+
     [Header("--- 실시간 생존 영웅 카드 리스트 ---")]
     public List<CharacterCard> liveCards = new List<CharacterCard>();
     private void Awake()
@@ -177,9 +184,9 @@ public class PuzzleBattleManager : MonoBehaviour
             }
         }
     }
-    /// <summary>
-    /// 외부 시스템에서 배틀 진입 신호를 보낼 때 무한모드 엔진을 켜주는 메인 게이트
-    /// </summary>
+      /// <summary>
+      /// 외부 시스템에서 배틀 진입 신호를 보낼 때 무한모드 엔진을 켜주는 메인 게이트
+      /// </summary>
     public void StartPuzzleBattle(string gameMode)
     {
         // 일반모드 신호(Stage_A, Stage_B 등)가 오면 작동을 거부하고 회로를 보호합니다.
@@ -210,22 +217,8 @@ public class PuzzleBattleManager : MonoBehaviour
         if (Board.Instance != null) Board.Instance.isGameActive = true;
 
         SetState(GameState.PlayerTurn);
-    }
-
-    [Header("--- 아군 및 적군 실시간 HP 스캔 변수 그룹 ---")]
-    public BaseMonster currentTargetMonster;            // 현재 플레이어가 타겟팅 중인 몬스터 주머니
-    public Slider enemyHPBar;                           // 현재 전장에 배치된 몬스터의 HP 슬라이더 바
-    public List<Slider> heroHPBars = new List<Slider>(); // 아군 파티원 5인의 실시간 HP 슬라이더 바 리스트
-    public Board puzzleBoardComponent;                  // 연결될 보드 컴포넌트 리모컨
-    /// <summary>
-    /// 무한모드 제한 시간이 종료되었을 때 타이머에 의해 강제 격발되는 최종 정산 함수
-    /// </summary>
-    /// <summary>
-    /// 무한모드 제한 시간이 종료되었을 때 타이머에 의해 강제 격발되는 최종 정산 함수
-    /// </summary>
-
-
-        // 새롭게 정렬된 랭킹 데이터를 유니티 레지스트리(저장소)에 영구 보존
+    
+       // 새롭게 정렬된 랭킹 데이터를 유니티 레지스트리(저장소)에 영구 보존
         for (int i = 0; i < 10; i++)
         {
             PlayerPrefs.SetInt($"INF_RANK_{i + 1}", highScores[i]);
@@ -273,6 +266,7 @@ public class PuzzleBattleManager : MonoBehaviour
         Debug.Log("[NPC 순위판] 탑텐 데이터를 긁어와 새로고침 완료!");
     }
 
+
     /// <summary>
     /// 다음 판 진입을 위해 연출 UI 및 스타트 버튼을 초기 상태로 복구하는 함수
     /// </summary>
@@ -290,8 +284,8 @@ public class PuzzleBattleManager : MonoBehaviour
 /// <summary>
 /// 무한모드 제한 시간이 종료되었을 때 타이머에 의해 강제 격발되는 최종 정산 함수
 /// </summary>
-public void OnTimerEnd(int finalScore)
-{
+    public void OnTimerEnd(int finalScore)
+    {
     // 중복 정산 방지 및 게임 상태 변경
     isTimeOver = true;
     SetState(GameState.GameOver);
@@ -343,10 +337,10 @@ public void OnTimerEnd(int finalScore)
     if (goText != null) goText.SetActive(true);
 
     if (btn_StartTouchTrigger_Direct != null) btn_StartTouchTrigger_Direct.SetActive(false);
-}
+    }
 
 // 🎯 [정밀 UI 픽셀 위치 이동 부품]: 블록들이 꼬이거나 아래로 밀려 내려가지 않게 막아주는 방어선 코드
-private IEnumerator MoveBlockSmoothlyUI(GameObject target, Vector2 targetPosition)
+    private IEnumerator MoveBlockSmoothlyUI(GameObject target, Vector2 targetPosition)
     {
         if (target == null) yield break;
         RectTransform rt = target.GetComponent<RectTransform>();
@@ -397,5 +391,6 @@ private IEnumerator MoveBlockSmoothlyUI(GameObject target, Vector2 targetPositio
             turnTextUI.text = $"{currentTurn} 턴";
         }
     }
-} // 🚨 파일의 맨 마지막을 닫아주는 전체 마침표 중괄호입니다! 이 밑에는 아무것도 적지 마세요.
-} // 🔒 [최종 마감] 클래스 전체를 안정적으로 밀봉하는 파일의 마지막 중괄호
+}
+
+
