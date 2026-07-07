@@ -109,7 +109,7 @@ public class GameManager : MonoBehaviour
     public List<CharacterData> livePartyMembers = new List<CharacterData>();
 
     // 📦 정예에 들어가지 못하고 보관함(창고)에 대기 중인 나머지 멤버들의 명단 리스트
-    public List<CharacterData> liveliveStorageMembers = new List<CharacterData>();
+    public List<CharacterData> liveStorageMembers = new List<CharacterData>();
     // 🎯 [실시간 워프 스위치]: 캐릭터를 파티/창고로 이동시키고 UI를 갱신합니다.
     public void ToggleLiveCharacterAssignment(CharacterData targetCharacter)
     {
@@ -119,11 +119,11 @@ public class GameManager : MonoBehaviour
         if (livePartyMembers.Contains(targetCharacter))
         {
             livePartyMembers.Remove(targetCharacter);
-            if (!liveliveStorageMembers.Contains(targetCharacter)) liveliveStorageMembers.Add(targetCharacter);
+            if (!liveStorageMembers.Contains(targetCharacter)) liveStorageMembers.Add(targetCharacter);
         }
         else if (livePartyMembers.Count < 5)
         {
-            if (liveliveStorageMembers.Contains(targetCharacter)) liveliveStorageMembers.Remove(targetCharacter);
+            if (liveStorageMembers.Contains(targetCharacter)) liveStorageMembers.Remove(targetCharacter);
             livePartyMembers.Add(targetCharacter);
         }
         else
@@ -397,7 +397,7 @@ public class GameManager : MonoBehaviour
                 if (partyIconScript != null)
                 {
                     // 🌟 [칼조준 개조]: 여기는 창고/편집창 목록이므로 false를 명시해 HP바를 완전히 끕니다!
-                    partyIconScript.Setup(member, false);
+                    partyIconScript.SetupCardData(member, false);
                 }
 
                 Button cardBtn = cardObj.GetComponentInChildren<Button>();
@@ -1511,7 +1511,7 @@ public class GameManager : MonoBehaviour
         {
             GameObject iconVillage = Instantiate(partyMemberPrefab, partyListContainer.transform);
             PartyIcon partyIconScriptVillage = iconVillage.GetComponent<PartyIcon>();
-            if (partyIconScriptVillage != null) partyIconScriptVillage.Setup(member);
+            if (partyIconScriptVillage != null) partyIconScriptVillage.SetupCardData(member, true);
 
             Button btnVillage = iconVillage.GetComponentInChildren<Button>();
             if (btnVillage != null)
@@ -1524,7 +1524,7 @@ public class GameManager : MonoBehaviour
             {
                 GameObject iconEdit = Instantiate(partyMemberPrefab, editPartyContainer.transform);
                 PartyIcon partyIconScriptEdit = iconEdit.GetComponent<PartyIcon>();
-                if (partyIconScriptEdit != null) partyIconScriptEdit.Setup(member, false);
+                if (partyIconScriptEdit != null) partyIconScriptEdit.SetupCardData(member, false);
 
                 PuzzleBattleManager puzzleManager = GetComponent<PuzzleBattleManager>();
                 CharacterCard cardComponentEdit = iconEdit.GetComponent<CharacterCard>();
@@ -1643,7 +1643,7 @@ public class GameManager : MonoBehaviour
             if (partyIconScript != null)
             {
                 // 아까 구현해둔 공식! 배틀 모드이므로 true를 주입해 HP바 인스펙터 체크박스를 ON 합니다!
-                partyIconScript.Setup(member, true);
+                partyIconScript.SetupCardData(member, true);
             }
 
             Button btn = battleIconObj.GetComponentInChildren<Button>();
