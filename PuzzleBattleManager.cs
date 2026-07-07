@@ -10,6 +10,19 @@ using TMPro;
 /// </summary>
 public class PuzzleBattleManager : MonoBehaviour
 {
+    // GameManager.cs 파일 내부에 추가
+    public enum CanvasState { PuzzleBattle, Other } // 'Other'는 기존에 있던 다른 모드일 거예요.
+    public void UpdateCanvasState(CanvasState state)
+    {
+        Debug.Log("캔버스 상태 변경: " + state);
+        // 여기에 실제로 캔버스/패널을 켜고 끄는 로직이 들어가야 합니다.
+    }
+    // InfiniteMonster.cs 파일 내부에 추가
+    public void SpawnInfiniteMonster()
+    {
+        Debug.Log("몬스터를 소환합니다!");
+        // 여기에 실제 몬스터 생성 로직을 넣으세요.
+    }
     public static PuzzleBattleManager Instance { get; private set; }
 
     // 무한모드 진행에 필요한 핵심 런타임 상태 정의
@@ -47,6 +60,8 @@ public class PuzzleBattleManager : MonoBehaviour
     public GameObject panel_NPCLeaderboard_Popup;
     public GameObject btn_StartTouchTrigger_Direct;
     public TextMeshProUGUI turnTextUI;
+
+
 
     private void Awake()
     {
@@ -218,7 +233,7 @@ public class PuzzleBattleManager : MonoBehaviour
         // 2. 몬스터 스폰 및 보드 활성화
         if (InfiniteMonster.Instance != null)
         {
-            InfiniteMonster.Instance.SpawnInfiniteMonster();
+            InfiniteMonster.Instance.ResetAndRespawnMonster();
         }
         if (Board.Instance != null) Board.Instance.isGameActive = true;
 
@@ -312,44 +327,6 @@ public class PuzzleBattleManager : MonoBehaviour
             Debug.Log("🧹 [PuzzleBattleManager] 다음 진입을 위한 전장 청소 완수!");
         }
     }
-/// <summary>
-/// 무한모드 제한 시간이 종료되었을 때 타이머에 의해 강제 격발되는 최종 정산 함수
-/// </summary>
-    public void OnTimerEnd(int finalScore)
-    {
-    // 중복 정산 방지 및 게임 상태 변경
-    isTimeOver = true;
-    SetState(GameState.GameOver);
-
-    // 1. UI 패널 및 결과 표시
-    if (panel_InfiniteReward != null) panel_InfiniteReward.SetActive(true);
-    if (textFinalScore != null) textFinalScore.text = $"최종 점수 : {finalScore:N0}";
-    if (textFinalTurns != null) textFinalTurns.text = $"걸린 턴수 : {currentTurn} 턴";
-
-    // 2. 랭킹 시스템 정산 회로 (Top 10 계산)
-    int[] highScores = new int[10];
-    for (int i = 0; i < 10; i++)
-    {
-        highScores[i] = PlayerPrefs.GetInt($"INF_RANK_{i + 1}", 0);
-    }
-
-    int currentRank = 0;
-    for (int i = 0; i < 10; i++)
-    {
-        if (finalScore > highScores[i])
-        {
-            // 아래 순위 기록들을 한 칸씩 뒤로 밀어내기
-            for (int j = 9; j > i; j--)
-            {
-                highScores[j] = highScores[j - 1];
-            }
-            highScores[i] = finalScore;
-            currentRank = i + 1;
-            break;
-        }
-    }
-
-
 
     // 4. 게임오버 전용 시각 텍스트 및 시작 차단 연출
     GameObject goText = GameObject.Find("Canvas")?.transform.Find("Panel_INPuzzleBattle/GAMEOVER TXT")?.gameObject;
