@@ -2,6 +2,7 @@ using System.Collections.Generic;
 using TMPro;
 using UnityEditor.Localization.Plugins.XLIFF.V20;
 using UnityEngine;
+using UnityEngine.TextCore.Text;
 using UnityEngine.UI;
 
 public class GameManager : MonoBehaviour
@@ -92,13 +93,119 @@ public class GameManager : MonoBehaviour
     private Coroutine villageMoveCoroutine;
     private Coroutine npcListToggleCoroutine;
 
+    [Header("--- [파티 UI 리뉴얼] 배치 그릇 컨테이너 ---")]
+    public Transform livePartyGridContainer;   // 상단 파티원 카드들이 배치될 부모 그릇
+    public Transform liveStorageGridContainer; // 하단 창고 카드들이 배치될 부모 그릇
+    public GameObject livePartyIconPrefab;     // 화면에 실시간으로 찍어낼 카드 프리팹
+
     [Header("순수 코드 연동형 빠른 이동 시스템")]
     public GameObject obj_NPCListPanel; // 인스펙터에서 'NPC 목록판'을 연결할 칸
 
     [Header("배틀 전용 동적 파티창 설정")]
-    public GameObject battlePartyContainer; // 인스펙터에서 PartyContainer_Battle을 연결할 칸
+    public GameObject battlePartyContainer;
 
     [Header("--- [파티 리뉴얼] 실시간 출전 및 창고 장부 ---")]
+    // ⚔️ 실제로 배틀(퍼즐판)에 나갈 정예 멤버 5명의 명단 리스트
+    public List<CharacterData> livePartyMembers = new List<CharacterData>();
+
+    // 📦 정예에 들어가지 못하고 보관함(창고)에 대기 중인 나머지 멤버들의 명단 리스트
+    public List<CharacterData> liveStorageMembers = new List<CharacterData>();
+    // 🎯 [실시간 워프 스위치]: 캐릭터를 파티/창고로 이동시키고 UI를 갱신합니다.
+    public void ToggleLiveCharacterAssignment(CharacterData targetCharacter)
+    {
+        if (targetCharacter == null) return;
+
+        // 파티에 있으면 창고로, 창고에 있으면 파티로 이동 (5명 제한)
+        if (livePartyMembers.Contains(targetCharacter))
+        {
+            livePartyMembers.Remove(targetCharacter);
+            if (!liveStorageMembers.Contains(targetCharacter)) liveStorageMembers.Add(targetCharacter);
+        }
+        else if (livePartyMembers.Count < 5)
+        {
+            if (liveStorageMembers.Contains(targetCharacter)) liveStorageMembers.Remove(targetCharacter);
+            livePartyMembers.Add(targetCharacter);
+        }
+        else
+        {
+            Debug.LogWarning("⚠️ 파티원 정원 초과!");
+            return;
+        }
+        RefreshLivePartyEditUI(); // UI 갱신
+    }
+    // 🎯 [파티 UI 물청소 스위치]: 화면에 있던 옛날 카드들을 싹 지워줍니다.
+    public void RefreshLivePartyEditUI()
+    {
+        // 상단 파티창 물청소
+        if (livePartyGridContainer != null)
+        {
+            foreach (Transform child in livePartyGridContainer)
+            {
+                Destroy(child.gameObject);
+            }
+        }
+
+        // 하단 창고창 물청소
+        if (liveStorageGridContainer != null)
+        {
+            foreach (Transform child in liveStorageGridContainer)
+            {
+                Destroy(child.gameObject);
+            }
+        }
+        // 하단 창고창 물청소
+        if (liveStorageGridContainer != null)
+        {
+            foreach (Transform child in liveStorageGridContainer)
+            {
+                Destroy(child.gameObject);
+            }
+        } // 👈 바로 이 줄 맨 뒤를 마우스로 클릭하고 엔터(Enter)를 치세요!
+          // 🎯 [상단 파티 카드 스폰 엔진]: 실시간으로 명단을 읽어 파티창에 카드를 복사합니다.
+        if (livePartyMembers != null && livePartyGridContainer != null && livePartyIconPrefab != null)
+        {
+            foreach (CharacterData character in livePartyMembers)
+            {
+                if (character == null) continue;
+
+                // 1. 상단 그릇의 자식으로 새 카드 오브젝트를 만듭니다.
+                GameObject newIconObj = Instantiate(livePartyIconPrefab, livePartyGridContainer);
+
+                // 2. 카드에 붙은 리모컨을 찾아 상단 '파티 상태'(true)로 데이터를 채워줍니다.
+                PartyIcon iconScript = newIconObj.GetComponent<PartyIcon>();
+                if (iconScript != null)
+                {
+                    iconScript.SetupCardData(character, true);
+                }
+            }
+        }
+        if (iconScript != null)
+        {
+            iconScript.SetupCardData(character, true);
+        }
+    }
+        // 🎯 [하단 창고 카드 스폰 ENGINE]: 대기 영웅 명단을 읽어 창고 보관함에 카드를 복사합니다.
+        if (liveStorageMembers != null && liveStorageGridContainer != null && livePartyIconPrefab != null)
+        {
+            foreach (CharacterData character in liveStorageMembers)
+            {
+                if (character == null) continue;
+
+                // 1. 하단 그릇의 자식으로 새 카드를 복사합니다.
+                GameObject newIconObj = Instantiate(livePartyIconPrefab, liveStorageGridContainer);
+
+    // 2. 카드에 붙은 리모컨을 찾아 하단 '창고 상태'(false)로 데이터를 가득 채워줍니다.
+    PartyIcon iconScript = newIconObj.GetComponent<PartyIcon>();
+                if (iconScript != null)
+                {
+                    iconScript.SetupCardData(character, false);
+                }
+            }
+        }
+
+
+
+[Header("--- [파티 리뉴얼] 실시간 출전 및 창고 장부 ---")]
     // ⚔️ 실제로 전투에 출전하는 정예 파티원 5인의 리스트 (파티창에 해당)
     public List<CharacterData> partyMembers = new List<CharacterData>();
 
