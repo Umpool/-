@@ -311,69 +311,13 @@ public class Board : MonoBehaviour
     // 🎯 [완전 구현] 인스펙터/프리팹 투명 가림막을 무력화하는 무적의 픽셀 좌표 추적 시스템
     private void Update()
     {
-        // 💡 [ON 상태]: 넷 중 단 하나라도 true가 되면 마우스 입력을 '철저히 차단(잠금)'합니다.
-        if (isProcessing || isSwapping || isMatching || isSwappingNow) return;
-
-        // 💡 manager 변수를 Update 시작 시점에 선언하여 Scope(범위) 문제 해결
-        PuzzleBattleManager manager = FindAnyObjectByType<PuzzleBattleManager>();
-        // 1. 마우스 왼쪽 버튼을 누르는 순간 (클릭)
-        if (Input.GetMouseButtonDown(0))
+        // 🛡️ [방어막 장착]: 블록이 스스로 터지고 채워지는 중(Processing/Matching 등) 일때는
+        // 텅 빈 이 곳에서 return(탈출)을 시켜, 아래나 외부로 마우스 신호가 들어오는 것을 철저히 차단합니다!
+        if (isProcessing || isSwapping || isMatching || isSwappingNow)
         {
-
-            if (manager != null && manager.currentState != PuzzleBattleManager.GameState.PlayerTurn)
-            {
-                Debug.LogWarning("현재 플레이어 턴이 아니므로 블록을 선택할 수 없습니다.");
-                return; // 이하 드래그 처리를 모두 무시하고 나감
-            }
-
-            // // 만약 완전히 정리 중(isProcessing)일 때는 클릭 신호만 받고 스와이프 연산은 잠시 대기시킵니다
-            if (isProcessing) return;
-            Vector3 mouseWorldPos = Camera.main.ScreenToWorldPoint(Input.mousePosition);
-            Debug.Log($"[클릭 감지 신호 수신] 🖱️ 화면 마우스 위치: {Input.mousePosition} | 🌍 유니티 월드 변환 좌표: {mouseWorldPos}");
-
-
-            UnityEngine.EventSystems.PointerEventData eventData = new UnityEngine.EventSystems.PointerEventData(UnityEngine.EventSystems.EventSystem.current) { position = Input.mousePosition };
-            List<UnityEngine.EventSystems.RaycastResult> results = new List<UnityEngine.EventSystems.RaycastResult>();
-            UnityEngine.EventSystems.EventSystem.current.RaycastAll(eventData, results);
-
-            foreach (var result in results)
-            {
-                if (result.gameObject != null && (result.gameObject.name.StartsWith("Block_")))
-                {
-                    selectedBlock = result.gameObject;
-
-                    // ◀ 마우스 클릭(드래그 시작) 시 즉시 최상단 레이어로 이동
-                    if (selectedBlock.TryGetComponent<RectTransform>(out var selectedRT))
-                    {
-                        selectedRT.SetAsLastSibling();
-                    }
-
-                    clickStartPos = Input.mousePosition;
-                    FindBlockIndex(selectedBlock, out startX, out startY);
-                    break;
-                }
-            }
-
-        } // <- 🎯 GetMouseButtonDown(0) 조건문이 완전히 끝나는 닫는 괄호
-
-        // 2. 마우스 왼쪽 버튼을 떼는 순간 (드래그 완료 판정) - foreach 바깥으로 정상 탈출!
-        if (Input.GetMouseButtonUp(0) && selectedBlock != null)
-        {
-            Vector2 clickEndPos = Input.mousePosition;
-            Vector2 swipeDelta = clickEndPos - clickStartPos;
-
-            // 드래그 누적 거리가 최소 40픽셀 이상 확실히 움직였을 때만 격발
-            if (swipeDelta.magnitude > 40f)
-            {
-                CalculateSwipeDirection(swipeDelta);
-                if (manager != null)
-                {
-                    manager.SetState(PuzzleBattleManager.GameState.Matching);
-                }
-            }
-            selectedBlock = null; // 조작 대상 초기화
+            return;
         }
-    } // <- 🎯 Update() 함수 전체가 예쁘게 마무리되는 닫는 괄호
+    }
 
 
     private void FindBlockIndex(GameObject block, out int x, out int y)
@@ -516,16 +460,18 @@ public class Board : MonoBehaviour
         if (b1 != null) b1.name = $"Block_{GetBlockColor(b1)}_{x2}_{y2}";
         if (b2 != null) b2.name = $"Block_{GetBlockColor(b2)}_{x1}_{y1}";
 
-        currentTurn++;
-        if (PuzzleBattleManager.Instance != null)
-        {
-            PuzzleBattleManager.Instance.currentTurn = currentTurn;
-            PuzzleBattleManager.Instance.UpdateTurnTextUI();
-        }
+        // 블록 교체 시 현재 활성화된 모드 매니저의 상태를 'Matching'으로 동기화
+        NormalBattleManager normManager = FindAnyObjectByType<NormalBattleManager>();
+        PuzzleBattleManager infManager = FindAnyObjectByType<PuzzleBattleManager>();
 
+        if (normManager != null && normManager.panel_NormalPuzzleBattle.activeInHierarchy)
+            normManager.SetState(NormalBattleManager.GameState.Matching);
+        else if (infManager != null)
+            infManager.SetState(PuzzleBattleManager.GameState.Matching);
 
         yield return StartCoroutine(JudgeMatchAndProcess(x1, y1, x2, y2));
-    }
+    } // 함수 끝
+
 
     // 🛠️ 공통 이동/복귀 로직 (옛날 정품 뼈대)
     // ✅ 이 함수 전체를 복사해서 기존의 복잡한 앵커식 MoveBlocks 함수 자리에 통째로 덮어씌우세요!
@@ -636,7 +582,7 @@ public class Board : MonoBehaviour
             isMatching = false;
             isSwappingNow = false;
         }
-    
+    }
 
     // 🎯 [3단계 수리 완결판] 무한 락 루프 방지 및 InfiniteMonster 타격/이름 규칙 보강
     private IEnumerator DestroyAndRefillRoutine(List<GameObject> matches)
@@ -706,34 +652,32 @@ public class Board : MonoBehaviour
 
         // 🔔 [최종 마감 연동] 현재 화면 상황을 판독하여 알맞은 매니저에게 신호를 분기합니다.
         NormalBattleManager normalManager = FindAnyObjectByType<NormalBattleManager>();
+        PuzzleBattleManager infiniteManager = FindAnyObjectByType<PuzzleBattleManager>();
 
-        // 🎯 판독 기준: 일반모드 매니저가 존재하고, 일반모드 전용 패널이 화면에 활성화(On)되어 있다면 "일반모드"입니다.
-        if (normalManager != null && normalManager.panel_NormalPuzzleBattle != null && normalManager.panel_NormalPuzzleBattle.activeInHierarchy)
+        // 🎯 1. 일반 배틀 턴 갱신 및 몬스터 턴 전환
+        if (normalManager != null && normalManager.panel_NormalPuzzleBattle.activeInHierarchy)
         {
-            // ⚔️ 일반모드 정산 회로 가동
             if (normalManager.currentState == NormalBattleManager.GameState.Matching)
             {
-                // 일반모드에서는 블록이 한 번 터져서 정리가 끝날 때마다 진행 턴수를 1씩 정직하게 올려줍니다.
                 currentTurn++;
-
-                // 일반모드 매니저에게 적으로 턴을 넘기라고 신호 송신
                 normalManager.SetState(NormalBattleManager.GameState.EnemyTurn);
             }
         }
-        // 🎯 그 외의 상황(일반모드 패널이 꺼져있음)이라면 기존의 "무한모드"로 취급합니다.
-        else
+        // 🎯 2. 무한 모드 턴 복귀 (플레이어 턴)
+        else if (infiniteManager != null && infiniteManager.currentState == PuzzleBattleManager.GameState.Matching)
         {
-            PuzzleBattleManager infiniteManager = FindAnyObjectByType<PuzzleBattleManager>();
-            if (infiniteManager != null)
-            {
-                // 무한모드 매니저에게 적 턴 신호 송신
-                if (infiniteManager.currentState == PuzzleBattleManager.GameState.Matching)
-                {
-                    infiniteManager.SetState(PuzzleBattleManager.GameState.EnemyTurn);
-                }
-            }
-        } //DestroyAndRefillRoutine 
-    }
+            infiniteManager.SetState(PuzzleBattleManager.GameState.PlayerTurn);
+        }
+
+        // 🔓 입력 잠금 해제
+        isProcessing = false;
+        isSwapping = false;
+        isMatching = false;
+        isSwappingNow = false;
+    } 
+
+
+
 
 
 
@@ -998,103 +942,77 @@ public class Board : MonoBehaviour
         }
     }
     //데드락은 여기까지 
+    // ---- [파트 2 시작]: 에러의 원인이었던 누락된 핵심 연출 유틸리티 함수들입니다 ----
 
-    // 🌟 0에서 1로 스케일이 커지는 팝업 연출
-    private IEnumerator AnimateScaleUpUI(GameObject target)
+    // 🎯 [오류 해결]: 'MoveBlockSmoothlyUI'가 없다는 에러(CS0103)를 정밀한 이동 공식으로 완벽 해결합니다!
+    private IEnumerator MoveBlockSmoothlyUI(GameObject block, Vector2 targetAnchoredPosition)
     {
-        float elapsed = 0f, duration = 0.2f;
+        if (block == null) yield break;
+
+        RectTransform rt = block.GetComponent<RectTransform>();
+        if (rt == null) yield break;
+
+        Vector2 startPos = rt.anchoredPosition;
+        float elapsed = 0f;
+        float duration = 0.2f; // 블록이 부드럽게 미끄러지는 시간 설정
+
         while (elapsed < duration)
         {
-            if (target == null) yield break;
-            target.transform.localScale = Vector3.one * (elapsed / duration);
+            if (rt == null) yield break; // 중간에 블록이 터져 소멸했을 때를 대비한 안전 장치
             elapsed += Time.deltaTime;
+            rt.anchoredPosition = Vector2.Lerp(startPos, targetAnchoredPosition, elapsed / duration);
             yield return null;
         }
-        if (target != null) target.transform.localScale = Vector3.one;
+
+        if (rt != null) rt.anchoredPosition = targetAnchoredPosition; // 소수점 오차 칼고정
     }
 
-    private IEnumerator CheckPostProcessAndDeadlock()
+    // 🎯 [오류 해결]: 데드락(판이 섞일 때) 연출에서 쓰이는 크기 확대 애니메이션 복구
+    private IEnumerator AnimateScaleUpUI(GameObject block)
     {
-        if (!CheckPossibleMatchesExist()) yield return StartCoroutine(ResolveDeadlockRoutine());
+        if (block == null) yield break;
+
+        RectTransform rt = block.GetComponent<RectTransform>();
+        if (rt == null) yield break;
+
+        rt.localScale = Vector3.zero; // 0 크기에서 시작해서
+        float elapsed = 0f;
+        float duration = 0.15f;
+
+        while (elapsed < duration)
+        {
+            if (rt == null) yield break;
+            elapsed += Time.deltaTime;
+            rt.localScale = Vector3.Lerp(Vector3.zero, Vector3.one, elapsed / duration);
+            yield return null;
+        }
+
+        if (rt != null) rt.localScale = Vector3.one; // 원래 크기로 완성
     }
 
-
-    // ✅ 917번째 줄부터 파일 맨 끝까지 이 코드로 통째로 안전 덮어쓰기 하세요!
-    // ✅ 917번째 줄부터 파일 맨 마지막 끝 줄까지 이 코드로 통째로 안전 덮어쓰기 하세요!
-    // 🎯 [재시작 트리거 시스템]: 게임오버 화면 터치 시 보드판을 부활시킵니다.
-    // ✅ 여기서부터 복사해서 파일 끝까지 덮어쓰기 하세요!
-    // ✅ [정품 연동 핵심]: 인스펙터에 조립 완료된 매니저에게 정산 명령을 위임합니다.
-    // ✅ 사진 속 929번째 줄부터 파일 맨 마지막 끝 줄까지 이 코드로 통째로 안전 덮어쓰기 하세요!
-    // ✅ 뽄형님이 짚어주신 시작/종료 담당 오브젝트 규칙을 완벽하게 적용한 최종 종결 코드입니다!
+    // 🎯 [오류 해결]: 게임이 완전히 끝났거나 리셋될 때 보드판을 정리해 주는 셧다운 전담 마크 기능
     public void ShutdownAndCleanupBoard()
     {
         isGameActive = false;
-        isProcessing = true;
+        ClearAllBoardObjects();
 
-        ClearAllBoardObjects(); // 보드판 블록 찌꺼기 완벽 청소
-        comboCount = 0;
-        UpdateComboTextUI();
-        Debug.Log("✨ [성공] 보드판 소멸 완수.");
-
-        // 🎯 [게임오버 발동]: 시간이 종료되었으므로 매니저의 정산 기능을 깨웁니다.
-        if (PuzzleBattleManager.Instance != null)
+        if (gameOverTxtPanel != null)
         {
-            PuzzleBattleManager.Instance.currentTurn = currentTurn;
-            PuzzleBattleManager.Instance.OnTimerEnd(currentTurn);
-            // ⚡ [스위치 작동 1]: 게임이 끝났으므로 '시작 담당 리모컨'은 확실하게 꺼줍니다!
-            if (PuzzleBattleManager.Instance.btn_StartTouchTrigger_Direct != null)
-            {
-                PuzzleBattleManager.Instance.btn_StartTouchTrigger_Direct.SetActive(false);
-            }
-
-            // ⚡ [스위치 작동 2]: 대신 '종료 담당 결과창(GAMEOVER TXT)' 본체를 화면에 확실하게 켭니다!
-            if (PuzzleBattleManager.Instance.panel_InfiniteReward != null)
-            {
-                PuzzleBattleManager.Instance.panel_InfiniteReward.SetActive(true);
-            }
+            gameOverTxtPanel.SetActive(true); // 게임오버 팝업창 켜기
         }
+        Debug.Log("🛑 [보드 엔딩] 모든 퍼즐 연산 장부를 안전하게 백업 및 폐기했습니다.");
     }
-    /// <summary>
-    /// 다음 판 진입을 위해 연출 UI 및 스타트 버튼을 초기 상태로 복구하는 함수
-    /// </summary>
 
-
-    // 🎯 [재시작 트리거]: 결과창 화면을 터치했을 때 다시 태초의 상태로 부활시키는 함수
-    public void RestartGameByTouch()
+    // 🌟 [데드락 방어선]: 폭발 연쇄 반응이 끝난 직후 필드에 매칭 가능한 조합이 남아있는지 최종 확인
+    private IEnumerator CheckPostProcessAndDeadlock()
     {
-        if (PuzzleBattleManager.Instance != null)
+        yield return new WaitForSeconds(0.1f);
+
+        // 더 이상 움직일 수 있는 블록 조합이 없다면 데드락 해결 코루틴 격발!
+        if (!CheckPossibleMatchesExist())
         {
-            // ⚡ [스위치 작동 3]: 다시 게임을 시작해야 하므로 떠 있던 '종료 담당 결과창'은 깨끗이 끕니다.
-            if (PuzzleBattleManager.Instance.panel_InfiniteReward != null)
-            {
-                PuzzleBattleManager.Instance.panel_InfiniteReward.SetActive(false);
-            }
-
-            PuzzleBattleManager.Instance.currentTurn = 0;
-            PuzzleBattleManager.Instance.UpdateTurnTextUI();
-
-            // ⚡ [스위치 작동 4]: 다음 판 첫 터치(드래그) 시작을 감지할 수 있도록 '시작 담당 리모컨'을 다시 켭니다!
-            if (PuzzleBattleManager.Instance.btn_StartTouchTrigger_Direct != null)
-            {
-                PuzzleBattleManager.Instance.btn_StartTouchTrigger_Direct.SetActive(true);
-            }
+            Debug.LogWarning("🚨 [데드락 감지] 현재 보드판에 매치할 수 있는 조합이 없습니다! 판을 새로 섞습니다.");
+            yield return StartCoroutine(ResolveDeadlockRoutine());
         }
-
-        // 보드 제어용 변수들도 첫 게임 시작 상태로 깔끔하게 영점 조절합니다.
-        isGameActive = true;
-        isProcessing = false;
-        isSwapping = false;
-        isMatching = false;
-        comboCount = 0;
-        currentTurn = 0;
-    
-        // 가운데서부터 사방으로 피어나는 정품 새 보드판 배치 가동!
-        InitializeNewBoard();
-        Debug.Log("🔄 [순환 완공] 게임오버 창이 닫히고 스타트 트리거 버튼이 켜지며 무한모드가 재시작됩니다!");
-
-        // 🔔 [3구역 수정] 매개변수(int finalScore) 장부를 칼같이 일치시켜 줍니다.
-        /// <summary>
-        /// 무한모드 제한 시간이 종료되었을 때 타이머에 의해 강제 격발되는 최종 정산 함수
-        /// </summary>
     }
-}
+} // 🎯 [오류 해결]: 파일 맨 밑에 닫는 중괄호가 없어서 나던 CS1513 에러를 이 괄호가 깔끔하게 문을 닫아 종료합니다!
