@@ -108,9 +108,7 @@ public class PuzzleBattleManager : MonoBehaviour
 
     [Header("--- 파티창 설정 ---")]
     [SerializeField] private Transform NMPartyContainer; // 이 부분이 정확히 들어가 있는지 확인하세요.
-    [SerializeField] private GameObject normalStagePuzzleBoard; 
-    [SerializeField] private TMPro.TextMeshProUGUI normalStageTextUI;
-    public TMPro.TextMeshProUGUI textStageRoundUI;
+
 
 
 
@@ -133,8 +131,6 @@ public class PuzzleBattleManager : MonoBehaviour
     private void Start()
     {
         currentTurn = 0;
-        UpdateTurnTextUI();
-
         InitGame();
 
         if (GameManager.Instance != null && GameManager.Instance.partyMembers != null)
@@ -296,13 +292,7 @@ public class PuzzleBattleManager : MonoBehaviour
             Debug.Log("🧹 [PuzzleBattleManager] 배틀 데이터 초기화 완수!");
         }
     }
-    public void UpdateTurnTextUI()
-    {
-        if (turnTextUI != null)
-        {
-            turnTextUI.text = $"{currentTurn} 턴";
-        }
-    }
+
     public void StartInfiniteStageViaButton(string modeName)
     {
         if (modeName == "infinite")
