@@ -21,6 +21,9 @@ public class GameManager : MonoBehaviour
     public TextMeshProUGUI characterNameText; // '캐릭터 이름' 오브젝트 연결용
     public TextMeshProUGUI characterInfoText; // '캐릭터 정보' 오브젝트 연결용
 
+    [Header("👑 [추가] 메인 캐릭터 자동 정렬 그릇")]
+    public Transform mainCharacterGridContainer; // 새로 만든 MainCharacterGridContainer를 넣을 칸입니다.
+
     [Header("마을 파티 편집창 UI 연결")]
     public GameObject popup_PartyEditCharacterInfo; // 마을 편집창 전용 정보 팝업 (필요시 분리)
     public TextMeshProUGUI partyEditNameText;
@@ -345,8 +348,6 @@ public class GameManager : MonoBehaviour
                 topBarRect.anchoredPosition = new Vector2(0f, 0f);
             }
         }
-        // Start 종료
-
         void Update()
         {
             // 🔒 파티 편집 중일 땐 이동 조작 차단
@@ -590,17 +591,19 @@ public class GameManager : MonoBehaviour
         partyMembers.Clear();
         UpdatePartyUI();
     }
+    // ========================================================
+    // 👑 [교정 완료]: 캐릭터 클릭 시 배경을 유지하고 정보 팝업만 깨끗하게 띄우는 기능
+    // ========================================================
     public void OnClickCharacter(int charId)
     {
         selectedCharId = charId;
         CharacterData data = allCharacters.Find(x => x.id == charId);
         if (data == null) return;
 
-        // 다른 방해 팝업들 즉시 물리적으로 전원 차단
-        if (popup_CharacterInfo != null) popup_CharacterInfo.SetActive(false);
+        // 다른 방해 팝업들만 즉시 물리적으로 정리 채널 차단
         if (popup_PartyEditCharacterInfo != null) popup_PartyEditCharacterInfo.SetActive(false);
 
-        // 🌟 [교정 1] 철벽 만석 판정 : 파티원이 이미 5명이면 경고창을 띄우고 "즉시 함수 종료"
+        // [중요] 기존 패널 제한 및 중복 체크 검사 수식 (4인 정원 수식 보존)
         if (partyMembers.Count >= 5)
         {
             if (popup_AlertWindow != null)
@@ -609,11 +612,9 @@ public class GameManager : MonoBehaviour
                 StopAllCoroutines();
                 StartCoroutine(FadeOutAlertWindow_SubCharSelect("정원이 가득찼습니다"));
             }
-            return; // 🚀 여기서도 철저하게 리턴으로 잘라줍니다!
+            return;
         }
-        // [2] 중복 판정
-        // 442번 라인 아래인 [2] 중복 판정 구간부터 아래 코드로 깔끔하게 변경해 줍니다.
-        // [2] 중복 판정
+
         if (partyMembers.Contains(data))
         {
             if (popup_AlertWindow != null)
@@ -622,29 +623,25 @@ public class GameManager : MonoBehaviour
                 StopAllCoroutines();
                 StartCoroutine(FadeOutAlertWindow_SubCharSelect("이미 파티에 소속된 캐릭터입니다."));
             }
-            return; // 🌟 void 함수이므로 false를 빼고 pure하게 return; 만 적어줍니다!
+            return;
         }
 
-        // 모든 검사를 통과했다면 기존 서브캐 정보창 정상 가동
-        if (popup_AlertWindow != null) popup_AlertWindow.SetActive(false);
-        if (popup_CharacterInfo != null)
-        {
-            // 하이어라키의 자식 경로를 스스로 추적하여 글씨 컴포넌트를 낚아챕니다.
-            TMPro.TextMeshProUGUI nameTextComponent = popup_CharacterInfo.transform.Find("캐릭터 이름")?.GetComponent<TMPro.TextMeshProUGUI>();
-            TMPro.TextMeshProUGUI infoTextComponent = popup_CharacterInfo.transform.Find("캐릭터 정보")?.GetComponent<TMPro.TextMeshProUGUI>();
+        // 📝 하이어라키 컴포넌트를 추적하여 글자 데이터 연동 (수동 버튼 방식 졸업)
+        Transform nameTextComponent = popup_CharacterInfo.transform.Find("캐릭터 이름");
+        Transform infoTextComponent = popup_CharacterInfo.transform.Find("캐릭터 정보");
 
-            if (nameTextComponent != null) nameTextComponent.text = data.characterName;
-            if (infoTextComponent != null) infoTextComponent.text = $"{data.description}\n(공격력: {data.attackPower} / 체력: {data.hp})";
+        if (nameTextComponent != null) nameTextComponent.GetComponent<TMPro.TextMeshProUGUI>().text = data.characterName;
+        if (infoTextComponent != null) infoTextComponent.GetComponent<TMPro.TextMeshProUGUI>().text = $"{data.description}\n(공격력: {data.attackPower} / 체력: {data.hp})";
 
-            popup_CharacterInfo.SetActive(true);
+        // ⭐ [핵심]: 메인 선택창 배경(panel_CharacterSelect)은 건드리지 않고, 정보 팝업창만 활성화합니다!
+        if (popup_CharacterInfo != null) popup_CharacterInfo.SetActive(true);
 
-            // 내부 확인3, 취소3 버튼 정렬 보장
-            Transform confirm3Btn = popup_CharacterInfo.transform.Find("확인3");
-            Transform cancel3Btn = popup_CharacterInfo.transform.Find("취소3");
-            if (confirm3Btn != null) confirm3Btn.gameObject.SetActive(true);
-            if (cancel3Btn != null) cancel3Btn.gameObject.SetActive(true);
-        }
-    } // 🌟 OnClickCharacter 함수가 여기서 완전히 닫힙니다.
+        Transform confirm3Btn = popup_CharacterInfo.transform.Find("확인3");
+        Transform cancel3Btn = popup_CharacterInfo.transform.Find("취소3");
+        if (confirm3Btn != null) confirm3Btn.gameObject.SetActive(true);
+        if (cancel3Btn != null) cancel3Btn.gameObject.SetActive(true);
+    }
+
 
     // 🌟[새로 추가] 파티에 추가 하시겠습니까? 팝업의 '취소4' 버튼 연동 함수
     public void OnClickPartyAddConfirm_No()
@@ -767,22 +764,43 @@ public class GameManager : MonoBehaviour
         // 🌟 [기존 시스템의 서브캐릭터 4인 제한 및 파티원 등록 구간]
         if (data.id >= 101 && GetSubCharacterCount() >= 4) return;
 
-        partyMembers.Add(data);
-
-        if (popup_CharacterInfo) popup_CharacterInfo.SetActive(false);
-
-        // [기획 규칙] 메인 캐릭터(1~3) 등록 시 패널 전환
+        // ========================================================
+        // 👑 [기획 완벽 주입]: 기존 방어 수식을 거친 뒤 진짜 "예"를 누를 때 실행되는 순서 교정 구역
+        // ========================================================
         if (data.id >= 1 && data.id <= 3)
         {
-            if (panel_CharacterSelect) panel_CharacterSelect.SetActive(false);
-            if (panel_SubCharacterSelect) panel_SubCharacterSelect.SetActive(true);
+            // 1. 파티창 장부를 완전히 깨끗하게 비운 뒤, 이 영웅을 메인(1번 자리)으로 등록합니다.
+            partyMembers.Clear();
+            partyMembers.Add(data);
+
+            // 2. [기획 반영]: 선택된 메인 캐릭터를 제외한 나머지 후보들은 '완전 파기'합니다.
+            allCharacters.Clear();
+            allCharacters.Add(data);
+
+            // 3. 메인 캐릭터 선택이 끝났으므로 나열되어 있던 메인 버튼들을 화면에서 싹 청소하여 숨깁니다.
+            if (mainCharacterGridContainer != null)
+            {
+                foreach (Transform child in mainCharacterGridContainer) Destroy(child.gameObject);
+            }
+
+            // 4. 내가 고른 메인 캐릭터가 화면 하단 파티창(UI)에 즉시 짠! 하고 나타나도록 새로고침합니다.
+            UpdatePartyUI();
+
+            // 6. 켜져 있던 캐릭터 정보 팝업창과 메인 선택창을 끄고, 진짜 서브 캐릭터 선택화면을 활성화합니다.
+            if (popup_CharacterInfo != null) popup_CharacterInfo.SetActive(false);
+            if (panel_CharacterSelect != null) panel_CharacterSelect.SetActive(false);
+            if (panel_SubCharacterSelect != null) panel_SubCharacterSelect.SetActive(true);
+
+            // 🛡️ [추가]: 서브 캐릭터 선택창 영역에서는 상단 단축바 UI를 절대 노출하지 않고 숨깁니다!
+            GameObject topMenuBar = GameObject.Find("Canvas")?.transform.Find("상단 단축바")?.gameObject;
+            if (topMenuBar != null) topMenuBar.SetActive(false);
+
+            // 7. 서브 캐릭터 화면의 활성화 버튼 상태를 최종 새로고침해 줍니다.
+            RefreshAllButtonsActiveState();
+
         }
 
-
-        RefreshAllButtonsActiveState(); // 버튼들 숨김/등장 제어 (아래 참고)
-        UpdatePartyUI(); // 파티창 새로고침
     }
-
     private int GetSubCharacterCount()
     {
         int count = 0;
@@ -1137,29 +1155,60 @@ public class GameManager : MonoBehaviour
         pendingRemoveCharacter = null;
     }
 
+    // ========================================================
+    // ⏪ [기획 완벽 반영]: 서브 캐릭터 창에서 '뒤로가기' 클릭 시 메인 복구 엔진
+    // ========================================================
     public void OnClickBackButton()
     {
         Debug.Log("[뒤로가기] 클릭 -> 메인 캐릭터 선택화면으로 이동");
 
-        // 1. 파티에서 메인 캐릭터(ID: 1, 2, 3)를 정확하게 찾아내기
-        CharacterData mainChar = partyMembers.Find(x => x.id == 1 || x.id == 2 || x.id == 3);
-        if (mainChar != null)
-        {
-            // 2. 파티 리스트에서만 안전하게 제거 (allCharacters.Add는 데이터가 꼬이므로 삭제합니다)
-            partyMembers.Remove(mainChar);
+        // 1. [기획 반영]: 파티창에서 서브 캐릭터(ID: 101 이상)는 건드리지 않고, 
+        // 오직 메인 캐릭터(ID: 1, 2, 3)만 정확하게 찾아서 리스트에서 제거합니다.
+        partyMembers.RemoveAll(x => x != null && x.id >= 1 && x.id <= 3);
 
-            // 3. 파티창 UI 실시간 새로고침
-            UpdatePartyUI();
+        // 2. [기획 반영]: 파기되었던 초기 스타팅 메인 캐릭터 3명(ID: 1, 2, 3)의 정보를 다시 불러와 보유 목록에 채워줍니다.
+        allCharacters.Clear();
+        CharacterData[] originalStarters = Resources.LoadAll<CharacterData>("Character");
+        foreach (CharacterData data in originalStarters)
+        {
+            if (data != null && data.id >= 1 && data.id <= 3)
+            {
+                allCharacters.Add(data);
+            }
         }
 
-        // 4. 기획 흐름대로 각 화면 패널 ON/OFF 제어
-        if (panel_SubCharacterSelect) panel_SubCharacterSelect.SetActive(false);
-        if (panel_CharacterSelect) panel_CharacterSelect.SetActive(true);
-        if (popup_CharacterInfo) popup_CharacterInfo.SetActive(false);
+        // 3. 파티창 UI 실시간 새로고침
+        UpdatePartyUI();
 
-        // 🌟 [핵심] 파티에서 빠진 메인 캐릭터의 나열되었던 버튼을 다시 ON 시켜주는 코드 추가!
+        // 4. [오브젝트 자동 정렬 연동]: 메인 선택창 그릇 안을 청소하고 3명의 영웅 버튼을 예쁘게 다시 찍어내어 나열합니다.
+        if (mainCharacterGridContainer != null && partyIconPrefab != null)
+        {
+            foreach (Transform child in mainCharacterGridContainer) Destroy(child.gameObject);
+
+            foreach (CharacterData data in allCharacters)
+            {
+                if (data.id >= 1 && data.id <= 3)
+                {
+                    GameObject newBtn = Instantiate(partyIconPrefab, mainCharacterGridContainer);
+                    newBtn.GetComponent<PartyIcon>()?.SetupCardData(data, false);
+                    newBtn.GetComponentInChildren<Button>()?.onClick.AddListener(() => OnClickCharacter(data.id));
+                }
+            }
+        }
+
+        // 5. 기획 흐름대로 화면 패널 ON/OFF 제어 (서브창을 끄고, 메인 선택창을 다시 켭니다)
+        if (panel_SubCharacterSelect != null) panel_SubCharacterSelect.SetActive(false);
+        if (panel_CharacterSelect != null) panel_CharacterSelect.SetActive(true);
+        if (popup_CharacterInfo != null) popup_CharacterInfo.SetActive(false);
+
+        // 🛡️ [추가]: 메인 캐릭터 선택창 구역에서도 단축바 UI를 확실하게 숨김 처리합니다.
+        GameObject topMenuBar = GameObject.Find("Canvas")?.transform.Find("상단 단축바")?.gameObject;
+        if (topMenuBar != null) topMenuBar.SetActive(false);
+
+        // 🔄 메인 화면 버튼들 등장/숨김 제어 상태 새로고침
         RefreshAllButtonsActiveState();
     }
+
 
 
     public void OnClickStartAdventureButton()
