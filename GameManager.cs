@@ -329,7 +329,8 @@ public class GameManager : MonoBehaviour
         if (editRemoveNoButton != null)
         {
             editRemoveNoButton.onClick.RemoveAllListeners();
-            editRemoveNoButton.onClick.AddListener(() => {
+            editRemoveNoButton.onClick.AddListener(() =>
+            {
                 panel_PartyEditView?.transform.Find("Panel_ConfirmRemove2")?.gameObject.SetActive(false);
             });
         }
@@ -341,7 +342,8 @@ public class GameManager : MonoBehaviour
         if (editAddNoButton != null)
         {
             editAddNoButton.onClick.RemoveAllListeners();
-            editAddNoButton.onClick.AddListener(() => {
+            editAddNoButton.onClick.AddListener(() =>
+            {
                 if (popup_PartyAddConfirm != null) popup_PartyAddConfirm.SetActive(false);
             });
         }
@@ -414,6 +416,9 @@ public class GameManager : MonoBehaviour
         // ========================================================
         // 📦 [새로 교체된 구역]: 창고 리스트 초기화 및 버튼 자동 연결 시스템
         // ========================================================
+        // ========================================================
+        // 📦 [중복 완벽 제거]: 순수 partyMembers 기준 창고 목록 정렬 시스템
+        // ========================================================
         GameObject warehouseContainer = panel_PartyEditView?.transform.Find("캐릭터 창고창/WarehouseListContainer")?.gameObject;
         if (warehouseContainer != null)
         {
@@ -427,20 +432,20 @@ public class GameManager : MonoBehaviour
                 containerRect.anchoredPosition = new Vector2(containerRect.anchoredPosition.x, 100f);
             }
 
-            // 내 창고에 있는 모든 캐릭터 데이터를 순서대로 화면에 네모 슬롯으로 찍어냅니다.
+            // [규칙 1]: 전체 캐릭터 장부(allCharacters)를 순회합니다.
             foreach (var member in allCharacters)
             {
                 if (member == null) continue;
 
-                // 파티 멤버(partyMembers)에 이미 들어있는 영웅은 창고 목록에서 안 보이게 숨깁니다.
+                // [핵심 필터]: 이미 파티창에 소속되어 있다면 창고 리스트에 절대 중복 스폰하지 않고 통과!
                 if (partyMembers.Contains(member)) continue;
 
-                // 하단 창고 보관함 그릇(liveStorageGridContainer) 밑에 프리팹 카드를 복사합니다.
+                // 하단 창고 보관함 그릇 밑에 순수 대기 멤버만 카드 프리팹을 생성합니다.
                 GameObject cardObj = Instantiate(partyMemberPrefab, liveStorageGridContainer);
                 PartyIcon partyIconScript = cardObj.GetComponent<PartyIcon>();
                 if (partyIconScript != null)
                 {
-                    // 창고 편집 목록이므로 HP바와 레벨을 끄기 위해 false를 전달합니다.
+                    // 편집창 목록이므로 HP 바를 가리기 위해 false 처리합니다.
                     partyIconScript.SetupCardData(member, false);
                 }
 
@@ -448,45 +453,43 @@ public class GameManager : MonoBehaviour
                 if (cardBtn != null)
                 {
                     cardBtn.onClick.RemoveAllListeners();
-
-                    // 🎯 중요: 카드를 누르면 팝업창 텍스트를 채우는 OnClickPartyEditwarehouseCharacter 함수가 실행되게 만듭니다.
+                    // 카드를 누르면 팝업창 텍스트를 연동하는 함수와 안전하게 다리를 놓습니다.
                     cardBtn.onClick.AddListener(() => OnClickPartyEditwarehouseCharacter(member.id));
                 }
             }
         }
-    } // 👈 421번 줄 근처의 void Start() 함수가 완전히 끝나는 중괄호입니다.
-    void Update()
-    {
-        if (panel_Village != null && panel_Village.activeSelf && villageRectTransform != null)
+        void Update()
         {
-            // ---------------- [새로 추가된 키보드 이동 시스템] ----------------
-            Vector2 keyboardInput = Vector2.zero;
-
-            // 새로운 인풋 시스템(Input System) 패키지 기준 키 입력 감지
-            if (UnityEngine.InputSystem.Keyboard.current != null)
+            if (panel_Village != null && panel_Village.activeSelf && villageRectTransform != null)
             {
-                if (UnityEngine.InputSystem.Keyboard.current.wKey.isPressed || UnityEngine.InputSystem.Keyboard.current.upArrowKey.isPressed) { keyboardInput.y -= 1f; } // 이미지 반전 고려
-                if (UnityEngine.InputSystem.Keyboard.current.sKey.isPressed || UnityEngine.InputSystem.Keyboard.current.downArrowKey.isPressed) { keyboardInput.y += 1f; }
-                if (UnityEngine.InputSystem.Keyboard.current.aKey.isPressed || UnityEngine.InputSystem.Keyboard.current.leftArrowKey.isPressed) { keyboardInput.x += 1f; }
-                if (UnityEngine.InputSystem.Keyboard.current.dKey.isPressed || UnityEngine.InputSystem.Keyboard.current.rightArrowKey.isPressed) { keyboardInput.x -= 1f; }
+                // ---------------- [새로 추가된 키보드 이동 시스템] ----------------
+                Vector2 keyboardInput = Vector2.zero;
+
+                // 새로운 인풋 시스템(Input System) 패키지 기준 키 입력 감지
+                if (UnityEngine.InputSystem.Keyboard.current != null)
+                {
+                    if (UnityEngine.InputSystem.Keyboard.current.wKey.isPressed || UnityEngine.InputSystem.Keyboard.current.upArrowKey.isPressed) { keyboardInput.y -= 1f; } // 이미지 반전 고려
+                    if (UnityEngine.InputSystem.Keyboard.current.sKey.isPressed || UnityEngine.InputSystem.Keyboard.current.downArrowKey.isPressed) { keyboardInput.y += 1f; }
+                    if (UnityEngine.InputSystem.Keyboard.current.aKey.isPressed || UnityEngine.InputSystem.Keyboard.current.leftArrowKey.isPressed) { keyboardInput.x += 1f; }
+                    if (UnityEngine.InputSystem.Keyboard.current.dKey.isPressed || UnityEngine.InputSystem.Keyboard.current.rightArrowKey.isPressed) { keyboardInput.x -= 1f; }
+                }
+
+                // 키보드 입력이 있을 때만 마을 UI 좌표를 실시간으로 직접 이동시킵니다.
+                if (keyboardInput.sqrMagnitude > 0.01f)
+                {
+                    float moveSpeed = 500f; // 키보드 이동 속도 (원하는 대로 변경 가능)
+                    Vector2 targetPos = villageRectTransform.anchoredPosition + (keyboardInput.normalized * moveSpeed * Time.deltaTime);
+
+                    // 283번째 줄에 이미 만들어두신 '화면 밖 이탈 방지 감금 함수'를 그대로 재활용하여 안전성 확보!
+                    villageRectTransform.anchoredPosition = RestrictPositionInsideVillage(targetPos);
+                }
+                // ------------------------------------------------------------------
+
+                // 기존에 잘 돌아가던 마우스 드래그 관성 시스템 유지
+                HandleVillageInertiaDrag();
             }
-
-            // 키보드 입력이 있을 때만 마을 UI 좌표를 실시간으로 직접 이동시킵니다.
-            if (keyboardInput.sqrMagnitude > 0.01f)
-            {
-                float moveSpeed = 500f; // 키보드 이동 속도 (원하는 대로 변경 가능)
-                Vector2 targetPos = villageRectTransform.anchoredPosition + (keyboardInput.normalized * moveSpeed * Time.deltaTime);
-
-                // 283번째 줄에 이미 만들어두신 '화면 밖 이탈 방지 감금 함수'를 그대로 재활용하여 안전성 확보!
-                villageRectTransform.anchoredPosition = RestrictPositionInsideVillage(targetPos);
-            }
-            // ------------------------------------------------------------------
-
-            // 기존에 잘 돌아가던 마우스 드래그 관성 시스템 유지
-            HandleVillageInertiaDrag();
         }
     }
-
     // 🎯 [에러 완벽 박멸 파트 1]: 마을 복귀 버튼 기능 오류와 유령 변수 버그를 제거합니다.
     public void OnClickReturnToVillage()
     {
@@ -1815,45 +1818,75 @@ public class GameManager : MonoBehaviour
     }
 
     // 3. 파티창/창고창 화면 동기화 및 갱신 핵심 함수
+    // ========================================================
+    // ⚔️ [1부 교체]: 중복 생성 및 미선택 영웅 노출을 100% 차단하는 통합 갱신 엔진
+    // ========================================================
     public void RefreshCustomPartyEditUI()
     {
-        // [A] 기존 UI 아이콘 파괴
-        if (livePartyGridContainer != null) foreach (Transform child in livePartyGridContainer) Destroy(child.gameObject);
-        if (liveStorageGridContainer != null) foreach (Transform child in liveStorageGridContainer) Destroy(child.gameObject);
+        // 🧼 1. 기존 화면에 찍혀있던 옛날 UI 프리팹 자식들을 완벽히 청소 (중복 생성 원천 차단)
+        if (livePartyGridContainer != null)
+        {
+            foreach (Transform child in livePartyGridContainer) Destroy(child.gameObject);
+        }
+        if (liveStorageGridContainer != null)
+        {
+            foreach (Transform child in liveStorageGridContainer) Destroy(child.gameObject);
+        }
 
-        // [상단 파티 카드 스폰 및 클릭 설정]
+        // ⚔️ 2. [상단 정예 파티창 스폰 구역]: 선택된 진짜 파티원들만 화면에 그립니다.
         if (partyMembers != null && livePartyGridContainer != null && partyIconPrefab != null)
         {
             foreach (CharacterData character in partyMembers)
             {
+                if (character == null) continue;
+
+                // 상단 부모 그릇 밑에 정예 캐릭터 생성
                 GameObject newIconObj = Instantiate(partyIconPrefab, livePartyGridContainer);
                 newIconObj.GetComponent<PartyIcon>()?.SetupCardData(character, true);
 
+                // 정예 카드를 누르면 ➡️ "파티에서 제거하시겠습니까?" 팝업창 오픈 이벤트 연결
                 Button cardBtn = newIconObj.GetComponentInChildren<Button>();
                 if (cardBtn != null)
                 {
+                    cardBtn.onClick.RemoveAllListeners();
                     cardBtn.onClick.AddListener(() =>
                     {
                         selectedCharId = character.id;
-                        panel_PartyEditView?.transform.Find("Panel_ConfirmRemove2")?.gameObject.SetActive(true);
+                        if (panel_PartyEditView != null)
+                        {
+                            Transform removePopup = panel_PartyEditView.transform.Find("Panel_ConfirmRemove2");
+                            if (removePopup != null) removePopup.gameObject.SetActive(true);
+                        }
                     });
                 }
             }
         }
 
-        // [하단 창고 카드 스폰 및 클릭 설정]
+        // 📦 3. [하단 창고창 스폰 구역]: 정예 파티에 '안 들어간' 나머지 보유 캐릭터만 깨끗하게 분리해서 그립니다.
         if (allCharacters != null && liveStorageGridContainer != null && partyIconPrefab != null)
         {
             foreach (CharacterData character in allCharacters)
             {
-                if (partyMembers.Contains(character)) continue; // 파티원은 제외
+                if (character == null) continue;
 
+                // ⭐ [핵심 조건 필터링]: 이미 파티창에 소속된 캐릭터라면 창고창 목록에서 절대 나오지 못하게 스킵(패스)합니다!
+                if (partyMembers.Contains(character)) continue;
+
+                // 통과된 순수 대기 캐릭터만 하단 검정 창고 영역에 스폰
                 GameObject newIconObj = Instantiate(partyIconPrefab, liveStorageGridContainer);
                 newIconObj.GetComponent<PartyIcon>()?.SetupCardData(character, false);
 
-                newIconObj.GetComponentInChildren<Button>()?.onClick.AddListener(() => OnClickPartyEditwarehouseCharacter(character.id));
+                // 창고 카드를 누르면 ➡️ "파티에 추가하시겠습니까?" 팝업창 오픈 이벤트 연결
+                Button cardBtn = newIconObj.GetComponentInChildren<Button>();
+                if (cardBtn != null)
+                {
+                    cardBtn.onClick.RemoveAllListeners();
+                    cardBtn.onClick.AddListener(() => OnClickPartyEditwarehouseCharacter(character.id));
+                }
             }
         }
-        UpdatePartyUI(); // 하단 바 UI 갱신
+
+        // 🔄 4. 메인 화면 하단 바 등 시스템 전체 UI 연동 주머니 동기화
+        UpdatePartyUI();
     }
 }
