@@ -348,6 +348,7 @@ public class GameManager : MonoBehaviour
                 topBarRect.anchoredPosition = new Vector2(0f, 0f);
             }
         }
+    }
         void Update()
         {
             // 🔒 파티 편집 중일 땐 이동 조작 차단
@@ -596,6 +597,7 @@ public class GameManager : MonoBehaviour
     // ========================================================
     public void OnClickCharacter(int charId)
     {
+
         selectedCharId = charId;
         CharacterData data = allCharacters.Find(x => x.id == charId);
         if (data == null) return;
@@ -634,6 +636,7 @@ public class GameManager : MonoBehaviour
         if (infoTextComponent != null) infoTextComponent.GetComponent<TMPro.TextMeshProUGUI>().text = $"{data.description}\n(공격력: {data.attackPower} / 체력: {data.hp})";
 
         // ⭐ [핵심]: 메인 선택창 배경(panel_CharacterSelect)은 건드리지 않고, 정보 팝업창만 활성화합니다!
+        if (panel_CharacterSelect != null) panel_CharacterSelect.SetActive(true);
         if (popup_CharacterInfo != null) popup_CharacterInfo.SetActive(true);
 
         Transform confirm3Btn = popup_CharacterInfo.transform.Find("확인3");
@@ -786,18 +789,18 @@ public class GameManager : MonoBehaviour
             // 4. 내가 고른 메인 캐릭터가 화면 하단 파티창(UI)에 즉시 짠! 하고 나타나도록 새로고침합니다.
             UpdatePartyUI();
 
-            // 6. 켜져 있던 캐릭터 정보 팝업창과 메인 선택창을 끄고, 진짜 서브 캐릭터 선택화면을 활성화합니다.
+            // 5. [코드로 완벽 제어]: 오직 "예" 버튼을 클릭한 바로 이 순간에만!
+            // 메인 배경창을 철저하게 비활성화(false) 시키고 서브 선택창을 활성화합니다.
             if (popup_CharacterInfo != null) popup_CharacterInfo.SetActive(false);
-            if (panel_CharacterSelect != null) panel_CharacterSelect.SetActive(false);
+            if (panel_CharacterSelect != null) panel_CharacterSelect.SetActive(false); // 코드가 직접 오프 제어!
             if (panel_SubCharacterSelect != null) panel_SubCharacterSelect.SetActive(true);
 
-            // 🛡️ [추가]: 서브 캐릭터 선택창 영역에서는 상단 단축바 UI를 절대 노출하지 않고 숨깁니다!
+            // 6. [추가]: 서브 캐릭터 선택창 영역에서는 상단 단축바 UI를 절대 노출하지 않고 숨깁니다!
             GameObject topMenuBar = GameObject.Find("Canvas")?.transform.Find("상단 단축바")?.gameObject;
             if (topMenuBar != null) topMenuBar.SetActive(false);
 
             // 7. 서브 캐릭터 화면의 활성화 버튼 상태를 최종 새로고침해 줍니다.
             RefreshAllButtonsActiveState();
-
         }
 
     }
