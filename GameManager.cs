@@ -331,40 +331,45 @@ public class GameManager : MonoBehaviour
         editAddNoButton?.onClick.AddListener(() => popup_PartyAddConfirm?.SetActive(false));
 
         // 🗺️ 상단 단축바 위치 및 활성화 설정
+        // 🗺️ [수정 완료]: 상단 단축바 위치가 틀어지지 않고 마을에서 정상 노출되도록 고정
         GameObject topMenuBar = GameObject.Find("Canvas")?.transform.Find("상단 단축바")?.gameObject;
         if (topMenuBar != null)
         {
-            RectTransform rect = topMenuBar.GetComponent<RectTransform>();
-            if (rect != null) { rect.anchorMin = rect.anchorMax = new Vector2(0.5f, 1f); rect.pivot = new Vector2(0.5f, 1f); rect.anchoredPosition = Vector2.zero; rect.sizeDelta = new Vector2(0f, 80f); }
-            topMenuBar.transform.Find("Btn_FastMoveToggle")?.gameObject.SetActive(true);
-            topMenuBar.SetActive(false);
-        }
-        panel_PartyEditView?.transform.Find("Panel_ConfirmRemove2")?.gameObject.SetActive(false);
-        RefreshCustomPartyEditUI();
-    } // Start 종료
+            // 게임이 시작할 때 단축바를 물리적으로 강제 파괴하거나 끄지 않고, 마을 상태에 맞춰 활성화합니다.
+            topMenuBar.SetActive(true);
 
-    void Update()
-    {
-        // 🔒 파티 편집 중일 땐 이동 조작 차단
-        if (panel_PartyEditView != null && panel_PartyEditView.activeSelf) return;
-
-        // 🕹️ 마을 화면 이동 조작
-        if (panel_Village != null && panel_Village.activeSelf && villageRectTransform != null)
-        {
-            Vector2 input = Vector2.zero;
-            if (UnityEngine.InputSystem.Keyboard.current != null)
+            RectTransform topBarRect = topMenuBar.GetComponent<RectTransform>();
+            if (topBarRect != null)
             {
-                if (UnityEngine.InputSystem.Keyboard.current.wKey.isPressed) input.y -= 1f;
-                if (UnityEngine.InputSystem.Keyboard.current.sKey.isPressed) input.y += 1f;
-                if (UnityEngine.InputSystem.Keyboard.current.aKey.isPressed) input.x += 1f;
-                if (UnityEngine.InputSystem.Keyboard.current.dKey.isPressed) input.x -= 1f;
+                // 인스펙터 세팅을 강제로 비틀지 않도록 좌표 수정을 제거하고 기본 배치 앵커를 유지합니다.
+                topBarRect.anchoredPosition = new Vector2(0f, 0f);
             }
-            if (input.sqrMagnitude > 0.01f)
-                villageRectTransform.anchoredPosition = RestrictPositionInsideVillage(villageRectTransform.anchoredPosition + (input.normalized * 500f * Time.deltaTime));
-
-            HandleVillageInertiaDrag();
         }
-    } // Update 종료
+        // Start 종료
+
+        void Update()
+        {
+            // 🔒 파티 편집 중일 땐 이동 조작 차단
+            if (panel_PartyEditView != null && panel_PartyEditView.activeSelf) return;
+
+            // 🕹️ 마을 화면 이동 조작
+            if (panel_Village != null && panel_Village.activeSelf && villageRectTransform != null)
+            {
+                Vector2 input = Vector2.zero;
+                if (UnityEngine.InputSystem.Keyboard.current != null)
+                {
+                    if (UnityEngine.InputSystem.Keyboard.current.wKey.isPressed) input.y -= 1f;
+                    if (UnityEngine.InputSystem.Keyboard.current.sKey.isPressed) input.y += 1f;
+                    if (UnityEngine.InputSystem.Keyboard.current.aKey.isPressed) input.x += 1f;
+                    if (UnityEngine.InputSystem.Keyboard.current.dKey.isPressed) input.x -= 1f;
+                }
+                if (input.sqrMagnitude > 0.01f)
+                    villageRectTransform.anchoredPosition = RestrictPositionInsideVillage(villageRectTransform.anchoredPosition + (input.normalized * 500f * Time.deltaTime));
+
+                HandleVillageInertiaDrag();
+            }
+        }
+    }// Update 종료
     // 🎯 [에러 완벽 박멸 파트 1]: 마을 복귀 버튼 기능 오류와 유령 변수 버그를 제거합니다.
     public void OnClickReturnToVillage()
     {
