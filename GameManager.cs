@@ -310,6 +310,7 @@ public class GameManager : MonoBehaviour
 
     private void Awake()
     {
+    https://github.com/Umpool/d-2/blob/main/GameManager.cs
         if (Instance == null) Instance = this;
         else Destroy(gameObject);
     }
@@ -371,7 +372,7 @@ public class GameManager : MonoBehaviour
                 HandleVillageInertiaDrag();
             }
         }
-    }// Update 종료
+    // Update 종료
     // 🎯 [에러 완벽 박멸 파트 1]: 마을 복귀 버튼 기능 오류와 유령 변수 버그를 제거합니다.
     public void OnClickReturnToVillage()
     {
@@ -1660,25 +1661,30 @@ public class GameManager : MonoBehaviour
     // 1. [파티에 추가 확인] 팝업창에서 유저가 "확인" 버튼을 눌렀을 때 실행되는 진짜 함수
     public void OnClickPartyAddConfirm_Yes()
     {
-        CharacterData data = allCharacters.Find(x => x.id == selectedCharId);
-        if (data == null) return;
-
-        // [정원 초과 및 중복 판정]
-        if (partyMembers.Count >= 5 || partyMembers.Contains(data))
+        // 1. [진짜 정원 체크는 여기서 합니다]
+        if (partyMembers.Count >= 5)
         {
+            // 팝업은 닫고, 경고창만 띄웁니다.
+            popup_PartyAddConfirm.SetActive(false);
             if (popup_AlertWindow != null)
             {
                 popup_AlertWindow.SetActive(true);
                 StopAllCoroutines();
-                StartCoroutine(FadeOutAlertWindow_PartyEdit(partyMembers.Count >= 5 ? "정원이 가득찼습니다" : "이미 파티에 소속된 캐릭터입니다."));
+                StartCoroutine(FadeOutAlertWindow_PartyEdit("정원이 가득찼습니다!"));
             }
-            if (popup_PartyAddConfirm != null) popup_PartyAddConfirm.SetActive(false);
             return;
         }
 
-        partyMembers.Add(data); // 정예 파티 멤버 등록
-        if (popup_PartyAddConfirm != null) popup_PartyAddConfirm.SetActive(false);
-        RefreshCustomPartyEditUI(); // 화면 갱신
+        // 2. [추가] 정원이 여유 있을 때만 파티에 추가
+        CharacterData data = allCharacters.Find(x => x.id == selectedCharId);
+        if (data != null && !partyMembers.Contains(data))
+        {
+            partyMembers.Add(data);
+            RefreshPartyEditUI(); // UI를 다시 그려서 버튼 목록을 정리
+        }
+
+        // 3. 팝업 종료
+        popup_PartyAddConfirm.SetActive(false);
     }
 
     // 2. [파티에서 제거 확인] 팝업창에서 유저가 "예" 버튼을 눌렀을 때 실행되는 진짜 함수
@@ -1770,6 +1776,8 @@ public class GameManager : MonoBehaviour
         }
     }
     // 🎯 [완성형]: 창고의 캐릭터 카드 클릭 시 정보 표시 및 등록 로직
+    // 🎯 [수정된 코드]: 클릭 시 정보 팝업만 띄우고, 정원 체크는 '예' 버튼으로 넘김
+    // 🎯 [완성형]: 창고의 캐릭터 카드 클릭 시 정원 체크 없이 정보 팝업만 띄움
     public void OnClickPartyEditwarehouseCharacter(int charId)
     {
         // 1. 팝업창 중복 켜짐 방지
@@ -1784,26 +1792,12 @@ public class GameManager : MonoBehaviour
         if (partyEditNameText != null) partyEditNameText.text = data.characterName;
         if (partyEditInfoText != null) partyEditInfoText.text = $"{data.description}\n(공격력: {data.attackPower} / 체력: {data.hp})";
 
-        // 4. [검증] 파티 정원 초과(5명) 체크
-        if (popup_AlertWindow != null)
+        // 4. [수정 완료]: 경고창 강제 호출을 삭제하고, 정보 확인 팝업만 활성화합니다.
+        // 이렇게 하면 화면 전체가 꺼지는 버그가 사라집니다.
+        if (popup_PartyAddConfirm != null)
         {
-            popup_AlertWindow.SetActive(true);
-            StopAllCoroutines();
-            StartCoroutine(FadeOutAlertWindow_PartyEdit("정원이 가득찼습니다"));
+            popup_PartyAddConfirm.SetActive(true);
         }
-
-
-        // 5. [검증] 이미 등록된 캐릭터인지 중복 체크
-        if (popup_AlertWindow != null)
-        {
-            popup_AlertWindow.SetActive(true);
-            StopAllCoroutines();
-            StartCoroutine(FadeOutAlertWindow_PartyEdit("이미 파티에 소속된 캐릭터입니다."));
-        }
-
-
-        // 6. 모든 검증 통과 시 추가 확인 팝업 활성화
-        if (popup_PartyAddConfirm != null) popup_PartyAddConfirm.SetActive(true);
     }
 
 }
